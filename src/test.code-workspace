@@ -1,0 +1,12 @@
+{
+	"folders": [
+		{
+			"path": "../../esp8266_milight_hub"
+		},
+		{
+			"name": "TestPio",
+			"path": ".."
+		}
+	],
+	"settings": {}
+}
