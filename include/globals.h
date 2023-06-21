@@ -127,9 +127,10 @@ namespace Cmd
         if (strcmp(_cmdHandler[idx]->cmd, segments[0].c_str()) == 0)
         {
           _cmdHandler[idx]->handler(&segments);
-          break;
+          return;
         }
       }
+      Serial.printf("*> Unknown <*\n");
     });
   }
 }

@@ -1,16 +1,27 @@
 #include <SX1276Helpers.h>
 #include <map>
+#include <ESP8266TimerInterrupt.h>
 
 namespace Radio
 {
     SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
     WorkingParams _params;
 
-    bool dataAvail = false;
-    bool packetEnd = false;
+    // Init ESP8266 timer 1
+    ESP8266Timer ITimer;
+
+    volatile bool dataAvail = false;
+    volatile bool packetEnd = false;
     bool iAmAReceiver = true;
     uint8_t bufferIndex = 0;
+    union _payload payload;
 
+
+    uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
+    uint8_t next_freq = 0;
+    uint8_t scanCounter = 0;
+
+    // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
     {
         {25, {0x01, 0x04}},  // 25KHz
@@ -20,6 +31,28 @@ namespace Radio
         {200, {0x01, 0x01}},
         {250, {0x00, 0x01}}  // 250KHz
     };
+
+
+    // State machine
+    std::map<States, stateMachineTransitions> __iohcsm =
+    {
+        {States::Rst, {false, 0, Radio::preambleDetected, States::PrD, States::Rst}},
+        {States::PrD, {false, 55000, Radio::syncAddress, States::SyD, States::Rst}}, // 55mS instead of 13.300, as kli311 send two seuqnces with a 52mS interval
+        {States::SyD, {false, 10400, Radio::crcOk, States::PaR, States::Rst}},
+        {States::PaR, {false, 5000, Radio::preambleDetected, States::PrD, States::Rst}}
+    };
+
+    stateMachineStatus  __iohcsmState =
+    {
+        States::Rst, 0
+    };
+
+    volatile bool __smPacketEnd = false;
+    volatile bool scanFreqs = true; // __iohcsm[__iohcsmState.status].scanFreqs;
+    volatile uint32_t stateTickCounter = 0;
+    volatile int32_t scanfTickCounter = 0;
+    volatile bool lastFrame = false;
+
 
 
     void SPI_beginTransaction(void)
@@ -40,10 +73,69 @@ namespace Radio
 
     void IRAM_ATTR _payload() {
         if (iAmAReceiver)
+        {
             packetEnd = ~digitalRead(RADIO_PACKET_AVAIL);
+            __smPacketEnd = packetEnd;
+            if (packetEnd) lastFrame = payload.control.last?true:false;
+        }
         else
             packetEnd = digitalRead(RADIO_PACKET_AVAIL);
     }
+
+
+    void IRAM_ATTR tickCounter()
+    {
+        stateTickCounter += 1;
+        if (scanFreqs) scanfTickCounter += 1;
+    }
+
+    void stateMachine()
+    {
+        if (__iohcsm[__iohcsmState.status].checkNextState())
+        {
+//                Serial.printf("-%d.\t", (uint8_t)__iohcsm[__iohcsmState.status].nextStateOk);
+            __iohcsmState.status = __iohcsm[__iohcsmState.status].nextStateOk;
+//            scanFreqs = __iohcsm[__iohcsmState.status].scanFreqs;
+//            Serial.printf("Switch to %d\t scan=%s\n", (uint8_t)__iohcsmState.status, scanFreqs?"true":"false");
+            __iohcsmState.enteredTime = 0;
+            stateTickCounter = 0;
+        }
+        else
+        {
+            if (((stateTickCounter * SM_GRANULARITY_US) >= __iohcsm[__iohcsmState.status].maxStayUs) && (__iohcsm[__iohcsmState.status].maxStayUs != 0))
+            {
+                // timeout
+//                Serial.printf("Timeout from %1.1x\tticker: %i(%i)\n", (unsigned)__iohcsmState.status, stateTickCounter*SM_GRANULARITY_US, __iohcsm[__iohcsmState.status].maxStayUs);
+                __iohcsmState.status = __iohcsm[__iohcsmState.status].nextStateTimeout;
+//                scanFreqs = __iohcsm[__iohcsmState.status].scanFreqs;
+                __iohcsmState.enteredTime = 0;
+                stateTickCounter = 0;
+                Radio::clearFlags();
+            }
+        }
+
+        if (scanFreqs)
+        {
+            if ((scanfTickCounter * SM_GRANULARITY_US) >= SCAN_INTERVAL_US)
+            {
+                scanfTickCounter = 0;
+                digitalWrite(SCAN_LED, 0);
+                setCarrier(Radio::Carrier::Frequency, freqs[next_freq++]);
+                digitalWrite(SCAN_LED, 1);
+                if (next_freq >= MAX_FREQS)
+                    next_freq = 0;
+            }
+        }
+
+        while (Radio::dataAvail) 
+        {
+            digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+            Radio::payload.buffer[Radio::bufferIndex++] = Radio::readByte(REG_FIFO);
+        }
+        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+
+    }
+
     void init(void)
     {
         Serial.println("SPI Init");
@@ -79,6 +171,13 @@ namespace Radio
         dataAvail = ~digitalRead(RADIO_PACKET_AVAIL);
         attachInterrupt(RADIO_DATA_AVAIL, _fifo, CHANGE);
         attachInterrupt(RADIO_PACKET_AVAIL, _payload, CHANGE);
+
+
+    pinMode(SCAN_LED, OUTPUT);
+    digitalWrite(SCAN_LED, 1);
+
+
+        ITimer.attachInterruptInterval(SM_GRANULARITY_US, tickCounter);
     }
 
     void calibrate(void)
@@ -106,18 +205,18 @@ namespace Radio
 
 
         // Variable packet lenght, generates working CRC !!!
-        // Packet mode, IoHomeOn, IoHomePowerFrame to be add 0x10 
+        // Packet mode, IoHomeOn, IoHomePowerFrame to be add 0x10 ???
         writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | 0x10); // 0x10 is IoHomePowerFrame  | 0x10
+        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON);// | RF_PACKETCONFIG2_IOHOME_POWERFRAME);   // Is IoHomePowerFrame useful ?
 
         // Setting Preamble Length
-        writeByte(REG_PREAMBLEMSB, 0x00);
-        writeByte(REG_PREAMBLELSB, 0x0f);   // 0xff: 66ms to have receiver up and running
+        writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
+        writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
 
-        // Enabling Sync word - Size must be set to 2; fist byte 0xff then 0x33 size-1 times
+        // Enabling Sync word - Size must be set to 2
         writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON | RF_SYNCCONFIG_SYNCSIZE_2);
-        writeByte(REG_SYNCVALUE1, 0xff);
-        writeByte(REG_SYNCVALUE2, 0x33);
+        writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
+        writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
 
 
         // Sequencer off, Standby when idle, FromStart to Transmit, to LowPower, FromIdle to Transmit, fromTransmit to LowPower
@@ -133,7 +232,7 @@ namespace Radio
         writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01);
         writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
         // FIFO Threshold - currently useless
-        writeByte(REG_FIFOTHRESH, 0x1f);
+        writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
 
         // Enable Tx
         _params.rfOpMode &= RF_OPMODE_MASK;
@@ -157,16 +256,14 @@ namespace Radio
         // Variable packet lenght, working with CRC
         // Packet mode, IoHomeOn, IoHomePowerFrame to be add 0x10 
         writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | 0x10); // Is IoHomePowerFrame useful ?
+        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON);   // Is IoHomePowerFrame useful ?
 
         writeByte(REG_PAYLOADLENGTH, 0xff); // Disable lenght checking; do not delete !!!
 
         // Enabling Sync word - received word from remote is 2 bytes (0xff33), but has to be set to size 3 !!!
         writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_PREAMBLEPOLARITY_55 | RF_SYNCCONFIG_SYNC_ON | RF_SYNCCONFIG_SYNCSIZE_3);
-        writeByte(REG_SYNCVALUE1, 0xff);
-        writeByte(REG_SYNCVALUE2, 0x33);
-        writeByte(REG_SYNCVALUE3, 0xff);
-        writeByte(REG_SYNCVALUE3, 0x33);
+        writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
+        writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
 
         // Mapping of pins DIO0 to DIO3
         // DIO0: CRCok    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
@@ -174,6 +271,9 @@ namespace Radio
         // DIO4: PreambleDetect  DIO5: Data
         writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01);
         writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
+
+        // Enable Fast Hoping (frequency change)
+        writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON);
 
         writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT); // Activates Timeout interrupt on Preamble
         writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);  // 250KHz BW with AFC
@@ -196,9 +296,9 @@ namespace Radio
         _params.seqConf[1] = RF_SEQCONFIG2_FROMRX_TOSEQUENCEROFF_ONPREAMBLE | RF_SEQCONFIG2_FROMRXTIMEOUT_TOLPS;
         writeBytes(REG_SEQCONFIG1, _params.seqConf, 2);
 
-        writeByte(REG_TIMERRESOL, RF_TIMERRESOL_TIMER1RESOL_004100_US | RF_TIMERRESOL_TIMER2RESOL_004100_US);
-        writeByte(REG_TIMER1COEF, 0x04);
-        writeByte(REG_TIMER2COEF, 0x04);
+        writeByte(REG_TIMERRESOL, RF_TIMERRESOL_TIMER1RESOL_000064_US | RF_TIMERRESOL_TIMER2RESOL_000064_US);
+        writeByte(REG_TIMER1COEF, 0x19);    // 1,6mS
+        writeByte(REG_TIMER2COEF, 0x13);    // 1,2mS
 
 /*
         _params.seqConf[0] |= RF_SEQCONFIG1_SEQUENCER_START;
@@ -242,6 +342,32 @@ namespace Radio
     {
         uint8_t out[2] = {0xff, 0xff};
         writeBytes(REG_IRQFLAGS1, out, 2);
+    }
+
+
+    bool preambleDetected(void)
+    {
+        if (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT)
+        {
+            scanFreqs = false;
+            scanfTickCounter = -2000/SM_GRANULARITY_US;
+            return true;
+        }
+        return false;
+    }
+
+    bool syncAddress(void)
+    {
+        return (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_SYNCADDRESSMATCH);
+    }
+
+    bool crcOk(void)
+    {
+        if (!Radio::__smPacketEnd) return false;
+        Radio::__smPacketEnd = false;
+// if frame is last, then restart frequency hopping
+        scanFreqs = lastFrame;
+        return true;
     }
 
 
@@ -322,18 +448,20 @@ namespace Radio
         uint8_t out[4];
         regBandWidth bw;
 
+//  Change of Frequency can be done while the redaio is working thanks to Freq Hopping
         if (!inStdbyOrSleep())
-            return false;
+            if (param != Carrier::Frequency)
+                return false;
 
         switch (param)
         {
             case Carrier::Frequency:
                 _params.carrierFrequency = value;
                 tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
-                Serial.printf("Setting freq: %6x(%u)\n", tmpVal, tmpVal);
+//                Serial.printf("Setting freq: %6x(%u)\n", tmpVal, tmpVal);
                 out[0] = (tmpVal & 0x00ff0000) >> 16;
                 out[1] = (tmpVal & 0x0000ff00) >> 8;
-                out[2] = (tmpVal & 0x000000ff);
+                out[2] = (tmpVal & 0x000000ff); // If Radio is active writing LSB triggers frequency change
                 writeBytes(REG_FRFMSB, out, 3);
                 break;
             case Carrier::Bandwidth:

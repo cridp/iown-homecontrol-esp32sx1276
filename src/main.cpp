@@ -22,16 +22,21 @@ AsyncWebSocket ws("/ws"); // access at ws://[esp ip]/ws
 AsyncEventSource events("/events"); // event source (Server-Sent events)
 
 // Test frame: IOHC - Variable length - without CRC
-uint8_t out[] = {0xf6,0x00,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0xd2,0x00,0x00,0x00,0x0f,0x35,0x3b,0xe0,0xd9,0x0d,0x60,0x49, 0xbd,0x69,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+//uint8_t out[] = {0xf6,0x20,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0xd2,0x00,0x00,0x00,0x0f,0x35,0x3b,0xe0,0xd9,0x0d,0x60,0x49, 0xbd,0x69,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
+uint8_t out[] = {0xf6,0x20,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0x00,0x00,0x00,0x00,0x10,0x30,0xd9,0xb5,0x78,0x0e,0x5d,0x03};   // Pure packet, without CRC that will be added in silicon
+
+
 // Receiving buffer
-Radio::payload  payload;
+//Radio::payload  payload;
+bool verbosity = false;
+
 
 void setup() {
     Serial.begin(SERIALSPEED);
 //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
-    pinMode(LED_BUILTIN, OUTPUT); // we are goning to blink this LED
-    digitalWrite( LED_BUILTIN, true);
+    pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
+    digitalWrite( RX_LED, true);
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP 
     wm.autoConnect();
     
@@ -163,37 +168,38 @@ void setup() {
     Cmd::addHandler((char *)"dump", (char *)"Dump SX1276 registers", [](Tokens*cmd)->void {Radio::dump();});
     Cmd::addHandler((char *)"rx", (char *)"Run as a receiver (startup default)", [](Tokens*cmd)->void {Radio::iAmAReceiver=true; Radio::initRx();});
     Cmd::addHandler((char *)"tx", (char *)"Run as a transmitter", [](Tokens*cmd)->void {Radio::iAmAReceiver=false; Radio::setStandby();});
-    Cmd::addHandler((char *)"send", (char *)"Send packet", [](Tokens*cmd)->void {Radio::initTx(); Radio::writeBytes(REG_FIFO, out, sizeof(out));});
+    Cmd::addHandler((char *)"send", (char *)"Send packet", [](Tokens*cmd)->void {digitalWrite(RX_LED, digitalRead(RX_LED)^1); Radio::initTx(); Radio::writeBytes(REG_FIFO, out, sizeof(out));});
+    Cmd::addHandler((char *)"verbose", (char *)"Toggle verbose output on packets receiving", [](Tokens*cmd)->void {verbosity=!verbosity;});
 }
 
 
 void loop() {
     if (Radio::iAmAReceiver)
-    {    
-        while (Radio::dataAvail) 
-        {
-            payload.buffer[Radio::bufferIndex++] = Radio::readByte(REG_FIFO);
-//            Serial.printf("%2.2x", payload.buffer[Radio::bufferIndex-1]);
-        }
-
-
+    {
+        Radio::stateMachine();
         if (Radio::packetEnd) // packet received
         {
-            Radio::setStandby();
-            Serial.printf("\nPacket received - ");
+            Serial.printf("Packet: ");
             for (uint8_t idx=0; idx<Radio::bufferIndex; ++idx)
-                Serial.printf("%2.2x", payload.buffer[idx]);
+                Serial.printf("%2.2x", Radio::payload.buffer[idx]);
+            Serial.printf("\n");
 
-// To be verified as bits values are incorrect
-//            Serial.printf("\nlen: %u, rel: %1x, source: %6.6x, target: %6.6x\n", payload.control.framelength, payload.control.relationship,
-//                payload.nodeid.source, payload.nodeid.target);
+            if (verbosity)
+            {
+                Serial.printf(" - Len: %u, mode: %1xW, first frame: %s, last frame: %s", Radio::payload.control.framelength, Radio::payload.control.mode?1:2, Radio::payload.control.first?"true":"false", Radio::payload.control.last?"true":"false");
+                Serial.printf(" - beacon: %u, routed: %u, low power: %u, ack: %u, protocol: %u", Radio::payload.control.use_beacon, Radio::payload.control.routed, Radio::payload.control.low_p, Radio::payload.control.ack, Radio::payload.control.prot_v);
+                Serial.printf(" to: %2.2x%2.2x%2.2x, from: %2.2x%2.2x%2.2x, seq: %2.2x, cmd: %2.2x\n", 
+                    Radio::payload.nodeid.target[0], Radio::payload.nodeid.target[1], Radio::payload.nodeid.target[2],
+                    Radio::payload.nodeid.source[0], Radio::payload.nodeid.source[1], Radio::payload.nodeid.source[2],
+                    Radio::payload.message.sequence, Radio::payload.message.cmd );
+
+            }
             Radio::clearFlags();
             Radio::packetEnd = false;
             Radio::bufferIndex = 0;
-            Radio::initRx();
             return;
         }
-
+        return;
         if (Radio::inStdbyOrSleep())
         {
             Serial.printf("\nPacket received\n");
@@ -202,24 +208,23 @@ void loop() {
 
         return;
     }
-    else
+
+/*
+    if (!Radio::iAmAReceiver)
         if (Radio::packetEnd)
         {
             Radio::setStandby();
+            digitalWrite(RX_LED, digitalRead(RX_LED)^1);
             Serial.printf("Packet sent\n");
             return;
         }
+*/
 
     wm.process();
     MDNS.update();
 
     return;
 /*
-
-
-    digitalWrite(LED_BUILTIN, digitalRead(LED_BUILTIN)^1);
-
-
 
     if(shouldReboot){
     Serial.println("Rebooting...");
