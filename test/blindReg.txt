@@ -1,13 +1,3 @@
-2W Stop cmd to blind
- - Len: 14, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 00	 - 4e108c8fa55cd68f000163d2000000
- - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 3c	 - 0e085cd68f8c8fa53c14ce004f2815
- - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 3d	 - 0e108c8fa55cd68f3d302f81c3d648
- - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa50403009c210000
- - Len: 11, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 03	 - 4b108c8fa55cd68f03020000
- - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa504050000000000
- - Len: 11, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 03	 - 4b108c8fa55cd68f03010000
- - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa50405009c210000
-
 2W Discovery with Self registering to blind (sW remote: 5cd68f - blind: 8c8fa5)
 
  - Len: 09, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003f, cmd: 2e	 - c93000003f5cd68f2e00
