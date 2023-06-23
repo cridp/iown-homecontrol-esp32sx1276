@@ -6,4 +6,4 @@
 #define HTTP_LISTEN_PORT    80
 #define HTTP_USERNAME       "admin"
 #define HTTP_PASSWORD       "admin"
-#define SERIALSPEED         115200
+#define SERIALSPEED         460800

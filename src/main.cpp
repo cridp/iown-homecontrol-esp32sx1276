@@ -13,6 +13,13 @@
 #include <WebServerHelpers.h>
 
 
+//#define USE_US_TIMER
+//#include "osapi.h"
+//#include <ets_sys.h>
+
+//void system_timer_reinit();
+
+
 const char* http_username = HTTP_USERNAME;
 const char* http_password = HTTP_PASSWORD;
 WiFiManager wm;
@@ -22,16 +29,19 @@ AsyncWebSocket ws("/ws"); // access at ws://[esp ip]/ws
 AsyncEventSource events("/events"); // event source (Server-Sent events)
 
 // Test frame: IOHC - Variable length - without CRC
-//uint8_t out[] = {0xf6,0x20,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0xd2,0x00,0x00,0x00,0x0f,0x35,0x3b,0xe0,0xd9,0x0d,0x60,0x49, 0xbd,0x69,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00,0x00};
-uint8_t out[] = {0xf6,0x20,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0x00,0x00,0x00,0x00,0x10,0x30,0xd9,0xb5,0x78,0x0e,0x5d,0x03};   // Pure packet, without CRC that will be added in silicon
-
+//uint8_t out[] = {0xf6,0x20,0x00,0x00,0x3f,0x8a,0xd4,0x2e,0x00,0x01,0x61,0x00,0x00,0x00,0x00,0x10,0x30,0xd9,0xb5,0x78,0x0e,0x5d,0x03};   // Pure packet, without CRC that will be added in silicon
+uint8_t out[] = {0xd4, 0x30, 0x00, 0x00, 0x3b, 0x5c, 0xd6, 0x8f, 0x2a, 0x93, 0x32, 0xd6, 0x18, 0xde, 0x2a, 0x0f, 0xa6, 0x25, 0x0e, 0x2c, 0x7e}; //Discovery
 
 // Receiving buffer
 //Radio::payload  payload;
 bool verbosity = false;
-
+void txUserBuffer(Tokens*cmd);
 
 void setup() {
+//    Timers::init_us();
+//    system_timer_reinit();
+    INIT_US;
+
     Serial.begin(SERIALSPEED);
 //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
@@ -168,7 +178,8 @@ void setup() {
     Cmd::addHandler((char *)"dump", (char *)"Dump SX1276 registers", [](Tokens*cmd)->void {Radio::dump();});
     Cmd::addHandler((char *)"rx", (char *)"Run as a receiver (startup default)", [](Tokens*cmd)->void {Radio::iAmAReceiver=true; Radio::initRx();});
     Cmd::addHandler((char *)"tx", (char *)"Run as a transmitter", [](Tokens*cmd)->void {Radio::iAmAReceiver=false; Radio::setStandby();});
-    Cmd::addHandler((char *)"send", (char *)"Send packet", [](Tokens*cmd)->void {digitalWrite(RX_LED, digitalRead(RX_LED)^1); Radio::initTx(); Radio::writeBytes(REG_FIFO, out, sizeof(out));});
+    Cmd::addHandler((char *)"send", (char *)"Send packet", [](Tokens*cmd)->void {digitalWrite(RX_LED, digitalRead(RX_LED)^1); Radio::writeBytes(REG_FIFO, out, sizeof(out)); Radio::initTx();});
+    Cmd::addHandler((char *)"sendbuf", (char *)"Send packet from cmd line", txUserBuffer);
     Cmd::addHandler((char *)"verbose", (char *)"Toggle verbose output on packets receiving", [](Tokens*cmd)->void {verbosity=!verbosity;});
 }
 
@@ -179,21 +190,21 @@ void loop() {
         Radio::stateMachine();
         if (Radio::packetEnd) // packet received
         {
-            Serial.printf("Packet: ");
+            if (verbosity)
+            {
+                Serial.printf(" - Len: %2.2u, mode: %1xW, first: %s, last: %s", Radio::payload.control.framelength, Radio::payload.control.mode?1:2, Radio::payload.control.first?"T":"F", Radio::payload.control.last?"T":"F");
+                Serial.printf(" - bea: %u, rtd: %u, lp: %u, ack: %u, proto: %u", Radio::payload.control.use_beacon, Radio::payload.control.routed, Radio::payload.control.low_p, Radio::payload.control.ack, Radio::payload.control.prot_v);
+                Serial.printf(" from: %2.2x%2.2x%2.2x, to: %2.2x%2.2x%2.2x, cmd: %2.2x", 
+                    Radio::payload.nodeid.source[0], Radio::payload.nodeid.source[1], Radio::payload.nodeid.source[2],
+                    Radio::payload.nodeid.target[0], Radio::payload.nodeid.target[1], Radio::payload.nodeid.target[2],
+                    Radio::payload.message.cmd );
+
+            }
+            Serial.printf("\t - ");
             for (uint8_t idx=0; idx<Radio::bufferIndex; ++idx)
                 Serial.printf("%2.2x", Radio::payload.buffer[idx]);
             Serial.printf("\n");
 
-            if (verbosity)
-            {
-                Serial.printf(" - Len: %u, mode: %1xW, first frame: %s, last frame: %s", Radio::payload.control.framelength, Radio::payload.control.mode?1:2, Radio::payload.control.first?"true":"false", Radio::payload.control.last?"true":"false");
-                Serial.printf(" - beacon: %u, routed: %u, low power: %u, ack: %u, protocol: %u", Radio::payload.control.use_beacon, Radio::payload.control.routed, Radio::payload.control.low_p, Radio::payload.control.ack, Radio::payload.control.prot_v);
-                Serial.printf(" to: %2.2x%2.2x%2.2x, from: %2.2x%2.2x%2.2x, seq: %2.2x, cmd: %2.2x\n", 
-                    Radio::payload.nodeid.target[0], Radio::payload.nodeid.target[1], Radio::payload.nodeid.target[2],
-                    Radio::payload.nodeid.source[0], Radio::payload.nodeid.source[1], Radio::payload.nodeid.source[2],
-                    Radio::payload.message.sequence, Radio::payload.message.cmd );
-
-            }
             Radio::clearFlags();
             Radio::packetEnd = false;
             Radio::bufferIndex = 0;
@@ -208,6 +219,13 @@ void loop() {
 
         return;
     }
+    else
+        if (Radio::packetEnd)
+        {
+            Radio::setStandby();
+            Serial.printf("Sent!\n");
+            Radio::packetEnd = false;
+        }
 
 /*
     if (!Radio::iAmAReceiver)
@@ -235,4 +253,28 @@ void loop() {
     sprintf(temp, "Seconds since boot: %lu", millis()/1000);
     events.send(temp, "time"); //send event "time"
 */
+}
+
+
+void txUserBuffer(Tokens*cmd)
+{
+    if (cmd->size() < 2)
+    {
+        Serial.printf("No packet to be sent!\n");
+        return;
+    }
+    else
+    {
+        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+
+        for (unsigned int i = 0; i < cmd->at(1).length(); i += 2) {
+            std::string byteString = cmd->at(1).substr(i, 2);
+            char byte = (char) strtol(byteString.c_str(), NULL, 16);
+            Serial.printf("%2.2x", byte);
+            Radio::writeByte(REG_FIFO, byte);
+        }
+        Radio::initTx();
+        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+        Serial.printf(" ");
+    }
 }

@@ -1,6 +1,8 @@
+
 #include <SX1276Helpers.h>
 #include <map>
-#include <ESP8266TimerInterrupt.h>
+//#include <ESP8266TimerInterrupt.h>
+#include <TickerUs.h>
 
 namespace Radio
 {
@@ -8,7 +10,9 @@ namespace Radio
     WorkingParams _params;
 
     // Init ESP8266 timer 1
-    ESP8266Timer ITimer;
+//    ESP8266Timer ITimer;
+    Timers::TickerUs TickTimer;
+
 
     volatile bool dataAvail = false;
     volatile bool packetEnd = false;
@@ -177,7 +181,8 @@ namespace Radio
     digitalWrite(SCAN_LED, 1);
 
 
-        ITimer.attachInterruptInterval(SM_GRANULARITY_US, tickCounter);
+//        ITimer.attachInterruptInterval(SM_GRANULARITY_US, tickCounter);
+    TickTimer.attach_us(SM_GRANULARITY_US, tickCounter);
     }
 
     void calibrate(void)
@@ -233,6 +238,7 @@ namespace Radio
         writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
         // FIFO Threshold - currently useless
         writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
+        setCarrier(Radio::Carrier::Frequency, 869850000);
 
         // Enable Tx
         _params.rfOpMode &= RF_OPMODE_MASK;

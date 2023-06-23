@@ -23,7 +23,7 @@
 #define USING_TIM_DIV16               false           // for medium time and medium accurate timer
 #define USING_TIM_DIV256              true            // for longest timer but least accurate. Default
 #define SCAN_INTERVAL_US                3500
-#define SM_GRANULARITY_US               200
+#define SM_GRANULARITY_US               100
 
 
 #define TxReady  {do {/* Checks new Mode is ready */} while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_TXREADY));}   // Check for TxReady flag
@@ -127,8 +127,8 @@ namespace Radio
     struct _message
     {
         _nodeId         __filler;
-        unsigned char   _msg1[3];
         unsigned char   cmd;
+        unsigned char   _msg1[3];
         unsigned char   _msg2[4];
         unsigned char   sequence;
         unsigned char   msg[MAX_FRAME_LEN-8-8-1];

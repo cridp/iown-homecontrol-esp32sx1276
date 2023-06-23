@@ -1,0 +1,38 @@
+2W Stop cmd to blind
+ - Len: 14, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 00	 - 4e108c8fa55cd68f000163d2000000
+ - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 3c	 - 0e085cd68f8c8fa53c14ce004f2815
+ - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 3d	 - 0e108c8fa55cd68f3d302f81c3d648
+ - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa50403009c210000
+ - Len: 11, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 03	 - 4b108c8fa55cd68f03020000
+ - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa504050000000000
+ - Len: 11, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 03	 - 4b108c8fa55cd68f03010000
+ - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 04	 - 8e085cd68f8c8fa50405009c210000
+
+2W Discovery with Self registering to blind (sW remote: 5cd68f - blind: 8c8fa5)
+
+ - Len: 09, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003f, cmd: 2e	 - c93000003f5cd68f2e00
+ - Len: 09, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003f, cmd: 2e	 - c91000003f5cd68f2e00
+ - Len: 09, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003f, cmd: 2e	 - c91000003f5cd68f2e00
+ - Len: 09, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003f, cmd: 2e	 - c91000003f5cd68f2e00
+ - Len: 08, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 28	 - c81000003b5cd68f28
+ - Len: 08, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 28	 - c81000003b5cd68f28
+ - Len: 08, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 28	 - c81000003b5cd68f28
+ - Len: 20, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 2a	 - d43000003b5cd68f2a769283f4d2a87285ef3ce523
+ 
+ - Len: 17, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 2b	 - d1085cd68f8c8fa52b02806dc7910144ffff
+ - Len: 09, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 2e	 - 49108c8fa55cd68f2e02
+ - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 3c	 - 0e085cd68f8c8fa53cfa6be8b18543
+ - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 3d	 - 0e108c8fa55cd68f3dcce7843d0c74
+ - Len: 09, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 2f	 - 89085cd68f8c8fa52f02
+ - Len: 08, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 2c	 - 48108c8fa55cd68f2c
+ - Len: 08, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 2d	 - 88085cd68f8c8fa52d
+ 
+ - Len: 20, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 2a	 - d43000003b5cd68f2af0b250133b1b669d19dc854a
+ - Len: 20, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 2a	 - d43000003b5cd68f2a320ffd1eea341e508567fb3b
+ - Len: 20, mode: 2W, first: T, last: T - bea: 0, rtd: 0, lp: 1, ack: 1, proto: 0 from: 5cd68f, to: 00003b, cmd: 2a	 - d43000003b5cd68f2ac8f3af96c6c8c97459f6f800
+ 
+ - Len: 08, mode: 2W, first: T, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 36	 - 48148c8fa55cd68f36
+ - Len: 11, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 37	 - 0b0c5cd68f8c8fa5376dc791
+ - Len: 14, mode: 2W, first: F, last: F - bea: 0, rtd: 0, lp: 0, ack: 1, proto: 0 from: 5cd68f, to: 8c8fa5, cmd: 3c	 - 0e108c8fa55cd68f3ca22eaf43e874
+ - Len: 14, mode: 2W, first: F, last: T - bea: 0, rtd: 0, lp: 0, ack: 0, proto: 0 from: 8c8fa5, to: 5cd68f, cmd: 3d	 - 8e085cd68f8c8fa53d782ca6125c58
+ 

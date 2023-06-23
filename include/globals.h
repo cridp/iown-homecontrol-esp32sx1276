@@ -6,7 +6,7 @@
 #pragma once
 #include <vector> 
 #include <sstream> 
-#include <Ticker.h>
+#include <TickerUs.h>
 
 
 #if defined(DEBUG)
@@ -19,13 +19,13 @@
 #endif
 
 
- 
+
 using Tokens = std::vector<std::string>;
 void tokenize(std::string const &str, const char delim, Tokens &out) 
 { 
     // construct a stream from the string 
     std::stringstream ss(str); 
- 
+
     std::string s; 
     while (std::getline(ss, s, delim)) { 
         out.push_back(s); 
@@ -40,7 +40,7 @@ namespace Cmd
   uint8_t __avail = 0;
 //  bool receivingSerial = false;
   
-  Ticker kbd_tick;
+  Timers::TickerUs kbd_tick;
 
   struct _cmdEntry{
       char cmd[9];
