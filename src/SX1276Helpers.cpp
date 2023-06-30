@@ -1,7 +1,5 @@
-
 #include <SX1276Helpers.h>
 #include <map>
-//#include <ESP8266TimerInterrupt.h>
 #include <TickerUs.h>
 
 namespace Radio
@@ -9,16 +7,8 @@ namespace Radio
     SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
     WorkingParams _params;
 
-    // Init ESP8266 timer 1
-//    ESP8266Timer ITimer;
-    Timers::TickerUs TickTimer;
-
-
-    volatile bool dataAvail = false;
-    volatile bool packetEnd = false;
-    bool iAmAReceiver = true;
     uint8_t bufferIndex = 0;
-    union _payload payload;
+    payload _payload;
 
 
     uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
@@ -36,29 +26,6 @@ namespace Radio
         {250, {0x00, 0x01}}  // 250KHz
     };
 
-
-    // State machine
-    std::map<States, stateMachineTransitions> __iohcsm =
-    {
-        {States::Rst, {false, 0, Radio::preambleDetected, States::PrD, States::Rst}},
-        {States::PrD, {false, 55000, Radio::syncAddress, States::SyD, States::Rst}}, // 55mS instead of 13.300, as kli311 send two seuqnces with a 52mS interval
-        {States::SyD, {false, 10400, Radio::crcOk, States::PaR, States::Rst}},
-        {States::PaR, {false, 5000, Radio::preambleDetected, States::PrD, States::Rst}}
-    };
-
-    stateMachineStatus  __iohcsmState =
-    {
-        States::Rst, 0
-    };
-
-    volatile bool __smPacketEnd = false;
-    volatile bool scanFreqs = true; // __iohcsm[__iohcsmState.status].scanFreqs;
-    volatile uint32_t stateTickCounter = 0;
-    volatile int32_t scanfTickCounter = 0;
-    volatile bool lastFrame = false;
-
-
-
     void SPI_beginTransaction(void)
     {
         SPI.beginTransaction(Radio::SpiSettings);
@@ -69,75 +36,6 @@ namespace Radio
     {
         digitalWrite(RADIO_NSS, HIGH);
         SPI.endTransaction();
-    }
-
-    void IRAM_ATTR _fifo() {
-        dataAvail = digitalRead(RADIO_DATA_AVAIL) ? false:true;
-    }
-
-    void IRAM_ATTR _payload() {
-        if (iAmAReceiver)
-        {
-            packetEnd = ~digitalRead(RADIO_PACKET_AVAIL);
-            __smPacketEnd = packetEnd;
-            if (packetEnd) lastFrame = payload.control.last?true:false;
-        }
-        else
-            packetEnd = digitalRead(RADIO_PACKET_AVAIL);
-    }
-
-
-    void IRAM_ATTR tickCounter()
-    {
-        stateTickCounter += 1;
-        if (scanFreqs) scanfTickCounter += 1;
-    }
-
-    void stateMachine()
-    {
-        if (__iohcsm[__iohcsmState.status].checkNextState())
-        {
-//                Serial.printf("-%d.\t", (uint8_t)__iohcsm[__iohcsmState.status].nextStateOk);
-            __iohcsmState.status = __iohcsm[__iohcsmState.status].nextStateOk;
-//            scanFreqs = __iohcsm[__iohcsmState.status].scanFreqs;
-//            Serial.printf("Switch to %d\t scan=%s\n", (uint8_t)__iohcsmState.status, scanFreqs?"true":"false");
-            __iohcsmState.enteredTime = 0;
-            stateTickCounter = 0;
-        }
-        else
-        {
-            if (((stateTickCounter * SM_GRANULARITY_US) >= __iohcsm[__iohcsmState.status].maxStayUs) && (__iohcsm[__iohcsmState.status].maxStayUs != 0))
-            {
-                // timeout
-//                Serial.printf("Timeout from %1.1x\tticker: %i(%i)\n", (unsigned)__iohcsmState.status, stateTickCounter*SM_GRANULARITY_US, __iohcsm[__iohcsmState.status].maxStayUs);
-                __iohcsmState.status = __iohcsm[__iohcsmState.status].nextStateTimeout;
-//                scanFreqs = __iohcsm[__iohcsmState.status].scanFreqs;
-                __iohcsmState.enteredTime = 0;
-                stateTickCounter = 0;
-                Radio::clearFlags();
-            }
-        }
-
-        if (scanFreqs)
-        {
-            if ((scanfTickCounter * SM_GRANULARITY_US) >= SCAN_INTERVAL_US)
-            {
-                scanfTickCounter = 0;
-                digitalWrite(SCAN_LED, 0);
-                setCarrier(Radio::Carrier::Frequency, freqs[next_freq++]);
-                digitalWrite(SCAN_LED, 1);
-                if (next_freq >= MAX_FREQS)
-                    next_freq = 0;
-            }
-        }
-
-        while (Radio::dataAvail) 
-        {
-            digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-            Radio::payload.buffer[Radio::bufferIndex++] = Radio::readByte(REG_FIFO);
-        }
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-
     }
 
     void init(void)
@@ -171,18 +69,8 @@ namespace Radio
         readBytes(REG_OPMODE, &_params.rfOpMode, 1);    // Collect rfOpMode register value
         readBytes(REG_SEQCONFIG1, _params.seqConf, 2);  // Collect seqConf register value
 
-        // Attach interrupts to Data available in fifo and end of packet sent/received
-        dataAvail = ~digitalRead(RADIO_PACKET_AVAIL);
-        attachInterrupt(RADIO_DATA_AVAIL, _fifo, CHANGE);
-        attachInterrupt(RADIO_PACKET_AVAIL, _payload, CHANGE);
-
-
-    pinMode(SCAN_LED, OUTPUT);
-    digitalWrite(SCAN_LED, 1);
-
-
-//        ITimer.attachInterruptInterval(SM_GRANULARITY_US, tickCounter);
-    TickTimer.attach_us(SM_GRANULARITY_US, tickCounter);
+        pinMode(SCAN_LED, OUTPUT);
+        digitalWrite(SCAN_LED, 1);
     }
 
     void calibrate(void)
@@ -240,14 +128,15 @@ namespace Radio
         writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
         setCarrier(Radio::Carrier::Frequency, 869850000);
 
+/*
         // Enable Tx
         _params.rfOpMode &= RF_OPMODE_MASK;
         _params.rfOpMode |= RF_OPMODE_TRANSMITTER;
         writeByte(REG_OPMODE, _params.rfOpMode);
 
         TxReady;
+*/
     }
-
 
     void initRx(void)
     {
@@ -281,6 +170,9 @@ namespace Radio
         // Enable Fast Hoping (frequency change)
         writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON);
 
+        // RSSI precision +-2dBm
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_32);
+
         writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT); // Activates Timeout interrupt on Preamble
         writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);  // 250KHz BW with AFC
 
@@ -310,21 +202,21 @@ namespace Radio
         _params.seqConf[0] |= RF_SEQCONFIG1_SEQUENCER_START;
         writeByte(REG_SEQCONFIG1, _params.seqConf[0]);
 */
+/*
         _params.rfOpMode &= RF_OPMODE_MASK;
         _params.rfOpMode |= RF_OPMODE_RECEIVER;
         writeByte(REG_OPMODE, _params.rfOpMode);
 
         if (!(_params.seqConf[0] & RF_SEQCONFIG1_SEQUENCER_START))  // Check if Sequencer is not in use, then wait for Rx ready
             RxReady;    
+*/
     }
-
 
     void setStandby(void)
     {
         _params.rfOpMode = (_params.rfOpMode & RF_OPMODE_MASK) | RF_OPMODE_STANDBY;
         writeByte(REG_OPMODE, _params.rfOpMode);
     }
-
 
     void setTx(void)
     {
@@ -335,7 +227,6 @@ namespace Radio
         TxReady;
     }
 
-
     void setRx(void)
     {
         _params.rfOpMode &= RF_OPMODE_MASK;
@@ -343,6 +234,11 @@ namespace Radio
         writeByte(REG_OPMODE, _params.rfOpMode);
     }
 
+    void clearBuffer(void)
+    {
+        for (uint8_t idx=0; idx <= 64; ++idx)   // Clears FIFO at startup to avoid dirty reads
+            readByte(REG_FIFO);
+    }
 
     void clearFlags(void)
     {
@@ -350,15 +246,11 @@ namespace Radio
         writeBytes(REG_IRQFLAGS1, out, 2);
     }
 
-
     bool preambleDetected(void)
     {
         if (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT)
-        {
-            scanFreqs = false;
-            scanfTickCounter = -2000/SM_GRANULARITY_US;
             return true;
-        }
+
         return false;
     }
 
@@ -367,15 +259,10 @@ namespace Radio
         return (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_SYNCADDRESSMATCH);
     }
 
-    bool crcOk(void)
+    bool dataAvail(void)
     {
-        if (!Radio::__smPacketEnd) return false;
-        Radio::__smPacketEnd = false;
-// if frame is last, then restart frequency hopping
-        scanFreqs = lastFrame;
-        return true;
+        return ((readByte(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFOEMPTY)?false:true);
     }
-
 
     uint8_t readByte(uint8_t regAddr)
     {
@@ -384,7 +271,6 @@ namespace Radio
 
         return (getByte);
     }
-
 
     void readBytes(uint8_t regAddr, uint8_t *out, uint8_t len)
     {
@@ -397,12 +283,10 @@ namespace Radio
         return;
     }
 
-
     bool writeByte(uint8_t regAddr, uint8_t data, bool check)
     {
         return writeBytes(regAddr, &data, 1, check);
     }
-
 
     bool writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check)
     {
@@ -433,7 +317,6 @@ namespace Radio
         return true;
     }
 
-
     bool inStdbyOrSleep(void)
     {
         uint8_t data;
@@ -446,7 +329,6 @@ namespace Radio
 
         return false;
     }
-
 
     bool setCarrier(Carrier param, uint32_t value)
     {
@@ -513,7 +395,6 @@ namespace Radio
 
         return true;
     }
-
 
     regBandWidth bwRegs(uint8_t bandwidth)
     {

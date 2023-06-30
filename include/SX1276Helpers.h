@@ -18,14 +18,6 @@
 #define MAX_FRAME_LEN   32
 
 
-// Select a Timer Clock for ISR 
-#define USING_TIM_DIV1                false           // for shortest and most accurate timer
-#define USING_TIM_DIV16               false           // for medium time and medium accurate timer
-#define USING_TIM_DIV256              true            // for longest timer but least accurate. Default
-#define SCAN_INTERVAL_US                3500
-#define SM_GRANULARITY_US               100
-
-
 #define TxReady  {do {/* Checks new Mode is ready */} while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_TXREADY));}   // Check for TxReady flag
 #define RxReady  {do {/* Checks new Mode is ready */} while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PLLLOCK));}   // Check for PllLock flag; do not use with sequencer
 
@@ -63,6 +55,7 @@ namespace Radio
     } regBandWidth;
 
 
+/*
     // State machine
 
         enum class States {
@@ -86,6 +79,7 @@ namespace Radio
         States          status;
         unsigned long   enteredTime;
     } stateMachineStatus;
+*/
 
 
 // To be checked
@@ -134,23 +128,15 @@ namespace Radio
         unsigned char   msg[MAX_FRAME_LEN-8-8-1];
     };
 
-
-    union _payload
+    typedef union
     {
         char        buffer[MAX_FRAME_LEN];
         _header     control;
         _nodeId     nodeid;
         _message    message;
-    };
+    } payload;
+
 // To be checked
-    
-
-    extern volatile bool dataAvail;
-    extern volatile bool packetEnd;
-    extern bool iAmAReceiver;
-    extern uint8_t bufferIndex;
-    extern union _payload payload;
-
 
     void init(void);
     void initTx(void);
@@ -158,9 +144,11 @@ namespace Radio
     void setStandby(void);
     void setTx(void);
     void setRx(void);
+    void clearBuffer(void);
     void clearFlags(void);
     bool preambleDetected(void);
     bool syncAddress(void);
+    bool dataAvail(void);
     bool crcOk(void);
     uint8_t readByte(uint8_t regAddr);
     void readBytes(uint8_t regAddr, uint8_t *out, uint8_t len);
@@ -169,8 +157,6 @@ namespace Radio
     bool inStdbyOrSleep(void);
     bool setParams();
     bool setCarrier(Carrier param, uint32_t value);
-    void stateMachine(void);
-
     regBandWidth bwRegs(uint8_t bandwidth);
     void dump(void);
 }

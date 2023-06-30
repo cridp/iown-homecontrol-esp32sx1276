@@ -9,6 +9,8 @@
 #include <TickerUs.h>
 
 
+#define MAXCMDS 15
+
 #if defined(DEBUG)
   #ifndef DEBUG_PORT
     #define DEBUG_PORT Serial
@@ -21,18 +23,6 @@
 
 
 using Tokens = std::vector<std::string>;
-void tokenize(std::string const &str, const char delim, Tokens &out) 
-{ 
-    // construct a stream from the string 
-    std::stringstream ss(str); 
-
-    std::string s; 
-    while (std::getline(ss, s, delim)) { 
-        out.push_back(s); 
-    } 
-}
-
-
 namespace Cmd
 {
   char _rxbuffer[256];
@@ -43,17 +33,29 @@ namespace Cmd
   Timers::TickerUs kbd_tick;
 
   struct _cmdEntry{
+
       char cmd[9];
-      char description[33];
+      char description[61];
       void (*handler)(Tokens*);
-  } *_cmdHandler[15];
+  } *_cmdHandler[MAXCMDS];
   uint8_t lastEntry = 0;
 
+  void tokenize(std::string const &str, const char delim, Tokens &out) 
+  { 
+      // construct a stream from the string 
+      std::stringstream ss(str); 
+
+      std::string s; 
+      while (std::getline(ss, s, delim)) { 
+          out.push_back(s); 
+      } 
+  }
 
   bool addHandler(char *cmd, char *description, void (*handler)(Tokens*))
   {
     void *alloc = nullptr;
-    for (uint8_t idx=0; idx<256; ++idx)
+
+    for (uint8_t idx=0; idx<MAXCMDS; ++idx)
     {
       if (_cmdHandler[idx] != nullptr)
         ; // Skip already allocated cmd handler
@@ -62,6 +64,7 @@ namespace Cmd
         alloc = malloc(sizeof(struct _cmdEntry));
         if (!alloc)
           return false;
+
         _cmdHandler[idx] = (struct _cmdEntry *)alloc;
         memset(alloc, 0, sizeof(struct _cmdEntry));
         strncpy(_cmdHandler[idx]->cmd, cmd, strlen(cmd)<sizeof(_cmdHandler[idx]->cmd)?strlen(cmd):sizeof(_cmdHandler[idx]->cmd) - 1);
@@ -72,8 +75,8 @@ namespace Cmd
         return true;
       } 
     }
+    return false;
   }
-
 
   char *cmdReceived(bool echo = false)
   {
@@ -97,7 +100,6 @@ namespace Cmd
       }
       return nullptr;
   }
-
 
   void init(void)
   {
@@ -134,4 +136,3 @@ namespace Cmd
     });
   }
 }
-

@@ -1,0 +1,39 @@
+From KLF 200 API doc
+
+P.24 7.4.1.2 SystemTableObjects parameter
+    1 System table index.
+    2 Actuator address Highest Byte
+    3 Actuator address Middle Byte
+    4 Actuator address Lowest Byte
+    5-6 Actuator Type (MSBits), Actuator Type (LSBits) – Actuator Sub Type
+    7   Bit 0-1 : PowerSave Mode
+        Bit 2 : io-Membership
+        Bit 3 : RF support
+        Bit 6-7 : Actuator Turnaround time.
+    8 io-Manufacturer Id
+    9 Backbone reference number Highest byte
+    10 Backbone reference number Middle byte
+    11 Backbone reference number Lowest byte
+
+Normally the only field of interest for the product which interface to the gateway is the
+System table index field and Actuator type and sub type field (p.25).
+
+P.104 14 Appendix 2: List of actuator types and their use of Main Parameter and Functional Parameters
+
+Node ID - single device address
+Backbone address - address common to all devices connected to the same Powerlink. Is equal to one of the device addresses
+
+Cmd 36 and 37: is the address sent back with 37 after the address request with 36, the backbone address ???
+
+Cmd 2a and 2b: 2a is Velux discovery; 2b answer reports:
+- 1 CB1
+- 2 CB2
+- 3-5 Target Node ID
+- 6-8 Source Node ID
+- 9 CMD
+- 10-11 Type/Subtype
+- 12-14 Backbone Address
+- 15 Manufacturer ID
+- 16 Multi info byte
+- 17-18 Timestamp ??? (always ffff)
+

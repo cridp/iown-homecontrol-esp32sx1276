@@ -1,0 +1,35 @@
+1W remote put device in "learning" mode: cmd 2e (two different press to analyze the appended key)
+
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.000 - f12000013f8ad42e 2e00 13ed f54034cdbc5f
+                                                                                                                                                            ^ data      ^ MAC
+                                                                                                                                                                 ^ Sequence
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
+
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.000 - f12000013f8ad42e 2e00 13ee cbab5864fb74
+                                                                                                                                                            ^ data      ^ MAC
+                                                                                                                                                                 ^ Sequence
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.024 - f10000013f8ad42e 2e0013eecbab5864fb74
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013eecbab5864fb74
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013eecbab5864fb74
+
+1W remote asking to be registered (cmd 39 delete, cmd 30 add)(two different press to analyze the appended key)
+
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e39 0013f191248d72d264
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.022 - f10000003f8ad42e39 0013f191248d72d264
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.034 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.025 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
+
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e39 0013f5cb90ecb2ca66
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.033 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
