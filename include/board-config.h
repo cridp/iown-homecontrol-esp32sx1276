@@ -20,10 +20,13 @@
 
 #define RADIO_DIO_1                                 2   // NodeMCU D4
 #define RADIO_DIO_0                                 5   // NodeMCU D1
+#define RADIO_DIO_2                                 2   // NodeMCU D4
 #define RADIO_DIO_4                                 2   // NodeMCU D4
+
 #define RADIO_DATA_AVAIL                            RADIO_DIO_1     // FIFO empty from Radio
 #define RADIO_PACKET_AVAIL                          RADIO_DIO_0     // Packet Received / CRC ok from Radio
 #define RADIO_PREAMBLE_DETECTED                     RADIO_DIO_4     // Preamble detected from Radio (used instead of FIFO empty)
+#define RADIO_RXTIMEOUT                             RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequancy)
 
 
 #define PREAMBLE_MSB                                0x00

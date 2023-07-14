@@ -13,7 +13,7 @@
 
 namespace Radio
 {
-    using TransmittedPacketDelegate = Delegate<bool(Radio::iohcPacket *iohc)>;
+    using TransmittedPacketDelegate = Delegate<bool(IOHC::iohcPacket *iohc)>;
     
     class Transmitter
     {
@@ -31,7 +31,7 @@ namespace Radio
 
             void Start(void);
             void Stop(void);
-            void Send(Radio::iohcPacket *iohcTx);
+            void Send(IOHC::iohcPacket *iohcTx);
 
         protected:
             static void tickerCounter(Transmitter *transmitter);
@@ -46,7 +46,7 @@ namespace Radio
             Timers::TickerUs TickTimer;
             Timers::TickerUs StateMachine;
 
-            Radio::iohcPacket *iohc;
+            IOHC::iohcPacket *iohc;
             TransmittedPacketDelegate packetCB;
 
             uint32_t tickCounter = 0;

@@ -15,7 +15,7 @@
 
 namespace Radio
 {
-    using ReceivedPacketDelegate = Delegate<bool(Radio::iohcPacket *iohc)>;
+    using ReceivedPacketDelegate = Delegate<bool(IOHC::iohcPacket *iohc)>;
 
     class Receiver
     {
@@ -56,7 +56,7 @@ namespace Radio
             uint32_t *scan_freqs;
             uint32_t scanTimeUs;
             ReceivedPacketDelegate packetCB;
-            Radio::iohcPacket iohc;
+            IOHC::iohcPacket iohc;
 
             uint32_t tickCounter = 0;
             uint32_t preCounter = 0;

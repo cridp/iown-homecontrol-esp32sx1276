@@ -5,15 +5,16 @@
 namespace Radio
 {
     SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
-    WorkingParams _params;
+//    WorkingParams _params;
 
+/*
     uint8_t bufferIndex = 0;
-    payload _payload;
 
 
     uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
     uint8_t next_freq = 0;
     uint8_t scanCounter = 0;
+*/
 
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
@@ -38,7 +39,7 @@ namespace Radio
         SPI.endTransaction();
     }
 
-    void init(void)
+    void initHardware(void)
     {
         Serial.println("SPI Init");
         // SPI pins configuration
@@ -66,172 +67,109 @@ namespace Radio
         SPI.beginTransaction(Radio::SpiSettings);
         SPI.endTransaction();
         writeByte(REG_OPMODE, RF_OPMODE_STANDBY);       // Put Radio in Standby mode
-        readBytes(REG_OPMODE, &_params.rfOpMode, 1);    // Collect rfOpMode register value
-        readBytes(REG_SEQCONFIG1, _params.seqConf, 2);  // Collect seqConf register value
 
         pinMode(SCAN_LED, OUTPUT);
         digitalWrite(SCAN_LED, 1);
     }
 
+    void initRegisters(uint8_t maxPayloadLength = 0xff)
+    {
+        // Firstly put radio in StandBy mode as some parameters cannot be changed differently
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
+
+        // ---------------- Common Register init section ---------------- 
+        // Switch-off clockout
+        writeByte(REG_OSC, RF_OSC_CLKOUT_OFF);
+
+        // Variable packet lenght, generates working CRC !!!
+        // Packet mode, IoHomeOn, IoHomePowerFrame to be added (0x10) to avoid rx to newly detect the preamble during tx radio shutdown 
+        writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
+        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);   // Is IoHomePowerFrame useful ?
+
+        // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
+        writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
+
+        // Set Sync word to 0xff33 both for rx and tx
+        writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
+        writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
+
+        // Mapping of pins DIO0 to DIO3
+        // DIO0: PayloadReady|PacketSent    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
+        // Mapping of pins DIO4 and DIO5
+        // DIO4: PreambleDetect  DIO5: Data
+        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
+//        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
+        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT); // Preamble on DIO4
+
+        // Enable Fast Hoping (frequency change)
+        writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON);
+
+/*---*/
+        // ---------------- TX Register init section ---------------- 
+
+        // PA boost maximum power
+        writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
+        // PA Ramp: No Shaping, Ramp up/down 15us
+        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US);
+        // Setting Preamble Length
+        writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
+        writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
+        // FIFO Threshold - currently useless
+        writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
+
+/*---*/
+        // ---------------- RX Register init section ---------------- 
+
+        // Set lenght checking if passed as parameter
+        writeByte(REG_PAYLOADLENGTH, 0xff); // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
+
+        // RSSI precision +-2dBm
+//        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_32);
+
+        // Activates Timeout interrupt on Preamble
+        writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
+        // 250KHz BW with AFC
+        writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
+        // Enables Preamble Detect, 2 bytes
+        writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
+/*---*/
+    }
+
     void calibrate(void)
     {
+        // RC Calibration (only call after setting correct frequency band)
+        writeByte(REG_OSC, RF_OSC_RCCALSTART);
         // Start image and RSSI calibration
         writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
         do {} while (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING);
     }
 
-    void initTx(void)
-    {
-        // Firstly put radio in StandBy mode as some parameters cannot be changed differently
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_STANDBY;
-        writeByte(REG_OPMODE, _params.rfOpMode);
-
-        writeByte(REG_OSC, RF_OSC_RCCALSTART | RF_OSC_CLKOUT_OFF);  // RC Calibration and switch-off clockout
-
-
-        // PA boost maximum power
-        writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
-        // PA Ramp: No Shaping, Ramp up/down 15us
-        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US);
-
-
-        // Variable packet lenght, generates working CRC !!!
-        // Packet mode, IoHomeOn, IoHomePowerFrame to be add 0x10 ???
-        writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON);// | RF_PACKETCONFIG2_IOHOME_POWERFRAME);   // Is IoHomePowerFrame useful ?
-
-        // Setting Preamble Length
-        writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
-        writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
-
-        // Enabling Sync word - Size must be set to 2
-        writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON | RF_SYNCCONFIG_SYNCSIZE_2);
-        writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
-        writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
-
-
-        // Sequencer off, Standby when idle, FromStart to Transmit, to LowPower, FromIdle to Transmit, fromTransmit to LowPower
-        // 
-        _params.seqConf[0] = RF_SEQCONFIG1_IDLEMODE_STANDBY | RF_SEQCONFIG1_FROMSTART_TOTX | RF_SEQCONFIG1_LPS_IDLE | RF_SEQCONFIG1_FROMIDLE_TOTX | RF_SEQCONFIG1_FROMTX_TOLPS;
-        _params.seqConf[1] = 0x00;
-        writeBytes(REG_SEQCONFIG1, _params.seqConf, 2);
-
-        // Mapping of pins DIO0 to DIO3
-        // DIO0: PayloadReady|PacketSent    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
-        // Mapping of pins DIO4 and DIO5
-        // DIO4: PreambleDetect  DIO5: Data
-        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01);
-        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
-        // FIFO Threshold - currently useless
-        writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
-        setCarrier(Radio::Carrier::Frequency, 869850000);
-
-/*
-        // Enable Tx
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_TRANSMITTER;
-        writeByte(REG_OPMODE, _params.rfOpMode);
-
-        TxReady;
-*/
-    }
-
-    void initRx(void)
-    {
-        // Firstly put radio in StandBy mode as some parameters cannot be changed differently
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_STANDBY;
-        writeByte(REG_OPMODE, _params.rfOpMode);
-
-        writeByte(REG_OSC, RF_OSC_RCCALSTART | RF_OSC_CLKOUT_OFF);  // RC Calibration and switch-off clockout
-
-
-        // Variable packet lenght, working with CRC
-        // Packet mode, IoHomeOn, IoHomePowerFrame to be add 0x10 
-        writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON);   // Is IoHomePowerFrame useful ?
-
-        writeByte(REG_PAYLOADLENGTH, 0xff); // Disable lenght checking; do not delete !!!
-
-        // Enabling Sync word - received word from remote is 2 bytes (0xff33), but has to be set to size 3 !!!
-        writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_PREAMBLEPOLARITY_55 | RF_SYNCCONFIG_SYNC_ON | RF_SYNCCONFIG_SYNCSIZE_3);
-        writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
-        writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
-
-        // Mapping of pins DIO0 to DIO3
-        // DIO0: CRCok    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
-        // Mapping of pins DIO4 and DIO5
-        // DIO4: PreambleDetect  DIO5: Data
-        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_01 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01);
-        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
-
-        // Enable Fast Hoping (frequency change)
-        writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON);
-
-        // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_32);
-
-        writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT); // Activates Timeout interrupt on Preamble
-        writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);  // 250KHz BW with AFC
-
-        writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_3 | RF_PREAMBLEDETECT_DETECTORTOL_10);
-//        writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_3 | RF_PREAMBLEDETECT_DETECTORTOL_10);
-
-    /*
-    Sequencer configuration: currently unused
-        IdleMode:			0:	Standby mode
-        FromStart:			00:	to LowPowerSelection
-        LowPowerSelection:	1:	Idle
-        FromIdle:			1:	to Receive state
-        FromReceive:			011:	to PacketReceived state on CrcOk interrupt ... not in test
-            FromReceive:		110:	to SequencerOff state on a PreambleDetect interrupt ... test phase
-        FromRxTimeout:		10:	to LowPowerSelection
-        FromPacketReceived:	010:	to LowPowerSelection
-    */
-        _params.seqConf[0] = RF_SEQCONFIG1_SEQUENCER_STOP | RF_SEQCONFIG1_IDLEMODE_STANDBY | RF_SEQCONFIG1_FROMSTART_TOLPS | RF_SEQCONFIG1_LPS_IDLE | RF_SEQCONFIG1_FROMIDLE_TORX;
-        _params.seqConf[1] = RF_SEQCONFIG2_FROMRX_TOSEQUENCEROFF_ONPREAMBLE | RF_SEQCONFIG2_FROMRXTIMEOUT_TOLPS;
-        writeBytes(REG_SEQCONFIG1, _params.seqConf, 2);
-
-        writeByte(REG_TIMERRESOL, RF_TIMERRESOL_TIMER1RESOL_000064_US | RF_TIMERRESOL_TIMER2RESOL_000064_US);
-        writeByte(REG_TIMER1COEF, 0x19);    // 1,6mS
-        writeByte(REG_TIMER2COEF, 0x13);    // 1,2mS
-
-/*
-        _params.seqConf[0] |= RF_SEQCONFIG1_SEQUENCER_START;
-        writeByte(REG_SEQCONFIG1, _params.seqConf[0]);
-*/
-/*
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_RECEIVER;
-        writeByte(REG_OPMODE, _params.rfOpMode);
-
-        if (!(_params.seqConf[0] & RF_SEQCONFIG1_SEQUENCER_START))  // Check if Sequencer is not in use, then wait for Rx ready
-            RxReady;    
-*/
-    }
-
     void setStandby(void)
     {
-        _params.rfOpMode = (_params.rfOpMode & RF_OPMODE_MASK) | RF_OPMODE_STANDBY;
-        writeByte(REG_OPMODE, _params.rfOpMode);
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
     }
 
-    void setTx(void)
+    void setTx(void)    // Uncommon and incompatible settings
     {
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_TRANSMITTER;
-        writeByte(REG_OPMODE, _params.rfOpMode);
+        // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
+        writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
 
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
         TxReady;
     }
 
-    void setRx(void)
+    void setRx(void)    // Uncommon and incompatible settings
     {
-        _params.rfOpMode &= RF_OPMODE_MASK;
-        _params.rfOpMode |= RF_OPMODE_RECEIVER;
-        writeByte(REG_OPMODE, _params.rfOpMode);
+        writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
+
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+        RxReady;
+/*
+        // Start Sequencer
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+        writeByte(REG_SEQCONFIG1, readByte(REG_SEQCONFIG1 | RF_SEQCONFIG1_SEQUENCER_START));
+*/
     }
 
     void clearBuffer(void)
@@ -248,13 +186,10 @@ namespace Radio
 
     bool preambleDetected(void)
     {
-        if (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT)
-            return true;
-
-        return false;
+        return (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT);
     }
 
-    bool syncAddress(void)
+    bool syncedAddress(void)
     {
         return (readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_SYNCADDRESSMATCH);
     }
@@ -319,10 +254,7 @@ namespace Radio
 
     bool inStdbyOrSleep(void)
     {
-        uint8_t data;
-        
-        data = readByte(REG_OPMODE);
-        _params.rfOpMode = data;
+        uint8_t data = readByte(REG_OPMODE);
         data &= ~RF_OPMODE_MASK;
         if ((data == RF_OPMODE_SLEEP) || (data == RF_OPMODE_STANDBY))
             return true;
@@ -344,9 +276,7 @@ namespace Radio
         switch (param)
         {
             case Carrier::Frequency:
-                _params.carrierFrequency = value;
                 tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
-//                Serial.printf("Setting freq: %6x(%u)\n", tmpVal, tmpVal);
                 out[0] = (tmpVal & 0x00ff0000) >> 16;
                 out[1] = (tmpVal & 0x0000ff00) >> 8;
                 out[2] = (tmpVal & 0x000000ff); // If Radio is active writing LSB triggers frequency change
@@ -358,9 +288,7 @@ namespace Radio
                 writeByte(REG_AFCBW, bw.Mant | bw.Exp);
                 break;
             case Carrier::Deviation:
-                _params.deviation = value;
                 tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
-                Serial.printf("Setting deviation: %4x(%u)\n", tmpVal, tmpVal);
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
                 writeBytes(REG_FDEVMSB, out, 2);
@@ -369,24 +297,20 @@ namespace Radio
                 switch (value)
                 {
                     case Modulation::FSK:
-                        _params.rfOpMode &= RF_OPMODE_LONGRANGEMODE_MASK;
-                        _params.rfOpMode |= RF_OPMODE_LONGRANGEMODE_OFF;
-                        _params.rfOpMode &= RF_OPMODE_MODULATIONTYPE_MASK;
-                        _params.rfOpMode |= RF_OPMODE_MODULATIONTYPE_FSK;
-                        _params.rfOpMode &= RF_OPMODE_MASK;
-                        _params.rfOpMode |= RF_OPMODE_STANDBY;
-                        if (_params.carrierFrequency > LOWER)
-                            _params.rfOpMode &= ~0x08;
-                        else
-                            _params.rfOpMode |= 0x08;
-                        writeByte(REG_OPMODE, _params.rfOpMode);
+                        uint8_t rfOpMode = readByte(REG_OPMODE);
+                        rfOpMode &= RF_OPMODE_LONGRANGEMODE_MASK;
+                        rfOpMode |= RF_OPMODE_LONGRANGEMODE_OFF;
+                        rfOpMode &= RF_OPMODE_MODULATIONTYPE_MASK;
+                        rfOpMode |= RF_OPMODE_MODULATIONTYPE_FSK;
+                        rfOpMode &= RF_OPMODE_MASK;
+                        rfOpMode |= RF_OPMODE_STANDBY;
+                        rfOpMode &= ~0x08;
+                        writeByte(REG_OPMODE, rfOpMode);
                         break;
                 }
                 break;
             case Carrier::Bitrate:
-                _params.bitRate = value;
                 tmpVal = FXOSC/value;
-                Serial.printf("Setting bitrate: %4x(%u)\n", tmpVal, tmpVal);
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
                 writeBytes(REG_BITRATEMSB, out, 2);
@@ -405,10 +329,11 @@ namespace Radio
         return __bw.rbegin()->second;
     }
 
-
     void dump()
     {
         uint8_t idx = 1;
+
+        Serial.printf("*********************** Radio registers ***********************\n");
         do       
         {
             Serial.printf("*%2.2x=%2.2x\t", idx, readByte(idx)); idx += 1;
@@ -422,5 +347,6 @@ namespace Radio
             Serial.printf("\n");
         }
         while (idx < 0x70);
+        Serial.printf("***************************************************************\n");
     }
 }

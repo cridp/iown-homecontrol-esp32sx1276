@@ -20,7 +20,21 @@
   #define LOG(func, ...) ;
 #endif
 
+/*
+uint8_t hexStringToBytes(const std::string hexString, char *byteString)
+{
+  uint8_t i;
 
+  if (hexString.length() % 2 != 0)
+    return 0;
+
+  for (i = 0; i < hexString.length(); i += 2) {
+      std::string subString = hexString.substr(i, 2);
+      byteString[i/2] = (char) strtol(subString.c_str(), NULL, 16);
+  }
+  return i/2;
+}
+*/
 
 using Tokens = std::vector<std::string>;
 namespace Cmd

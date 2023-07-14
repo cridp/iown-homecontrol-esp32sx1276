@@ -16,7 +16,7 @@
 
 1W remote asking to be registered (cmd 39 delete, cmd 30 add)(two different press to analyze the appended key)
 
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e39 0013f191248d72d264
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e 3900 13f1 91248d72d264
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.022 - f10000003f8ad42e39 0013f191248d72d264
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
@@ -29,7 +29,45 @@
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
  - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.033 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.033 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c 01 01 13f6
  - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
  - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
  - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+
+
+
+
+
+
+
+
+
+
+
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.000 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.527 - f62000003f8ad42e000161d200000014303caf5431df0b
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
+
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.000 - f10000003f8ad42e39 00 1431 d426a6a6c34d
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
+ - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.059 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c 01 01 1432
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.026 - fc0000013f8ad42e3005cc8a9a95aafe7bb9525e30f810a86c01011432
+ - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.026 - fc0000013f8ad42e3005cc8a9a95aafe7bb9525e30f810a86c01011432
+
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.000 - f60000003f8ad42e000161d200000014339404caeb7ab4
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.023 - f60000003f8ad42e000161d200000014339404caeb7ab4
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014339404caeb7ab4
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014339404caeb7ab4
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.527 - f62000003f8ad42e000161d20000001434116944339398
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
+ - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
+
+

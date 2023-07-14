@@ -17,6 +17,7 @@ namespace Radio
        if (receiver->preambleDetected)
        {
             receiver->preCounter += 1;
+    if (receiver->preCounter == 1) Serial.printf(".");
             if ((receiver->preCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) // Avoid hanging on a too long preamble detect 
             {
                 receiver->f_lock = false;
@@ -49,7 +50,7 @@ namespace Radio
         Radio::setCarrier(Radio::Carrier::Bandwidth, 250);
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
-        Radio::initRx();
+        Radio::initRegisters(MAX_FRAME_LEN);
     }
 
     bool Receiver::getPacket()
@@ -64,7 +65,7 @@ namespace Radio
         do
         {
             digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-            iohc.packet.buffer[iohc.buffer_length] = Radio::readByte(REG_FIFO);
+            iohc.payload.buffer[iohc.buffer_length] = Radio::readByte(REG_FIFO);
 //            Serial.printf("%2.2x", iohc.packet.buffer[iohc.buffer_length]);
             iohc.buffer_length += 1;
         } while (Radio::dataAvail());

@@ -22,7 +22,8 @@ namespace Radio
     {
         if (transmitter->crcReceivedOk)
         {
-            transmitter->putPacket();
+            Radio::setStandby();        // Switch off radio
+            transmitter->putPacket();   // Calls tx callback
         }
     }
 
@@ -33,7 +34,7 @@ namespace Radio
         Radio::setCarrier(Radio::Carrier::Bandwidth, 250);
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
-        Radio::initTx();
+        Radio::initRegisters(MAX_FRAME_LEN);
     }
 
     bool Transmitter::putPacket()
@@ -43,22 +44,23 @@ namespace Radio
         iohc->millis = crcSentMillis;
         if (packetCB)
             ret = packetCB(iohc);
-
-        Radio::setStandby();
         return ret;
     }
 
-    void Transmitter::Send(Radio::iohcPacket *iohcTx)
+    void Transmitter::Send(IOHC::iohcPacket *iohcTx)
     {
         iohc = iohcTx;
         Radio::setCarrier(Radio::Carrier::Frequency, iohcTx->frequency);
+        Serial.printf("Frequency set to %u\tPacket: ", iohcTx->frequency);
 
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
         for (uint8_t idx=0; idx < iohcTx->buffer_length; ++idx)
         {
-            writeByte(REG_FIFO, iohcTx->packet.buffer[idx]);
+            writeByte(REG_FIFO, iohcTx->payload.buffer[idx]);
+            Serial.printf("%2.2x", iohcTx->payload.buffer[idx]);
         }
         Radio::setTx();
+        Serial.printf("\n");
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
     }
 
