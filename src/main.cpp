@@ -3,6 +3,7 @@
 #include <ESPAsyncWebServer.h>
 #include <ESP8266mDNS.h>
 #include <ESP8266SSDP.h>
+#include <LittleFS.h>
 
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration - Async branch
 #include <SX1276Helpers.h>
@@ -12,6 +13,8 @@
 #include <WebServerHelpers.h>
 #include <iohcCryptoHelpers.h>
 #include <iohcRadio.h>
+//#include <iohcObject.h>
+#include <iohcSystemTable.h>
 
 
 const char* http_username = HTTP_USERNAME;
@@ -37,6 +40,8 @@ IOHC::iohcRadio *radioInstance;
 IOHC::iohcPacket *radioPackets[IOHC_INBOUND_MAX_PACKETS];
 IOHC::iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS];
 uint8_t nextPacket = 0;
+IOHC::iohcSystemTable *sysTable;
+//IOHC::iohcObject *dev;
 
 uint32_t frequencies[MAX_FREQS] = FREQS2SCAN;
 //Radio::Receiver *rcvr = nullptr;
@@ -55,7 +60,7 @@ void setup() {
     Serial.begin(SERIALSPEED);
 //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
-    pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
+   pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
     digitalWrite( RX_LED, true);
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP 
     wm.autoConnect();
@@ -115,7 +120,7 @@ void setup() {
 
     // send a file when /index is requested
     server.on("/index", HTTP_ANY, [](AsyncWebServerRequest *request){
-//    request->send(SPIFFS, "/index.htm");
+//    request->send(LittleFS, "/index.htm");
     });
 
     // HTTP basic authentication
@@ -159,7 +164,7 @@ void setup() {
     */
 
     // attach filesystem root at URL /fs
-//    server.serveStatic("/fs", SPIFFS, "/");
+//    server.serveStatic("/fs", LittleFS, "/");
 
     // Catch-All Handlers
     // Any request that can not find a Handler that canHandle it
@@ -168,10 +173,12 @@ void setup() {
     server.onRequestBody(onBody);
     server.begin();
 
+    sysTable = IOHC::iohcSystemTable::getInstance();
+    radioInstance = IOHC::iohcRadio::getInstance();
 
     Cmd::init();    // Initialize Serial commands reception and handlers
-    Cmd::addHandler((char *)"dump", (char *)"Dump SX1276 registers", [](Tokens*cmd)->void {Radio::dump(); Serial.printf("*%d packets in memory\n", nextPacket);});
-    Cmd::addHandler((char *)"list", (char *)"List received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) msgRcvd(radioPackets[i]);});
+    Cmd::addHandler((char *)"dump", (char *)"Dump SX1276 registers", [](Tokens*cmd)->void {Radio::dump(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n", sysTable->size());});
+    Cmd::addHandler((char *)"list", (char *)"List received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) msgRcvd(radioPackets[i]); sysTable->dump();});
     Cmd::addHandler((char *)"erase", (char *)"Erase received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) free(radioPackets[i]); nextPacket = 0;});
     Cmd::addHandler((char *)"send", (char *)"Send packet from cmd line", [](Tokens*cmd)->void {txUserBuffer(cmd);});
     Cmd::addHandler((char *)"verbose", (char *)"Toggle verbose output on packets receiving", [](Tokens*cmd)->void {verbosity=!verbosity;});
@@ -184,13 +191,12 @@ void setup() {
     rcvr = new Radio::Receiver(MAX_FREQS, frequencies, SCAN_INTERVAL_US, msgRcvd);
     rcvr->Start();
 */
-    radioInstance = IOHC::iohcRadio::getInstance();
+
 //    radioInstance->start(MAX_FREQS, frequencies, SCAN_INTERVAL_US, msgRcvd, msgRcvd);
-    radioInstance->start(MAX_FREQS, frequencies, SCAN_INTERVAL_US, msgArchive, msgRcvd);
+    radioInstance->start(MAX_FREQS, frequencies, 0, msgArchive, msgRcvd);
 
     Radio::dump();  // Dump registers after setting up
     relTime = millis();
-
 }
 
 void loop() {
@@ -243,33 +249,47 @@ bool msgRcvd(IOHC::iohcPacket *iohc)
 
 /*
 */
-    switch (iohc->payload.packet.header.cmd)
+    if (verbosity)
     {
-    case 0x30:
-        encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)iohc->payload.packet.msg.p0x30.enc_key);
-        Serial.printf("Controller key in clear: ");
-        for (uint8_t idx=0; idx < 16; idx ++)
+        switch (iohc->payload.packet.header.cmd)
         {
-            keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
-            Serial.printf("%2.2x", keyCap[idx]);
+            case 0x2b:
+            {
+                sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
+                    iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer, iohc->payload.packet.msg.p0x2b.info);
+                break;
+            }
+
+            case 0x30:
+            {
+                for (uint8_t idx=0; idx < 16; idx ++)
+                    keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
+
+                encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)keyCap);
+                Serial.printf("Controller key in clear: ");
+                for (uint8_t idx=0; idx < 16; idx ++)
+                    Serial.printf("%2.2x", keyCap[idx]);
+                Serial.printf("\n");
+                break;
+            }
+            
+            case 0x39:
+            {
+                if (keyCap[0] == 0)
+                    break;
+                uint8_t hmac[6];
+                std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd+2);
+                create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
+                Serial.printf("hmac: ");
+                for (uint8_t idx=0; idx < 6; idx ++)
+                    Serial.printf("%2.2x", hmac[idx]);
+                Serial.printf("\n");
+                break;
+            }
         }
-        Serial.printf("\n");
-        break;
-    
-    case 0x39:
-        if (keyCap[0] == 0)
-            break;
-        uint8_t hmac[6];
-        std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd+2);
-        create_1W_hmac(hmac, (uint8_t *)iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
-        Serial.printf("hmac: ");
-        for (uint8_t idx=0; idx < 6; idx ++)
-            Serial.printf("%2.2x", hmac[idx]);
-        Serial.printf("\n");
-        break;
     }
 
-    relTime = iohc->millis;
+    relTime = iohc->millis;    
     return true;
 }
 
@@ -311,35 +331,41 @@ void txUserBuffer(Tokens*cmd)
     }
     else
     {
-        packets2send[0] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+        if (!packets2send[0])
+            packets2send[0] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+
         if (cmd->size() == 3)
             packets2send[0]->frequency = frequencies[atoi(cmd->at(2).c_str())-1];
         else
             packets2send[0]->frequency = 0;
 
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);
+        packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);;
         packets2send[0]->millis = 35;
-        packets2send[0]->repeat = 4;
+        packets2send[0]->repeat = 1;
+        packets2send[1] = nullptr;
 
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
         radioInstance->send(packets2send);
+        
+        // Do not deallocate buffers as send is asynchronous
+//        free(packets2send[0]);
+//        packets2send[0] = nullptr;
     }
 }
-
 
 void testKey()
 {
     std::string controller_key = "d94a00399a46b5aba67f3809b68ecc52";
     std::string node_address = "8ad42e";
-    std::string dest_address = "00013f";
-    std::string sequence = "1934";
+    std::string dest_address = "00003f";
+//    std::string sequence = "1934";
 
-    char bcontroller[16];
-    char bnode[3];
-    char bdest[3];
-    uint8_t bseq[2] = {0x19, 0x37};
-    char output[16];
+    uint8_t bcontroller[16];
+    uint8_t bnode[3];
+    uint8_t bdest[3];
+    uint8_t bseq[2] = {0x1a, 0x20}; // <-- Set Sequance number here
+    uint8_t output[16];
 
 
     hexStringToBytes(controller_key, bcontroller);
@@ -363,28 +389,30 @@ void testKey()
     std::vector<uint8_t> controller(bcontroller, bcontroller+16);
     std::vector<uint8_t> ret;
 
-    encrypt_1W_key((const uint8_t *)bnode, (uint8_t *)bcontroller);
+    encrypt_1W_key(bnode, bcontroller);
     Serial.printf("Controller key in clear: ");
     for (uint8_t idx=0; idx < 16; idx ++)
         Serial.printf("%2.2x", bcontroller[idx]);
     Serial.printf("\n");
 
-    uint8_t bframe[2] = {0x2e, 0x00};
+//  00 01 61 c800 00 00 1a05
+//    uint8_t bframe[9] = {0x00, 0x01, 0x61, 0xc8, 0x00, 0x02, 0x00, 0x1a, 0x07};
+    uint8_t bframe[7] = {0x00, 0x01, 0x61, 0xd8, 0x03, 0x02, 0x00}; // <-- Set packet here, excluding sequence number, then adjust length
     std::vector<uint8_t> seq(bseq, bseq+2);
-    std::vector<uint8_t> frame(bframe, bframe+2);
+    std::vector<uint8_t> frame(bframe, bframe+7); // <-- adjust packet length
     hexStringToBytes(controller_key, bcontroller);
-    create_1W_hmac((uint8_t *)output, bseq, (uint8_t *)bcontroller, frame);
+    create_1W_hmac(output, bseq, bcontroller, frame);
 
     Serial.printf("hmac: ");
     for (uint8_t idx=0; idx < 6; idx ++)
         Serial.printf("%2.2x", output[idx]);
     Serial.printf("\n");
-    Serial.printf("Packet to send: f120");
+    Serial.printf("Packet to send: f620");
     for (uint8_t idx=0; idx < 3; idx ++)
         Serial.printf("%2.2x", bdest[idx]);
     for (uint8_t idx=0; idx < 3; idx ++)
         Serial.printf("%2.2x", bnode[idx]);
-    for (uint8_t idx=0; idx < 2; idx ++)
+    for (uint8_t idx=0; idx < 7; idx ++) // <-- adjust packet length
         Serial.printf("%2.2x", bframe[idx]);
     for (uint8_t idx=0; idx < 2; idx ++)
         Serial.printf("%2.2x", bseq[idx]);

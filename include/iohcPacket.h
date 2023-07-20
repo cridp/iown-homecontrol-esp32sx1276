@@ -25,49 +25,58 @@ namespace IOHC
 // Maximum payload in IOHC is 32 bytes: 1 Length byte + 31 body bytes
     struct _header
     {
-        unsigned char   framelength:5;
-        unsigned char   mode:1;
-        unsigned char   first:1;
-        unsigned char   last:1;
-        unsigned char   prot_v:2;
-        unsigned char   _unq1:1;
-        unsigned char   _unq2:1;
-        unsigned char   ack:1;
-        unsigned char   low_p:1;
-        unsigned char   routed:1;
-        unsigned char   use_beacon:1;
-        unsigned char   target[3];
-        unsigned char   source[3];
-        unsigned char   cmd;
+        uint8_t         framelength:5;
+        uint8_t         mode:1;
+        uint8_t         first:1;
+        uint8_t         last:1;
+        uint8_t         prot_v:2;
+        uint8_t         _unq1:1;
+        uint8_t         _unq2:1;
+        uint8_t         ack:1;
+        uint8_t         low_p:1;
+        uint8_t         routed:1;
+        uint8_t         use_beacon:1;
+        uint8_t         target[3];
+        uint8_t         source[3];
+        uint8_t         cmd;
     };
 
     struct _p0x00
     {
-        unsigned char   origin;
-        unsigned char   acei;
-        unsigned char   main[2];
-        unsigned char   fp1;
-        unsigned char   fp2;
-        unsigned char   sequence[2];
-        unsigned char   hmac[6];
+        uint8_t         origin;
+        uint8_t         acei;
+        uint8_t         main[2];
+        uint8_t         fp1;
+        uint8_t         fp2;
+        uint8_t         sequence[2];
+        uint8_t         hmac[6];
+    };
+    struct _p0x2b
+    {
+        uint8_t         actuator[2];
+        uint8_t         backbone[3];
+        uint8_t         manufacturer;
+        uint8_t         info;
+        uint8_t         tstamp[2];
     };
     struct _p0x2e
     {
-        unsigned char   data;
-        unsigned char   sequence[2];
-        unsigned char   hmac[6];
+        uint8_t         data;
+        uint8_t         sequence[2];
+        uint8_t         hmac[6];
     };
     struct _p0x30
     {
-        unsigned char   enc_key[16];
-        unsigned char   man_id;
-        unsigned char   data;
-        unsigned char   sequence[2];
+        uint8_t         enc_key[16];
+        uint8_t         man_id;
+        uint8_t         data;
+        uint8_t         sequence[2];
     };
 
     union _msg
     {
         struct _p0x00  p0x00;
+        struct _p0x2b  p0x2b;
         struct _p0x2e  p0x2e;
         struct _p0x30  p0x30;
         struct _p0x2e  p0x39;   // same format of 2e
@@ -82,11 +91,9 @@ namespace IOHC
 
     typedef union
     {
-        char            buffer[MAX_FRAME_LEN];
-        _packet         packet;
+        uint8_t     buffer[MAX_FRAME_LEN];
+        _packet     packet;
     } Payload;
-
-
 
 
     class iohcPacket

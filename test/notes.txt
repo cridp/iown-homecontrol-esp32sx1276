@@ -21,9 +21,9 @@ System table index field and Actuator type and sub type field (p.25).
 P.104 14 Appendix 2: List of actuator types and their use of Main Parameter and Functional Parameters
 
 Node ID - single device address
-Backbone address - address common to all devices connected to the same Powerlink. Is equal to one of the device addresses
+Backbone address - address common to all devices connected to the same Powerlink. Is equal to one of the device addresses ... the one managing rf communication !!!
 
-Cmd 36 and 37: is the address sent back with 37 after the address request with 36, the backbone address ???
+Cmd 36 and 37: is the address sent back with 37 after the address request with 36, the backbone address !!!
 
 Cmd 2a and 2b: 2a is Velux discovery; 2b answer reports:
 - 1 CB1
@@ -37,3 +37,43 @@ Cmd 2a and 2b: 2a is Velux discovery; 2b answer reports:
 - 16 Multi info byte
 - 17-18 Timestamp ??? (always ffff)
 
+
+
+Main and Functional Parameters
+
+Main parameter: 
+0x0000    100% Open
+0xd200    Current (used as stop)
+0xC800    0% Open
+0xD803    Secured ventilation
+
+Open/Stop/Close KLI311
+Len: 22, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, fr: 868.950M, s+0.000 > f62000003f8ad42e 00 01 61 0000 00 00 1a02 bd8effba3c7d
+Len: 22, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, fr: 868.950M, s+2.850 > f60000003f8ad42e 00 01 61 d200 00 00 1a03 67f58e0170dd
+Len: 22, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, fr: 868.950M, s+2.115 > f62000003f8ad42e 00 01 61 c800 00 00 1a05 96c7bbc07dd7
+                                                                                                                                                    * cmd
+                                                                                                                                                       * Command source_originator
+                                                                                                                                                          * ACEI
+                                                                                                                                                             * Main parameter
+                                                                                                                                                                  * Functional parameter 1
+                                                                                                                                                                     * FP2
+                                                                                                                                                                       * sequence
+                                                                                                                                                                            * hmac
+
+Secured ventilation from KLR200
+Len: 14, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 5cd68f, to: 6dc791, cmd: 00, fr: 869.850M, s+0.000 > 4e006dc7915cd68f 00 0163 d803 0000
+Len: 14, mode: 2W, first: F, last: F, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 6dc791, to: 5cd68f, cmd: 3c, fr: 869.850M, s+0.011 < 0e005cd68f6dc791 3c 29e0bac1709b
+Len: 11, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 5cd68f, to: 6dc791, cmd: 03, fr: 869.850M, s+0.044 > 4b006dc7915cd68f 03 020000
+Len: 14, mode: 2W, first: F, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 6dc791, to: 5cd68f, cmd: 04, fr: 869.850M, s+0.010 < 8e005cd68f6dc791 04 050000000000
+Len: 11, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 5cd68f, to: 6dc791, cmd: 03, fr: 869.850M, s+0.021 > 4b006dc7915cd68f 03 010000
+Len: 14, mode: 2W, first: F, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 6dc791, to: 5cd68f, cmd: 04, fr: 869.850M, s+0.011 < 8e005cd68f6dc791 04 0500ba000000
+
+
+Move roller shutter from KLR200
+Len: 14, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 1, prt: 0 from: 5cd68f, to: f5c3f3, cmd: 00, fr: 868.250M, s+0.000 > 4e10f5c3f35cd68f 00 0163 8a00 0000
+Len: 14, mode: 2W, first: F, last: F, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: f5c3f3, to: 5cd68f, cmd: 3c, fr: 868.250M, s+0.024 < 0e085cd68ff5c3f3 3c 07f12bd6c2c7
+Len: 14, mode: 2W, first: F, last: F, b: 0, r: 0, lp: 0, ack: 1, prt: 0 from: 5cd68f, to: f5c3f3, cmd: 3d, fr: 868.250M, s+0.010 > 0e10f5c3f35cd68f 3d da0146e5b851
+Len: 14, mode: 2W, first: F, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: f5c3f3, to: 5cd68f, cmd: 04, fr: 868.250M, s+0.024 < 8e085cd68ff5c3f3 04 03008c000000
+Len: 11, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 1, prt: 0 from: 5cd68f, to: f5c3f3, cmd: 03, fr: 868.250M, s+0.021 > 4b10f5c3f35cd68f 03 020000
+Len: 11, mode: 2W, first: T, last: F, b: 0, r: 0, lp: 0, ack: 1, prt: 0 from: 5cd68f, to: f5c3f3, cmd: 03, fr: 869.850M, s+2.048 > 4b10f5c3f35cd68f 03 010000
+Len: 14, mode: 2W, first: F, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: f5c3f3, to: 5cd68f, cmd: 04, fr: 869.850M, s+0.022 < 8e085cd68ff5c3f3 04 05008a000000

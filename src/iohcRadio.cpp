@@ -6,11 +6,11 @@ namespace IOHC
     iohcRadio *iohcRadio::_iohcRadio = nullptr;
     volatile bool iohcRadio::__g_preamble = false;
     volatile bool iohcRadio::__g_payload = false;
-    volatile bool iohcRadio::__g_timeout = false;
-    uint8_t iohcRadio::__flags[2] = {0, 0};
-
     volatile unsigned long iohcRadio::__g_payload_millis = 0;
-    bool iohcRadio::f_lock = false;
+    uint8_t iohcRadio::__flags[2] = {0, 0};
+    volatile bool iohcRadio::f_lock = false;
+    volatile bool iohcRadio::send_lock = false;
+    volatile bool iohcRadio::txMode = false;
 
 
     iohcRadio::iohcRadio()
@@ -27,7 +27,6 @@ namespace IOHC
         attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE);
 
         TickTimer.attach_us(SM_GRANULARITY_US, tickerCounter, this);
-//        StateMachine.attach_us(SM_CHECK_US, manageStates, this);
     }
 
     iohcRadio *iohcRadio::getInstance()
@@ -41,11 +40,10 @@ namespace IOHC
     {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
-        this->scanTimeUs = scanTimeUs;
+        this->scanTimeUs = scanTimeUs?scanTimeUs:DEFAULT_SCAN_INTERVAL_US;
         this->rxCB = rxCallback;
         this->txCB = txCallback;
 
-//        scan(true);
         Radio::clearBuffer();
         Radio::clearFlags();
         Radio::setCarrier(Radio::Carrier::Frequency, 868950000);
@@ -62,10 +60,12 @@ namespace IOHC
             if (__flags[0] & RF_IRQFLAGS1_TXREADY)
             {
                 radio->sent(radio->iohc);
-
                 Radio::clearFlags();
-                Radio::setRx();
-                f_lock = false;
+                if (!txMode)
+                {
+                    Radio::setRx();
+                    f_lock = false;
+                }
                 return;
             }
             else
@@ -89,19 +89,21 @@ namespace IOHC
             }
         }
 
-        radio->tickCounter += 1;
-        if (radio->tickCounter % 10)
-            return;
-
         if (f_lock)
             return;
 
-        digitalWrite(SCAN_LED, 0);
+//        radio->tickCounter += 1;
+//        if (radio->tickCounter % 10)
+        if ((++radio->tickCounter * SM_GRANULARITY_US) < radio->scanTimeUs)
+            return;
+
+        digitalWrite(SCAN_LED, false);
+        radio->tickCounter = 0;
         radio->currentFreq += 1;
         if (radio->currentFreq >= radio->num_freqs)
             radio->currentFreq = 0;
         Radio::setCarrier(Radio::Carrier::Frequency, radio->scan_freqs[radio->currentFreq]);
-        digitalWrite(SCAN_LED, 1);
+        digitalWrite(SCAN_LED, true);
 
         return;
     }
@@ -109,61 +111,40 @@ namespace IOHC
     void iohcRadio::send(IOHC::iohcPacket *iohcTx[])
     {
         uint8_t idx = 0;
+
+        if (txMode)
+            return;
+
         do
         {
             packets2send[idx] = iohcTx[idx];
         } while (iohcTx[idx++]);
-        
+
+        txCounter = 0;
         Sender.attach_ms(packets2send[txCounter]->millis, packetSender, this);
-
-/*
-        f_lock = true;  // Stop frequency hopping
-        iohc = iohcTx[0];
-
-        if (iohc->frequency == 0)
-            iohc->frequency = scan_freqs[currentFreq];
-        iohc->millis = millis();
-
-        Radio::setStandby();
-        if (iohc->frequency)
-            Radio::setCarrier(Radio::Carrier::Frequency, iohc->frequency);
-        Radio::clearFlags();
-
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        Serial.printf("Sending ");
-        for (uint8_t idx=0; idx < iohc->buffer_length; ++idx)
-        {
-            Serial.printf("%2.2x", iohc->payload.buffer[idx]);
-            Radio::writeByte(REG_FIFO, iohc->payload.buffer[idx]);
-        }
-        Serial.printf(" on Carrier frequency: %6.3fM ... ", (float)(iohc->frequency)/1000000);  // If requested sets a specific frequency, otherwise uses last tuned
-        Radio::setTx();
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-*/
     }
 
     void iohcRadio::packetSender(iohcRadio *radio)
     {
         f_lock = true;  // Stop frequency hopping
-        radio->iohc = radio->packets2send[radio->txCounter];
+        txMode = true;  // Avoid Radio put in Rx mode at next packet sent/received
 
-        if (radio->iohc->frequency == 0)
+        radio->iohc = radio->packets2send[radio->txCounter];
+        if (radio->iohc->frequency != 0)
+            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
+        else
             radio->iohc->frequency = radio->scan_freqs[radio->currentFreq];
-        radio->iohc->millis = millis();
 
         Radio::setStandby();
-        if (radio->iohc->frequency)
-            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
         Radio::clearFlags();
 
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-//        Serial.printf("Sending ");
         for (uint8_t idx=0; idx < radio->iohc->buffer_length; ++idx)
         {
-//            Serial.printf("%2.2x", radio->iohc->payload.buffer[idx]);
             Radio::writeByte(REG_FIFO, radio->iohc->payload.buffer[idx]);
         }
-//        Serial.printf(" on Carrier frequency: %6.3fM ... ", (float)(radio->iohc->frequency)/1000000);  // If requested sets a specific frequency, otherwise uses last tuned
+
+        radio->iohc->millis = millis();
         Radio::setTx();
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
         if (radio->iohc->repeat)
@@ -171,7 +152,12 @@ namespace IOHC
         if (radio->iohc->repeat == 0)
         {
             radio->Sender.detach();
-            radio->f_lock = false;
+            if (radio->packets2send[++(radio->txCounter)])
+                radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->millis, radio->packetSender, radio);
+            else
+            {
+                txMode = false;
+            }
         }
     }
 
