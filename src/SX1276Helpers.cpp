@@ -2,6 +2,7 @@
 #include <map>
 #include <TickerUs.h>
 
+
 namespace Radio
 {
     SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
@@ -268,7 +269,7 @@ namespace Radio
         uint8_t out[4];
         regBandWidth bw;
 
-//  Change of Frequency can be done while the redaio is working thanks to Freq Hopping
+//  Change of Frequency can be done while the radio is working thanks to Freq Hopping
         if (!inStdbyOrSleep())
             if (param != Carrier::Frequency)
                 return false;
@@ -348,5 +349,6 @@ namespace Radio
         }
         while (idx < 0x70);
         Serial.printf("***************************************************************\n");
+        Serial.printf("\n");
     }
 }

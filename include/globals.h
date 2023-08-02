@@ -9,7 +9,7 @@
 #include <TickerUs.h>
 
 
-#define MAXCMDS 15
+#define MAXCMDS 25
 
 #if defined(DEBUG)
   #ifndef DEBUG_PORT
@@ -20,21 +20,6 @@
   #define LOG(func, ...) ;
 #endif
 
-/*
-uint8_t hexStringToBytes(const std::string hexString, char *byteString)
-{
-  uint8_t i;
-
-  if (hexString.length() % 2 != 0)
-    return 0;
-
-  for (i = 0; i < hexString.length(); i += 2) {
-      std::string subString = hexString.substr(i, 2);
-      byteString[i/2] = (char) strtol(subString.c_str(), NULL, 16);
-  }
-  return i/2;
-}
-*/
 
 using Tokens = std::vector<std::string>;
 namespace Cmd
@@ -48,7 +33,7 @@ namespace Cmd
 
   struct _cmdEntry{
 
-      char cmd[9];
+      char cmd[15];
       char description[61];
       void (*handler)(Tokens*);
   } *_cmdHandler[MAXCMDS];
@@ -136,6 +121,8 @@ namespace Cmd
           Serial.printf("- %s\t%s\n", _cmdHandler[idx]->cmd, _cmdHandler[idx]->description);
         }
         Serial.printf("- %s\t%s\n\n", (char*)"help", (char*)"This command");
+        Serial.printf("\n");
+        return;
       }
       for (uint8_t idx=0; idx<=lastEntry; ++idx)
       {

@@ -1,5 +1,7 @@
 #include <iohcSystemTable.h>
 #include <LittleFS.h>
+#include <ArduinoJson.h>
+
 
 namespace IOHC
 {
@@ -8,7 +10,7 @@ namespace IOHC
 
     iohcSystemTable::iohcSystemTable()
     {
-        ;
+        load();
     }
 
     iohcSystemTable *iohcSystemTable::getInstance()
@@ -20,49 +22,111 @@ namespace IOHC
 
     bool iohcSystemTable::addObject(address node, address backbone, uint8_t actuator[2], uint8_t manufacturer, uint8_t flags)
     {
-        std::string s0 ((char *)node, 3);
+        changed = true;
+        std::string s0 = bytesToHexString(node, 3);
         iohcObject *tmp;
-        tmp = new iohcObject (node, backbone, actuator, manufacturer, flags); 
-        return(objects.insert_or_assign(s0, tmp).second);
-    return true;
+        tmp = new iohcObject (node, backbone, actuator, manufacturer, flags);
+        bool inserted = _objects.insert_or_assign(s0, tmp).second;
+        save();
+        return(inserted);
     }
 
     bool iohcSystemTable::addObject(iohcObject *obj)
     {
-        std::string s0 ((char *)obj->getNode(), 3);
-        return(objects.insert_or_assign(s0, obj).second);
-    return true;
+        changed = true;
+        std::string s0 = bytesToHexString((uint8_t *)obj->getNode(), 3);
+        bool inserted = _objects.insert_or_assign(s0, obj).second;
+        save();
+        return(inserted);
+    }
+
+    bool iohcSystemTable::addObject(std::string node_id, std::string serialized)
+    {
+        iohcObject *tmp;
+        tmp = new iohcObject (serialized); 
+        bool inserted = _objects.insert_or_assign(node_id, tmp).second;
+        save();
+        return(inserted);
+    }
+
+    bool iohcSystemTable::empty(void)
+    {
+        return(_objects.empty());
     }
 
     uint8_t iohcSystemTable::size(void)
     {
-        return(objects.size());
+        return(_objects.size());
+    }
+
+    void iohcSystemTable::clear(void)
+    {
+        return(_objects.clear());
+    }
+
+    inline iohcSystemTable::Objects::iterator iohcSystemTable::begin(void)
+    {
+        return(_objects.begin());
+    }
+
+    inline iohcSystemTable::Objects::iterator iohcSystemTable::end(void)
+    {
+        return(_objects.end());
     }
 
     bool iohcSystemTable::load(void)
     {
+        this->empty();
+        if (LittleFS.exists(IOHC_SYS_TABLE))
+            Serial.printf("Loading systable objects from %s\n", IOHC_SYS_TABLE);
+        else
+        {
+            Serial.printf("*systable objects not available\n");
+            return false;
+        }
+
+        fs::File f = LittleFS.open(IOHC_SYS_TABLE, "r");
+        DynamicJsonDocument doc(2048);
+        deserializeJson(doc, f);
+        f.close();
+
+        // Iterate through the JSON object
+        for (JsonPair kv : doc.as<JsonObject>())
+        {
+            const char* key = kv.key().c_str();
+            JsonObject obj = kv.value().as<JsonObject>();
+            for (JsonPair ov : obj)
+                addObject(key, ov.value().as<std::string>());
+        }
         return true;
     }
 
     bool iohcSystemTable::save(bool force)
     {
-        LittleFSConfig lcfg;
+        if (!changed && force == false)
+            return false;
 
-        lcfg.setAutoFormat(false);
-        LittleFS.setConfig(lcfg);
+        fs::File f = LittleFS.open(IOHC_SYS_TABLE, "w+");
+        DynamicJsonDocument doc(2048);
 
-        LittleFS.begin();
-        fs::File f = LittleFS.open("/sysTable.txt", "w+");
-//        f.write();
+        for (auto obj : _objects)
+        {
+            JsonObject jobj = doc.createNestedObject(obj.first);
+            jobj["values"]=obj.second->serialize();
+        }
+        serializeJson(doc, f);
         f.close();
+        changed = false;
+
         return true;
     }
 
     void iohcSystemTable::dump(void)
     {
-        Serial.printf("********************* Discovered Devices **********************\n");
-        for (auto entry : objects)
+        Serial.printf("********************** sysTable objects ***********************\n");
+        for (auto entry : _objects)
             entry.second->dump();
         Serial.printf("***************************************************************\n");
+        Serial.printf("\n");
     }
 }

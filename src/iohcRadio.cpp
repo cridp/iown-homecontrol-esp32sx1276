@@ -147,6 +147,8 @@ namespace IOHC
         radio->iohc->millis = millis();
         Radio::setTx();
         digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+        txMode = radio->iohc->lock; // There is no need to maintain radio locked between packets transmission unless clearly asked
+
         if (radio->iohc->repeat)
             radio->iohc->repeat -= 1;
         if (radio->iohc->repeat == 0)
@@ -156,7 +158,7 @@ namespace IOHC
                 radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->millis, radio->packetSender, radio);
             else
             {
-                txMode = false;
+                txMode = false;     // In any case, after last packet sent, unlock the radio
             }
         }
     }

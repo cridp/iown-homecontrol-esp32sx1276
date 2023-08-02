@@ -21,6 +21,8 @@ namespace IOHC
 // b17: Sequence
 // b18: ???
 
+    typedef uint8_t address[3];
+
 
 // Maximum payload in IOHC is 32 bytes: 1 Length byte + 31 body bytes
     struct _header
@@ -36,8 +38,8 @@ namespace IOHC
         uint8_t         low_p:1;
         uint8_t         routed:1;
         uint8_t         use_beacon:1;
-        uint8_t         target[3];
-        uint8_t         source[3];
+        address         target;
+        address         source;
         uint8_t         cmd;
     };
 
@@ -54,7 +56,7 @@ namespace IOHC
     struct _p0x2b
     {
         uint8_t         actuator[2];
-        uint8_t         backbone[3];
+        address         backbone;
         uint8_t         manufacturer;
         uint8_t         info;
         uint8_t         tstamp[2];
@@ -88,14 +90,15 @@ namespace IOHC
         _msg    msg;
     };
 
-
     typedef union
     {
         uint8_t     buffer[MAX_FRAME_LEN];
         _packet     packet;
     } Payload;
 
-
+/*
+    Class implementing the IOHC packet received/sent, including some additional members useful to track/control Radio parameters and timings
+*/
     class iohcPacket
     {
         public:
@@ -114,6 +117,7 @@ namespace IOHC
             uint32_t frequency;
             unsigned long millis = 0;
             uint8_t repeat = 0;
+            bool lock = false;
             float rssi = 0;
 
         protected:

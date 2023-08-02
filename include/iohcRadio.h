@@ -15,6 +15,11 @@
 #define IOHC_OUTBOUND_MAX_PACKETS       20      // Maximum Outbound packets
 
 
+/*
+    Singleton class to implement an IOHC Radio abstraction layer for controllers.
+    Implements all needed functionalities to receive and send packets from/to the air, masking complexities related to frequency hopping
+    IOHC timings, async sending and receiving through callbacks, ...
+*/
 namespace IOHC
 {
     using IohcPacketDelegate = Delegate<bool(IOHC::iohcPacket *iohc)>;

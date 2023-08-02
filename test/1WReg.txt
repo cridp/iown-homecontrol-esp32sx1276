@@ -1,73 +1,73 @@
-1W remote put device in "learning" mode: cmd 2e (two different press to analyze the appended key)
+1Way controllers registration
 
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.000 - f12000013f8ad42e 2e00 13ed f54034cdbc5f
-                                                                                                                                                            ^ data      ^ MAC
-                                                                                                                                                                 ^ Sequence
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013edf54034cdbc5f
+--- Window (T/S: 0x0101 - b0000000100 000001)
+Send 0x2e (put device in registration mode) to broadcast addresses: 00013f
+Send 0x39 (delete controller) to broadcast address: 00003f
+Send 0x30 (add controller) to broadcast address: 00013f
 
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.000 - f12000013f8ad42e 2e00 13ee cbab5864fb74
-                                                                                                                                                            ^ data      ^ MAC
-                                                                                                                                                                 ^ Sequence
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.024 - f10000013f8ad42e 2e0013eecbab5864fb74
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013eecbab5864fb74
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, freq: 869.825M, s+ 0.023 - f10000013f8ad42e 2e0013eecbab5864fb74
+1W remote put device in "learning" mode: cmd 2e
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, fr: 868.950M, s+0.000 > f12000013f8ad42e2e001aafc12c261fb5c1
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, fr: 868.950M, s+0.046 > f10000013f8ad42e2e001aafc12c261fb5c1
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 2e, fr: 868.950M, s+0.023 > f10000013f8ad42e2e001aafc12c261fb5c1
 
-1W remote asking to be registered (cmd 39 delete, cmd 30 add)(two different press to analyze the appended key)
+1W remote registration: cmd 0x39, 0x30
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, fr: 868.950M, s+0.000 > f10000003f8ad42e39001ab0b15aa9d39627
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, fr: 868.950M, s+0.023 > f10000003f8ad42e39001ab0b15aa9d39627
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, fr: 868.950M, s+0.023 > f10000003f8ad42e39001ab0b15aa9d39627
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, fr: 868.950M, s+0.023 > f10000003f8ad42e39001ab0b15aa9d39627
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, fr: 868.950M, s+0.059 > fc0000013f8ad42e3005cc8a9a95aafe7bbffcce30f810a86c01011ab1
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, fr: 868.950M, s+0.052 > fc0000013f8ad42e3005cc8a9a95aafe7bbffcce30f810a86c01011ab1
 
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e 3900 13f1 91248d72d264
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.022 - f10000003f8ad42e39 0013f191248d72d264
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f191248d72d264
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.034 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.025 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f2
+--- Vertical Interior Blind (T/S: 0x0280 - b0000001010 000000)
+Send 0x2e (put device in registration mode) to broadcast addresses: 00007f, 0002bf
+Send 0x39 (delete controller) to broadcast address: 00003f
+Send 0x30 (add controller) to broadcast address: 00007f, 0002bf
 
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.000 - f10000003f8ad42e39 0013f5cb90ecb2ca66
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 869.825M, s+ 0.023 - f10000003f8ad42e39 0013f5cb90ecb2ca66
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.033 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c 01 01 13f6
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 869.825M, s+ 0.026 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c010113f6
+1W remote put device in "learning" mode: cmd 2e
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 2e, fr: 868.950M, s+0.000 > f12000007fafcb682e00071255c785e9a247
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 2e, fr: 868.950M, s+0.024 > f10000007fafcb682e00071255c785e9a247
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 2e, fr: 868.950M, s+0.023 > f10000007fafcb682e00071255c785e9a247
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 2e, fr: 868.950M, s+0.023 > f10000007fafcb682e00071255c785e9a247
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 2e, fr: 868.950M, s+0.525 > f1200002bfafcb682e00071359f12578bfc9
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 2e, fr: 868.950M, s+0.024 > f1000002bfafcb682e00071359f12578bfc9
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 2e, fr: 868.950M, s+0.023 > f1000002bfafcb682e00071359f12578bfc9
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 2e, fr: 868.950M, s+0.023 > f1000002bfafcb682e00071359f12578bfc9
 
-
-
-
-
-
-
-
-
-
-
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.000 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d2000000142f6bbe0a41278c
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.527 - f62000003f8ad42e000161d200000014303caf5431df0b
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014303caf5431df0b
-
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.000 - f10000003f8ad42e39 00 1431 d426a6a6c34d
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
- - Len: 17, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 39, freq: 868.950M, s+ 0.023 - f10000003f8ad42e39001431d426a6a6c34d
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.059 - fc0000013f8ad42e30 05cc8a9a95aafe7bb9525e30f810a86c 01 01 1432
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.026 - fc0000013f8ad42e3005cc8a9a95aafe7bb9525e30f810a86c01011432
- - Len: 28, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00013f, cmd: 30, freq: 868.950M, s+ 0.026 - fc0000013f8ad42e3005cc8a9a95aafe7bb9525e30f810a86c01011432
-
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.000 - f60000003f8ad42e000161d200000014339404caeb7ab4
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.023 - f60000003f8ad42e000161d200000014339404caeb7ab4
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014339404caeb7ab4
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d200000014339404caeb7ab4
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.527 - f62000003f8ad42e000161d20000001434116944339398
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
- - Len: 22, mode: 1W, first: T, last: T - b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: 8ad42e, to: 00003f, cmd: 00, freq: 868.950M, s+ 0.024 - f60000003f8ad42e000161d20000001434116944339398
+1W remote registration: cmd 0x39, 0x30
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00003f, cmd: 39, fr: 868.950M, s+0.000 > f10000003fafcb6839000714bac4c4878103
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00003f, cmd: 39, fr: 868.950M, s+0.023 > f10000003fafcb6839000714bac4c4878103
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 30, fr: 868.950M, s+0.104 > fc0000007fafcb6830b037587c1ec0c2d7eaabb0df198c598c01010715
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 00007f, cmd: 30, fr: 868.950M, s+0.026 > fc0000007fafcb6830b037587c1ec0c2d7eaabb0df198c598c01010715
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 30, fr: 868.950M, s+0.059 > fc000002bfafcb6830b037587c1ec0c2d7eaabb0df198c598c01010716
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 30, fr: 868.950M, s+0.025 > fc000002bfafcb6830b037587c1ec0c2d7eaabb0df198c598c01010716
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 30, fr: 868.950M, s+0.026 > fc000002bfafcb6830b037587c1ec0c2d7eaabb0df198c598c01010716
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: afcb68, to: 0002bf, cmd: 30, fr: 868.950M, s+0.026 > fc000002bfafcb6830b037587c1ec0c2d7e8c4e0df198c598c01010716
 
 
+--- Roller Shutter (T/S: 0x0080 - b0000000010 000000)
+Send 0x2e (put device in registration mode) to broadcast addresses: 0000bf, 0000ff, 00037f
+Send 0x39 (delete controller) to broadcast address: 00003f
+Send 0x30 (add controller) to broadcast address: 0000bf, 0000ff, 00037f
+
+1W remote put device in "learning" mode: cmd 2e
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: b21bfe, to: 0000bf, cmd: 2e, fr: 868.950M, s+0.000 > f1200000bfb21bfe2e0005735a174e549ef5
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000bf, cmd: 2e, fr: 868.950M, s+0.023 > f1000000bfb21bfe2e0005735a174e549ef5
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 2e, fr: 868.950M, s+0.572 > f1200000ffb21bfe2e0005745e6f5f4edd61
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 2e, fr: 868.950M, s+0.023 > f1000000ffb21bfe2e0005745e6f5f4edd61
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 2e, fr: 868.950M, s+0.023 > f1000000ffb21bfe2e0005745e6f5f4edd61
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 2e, fr: 868.950M, s+0.023 > f1000000ffb21bfe2e0005745e6f5f4edd61
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 1, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 2e, fr: 868.950M, s+0.526 > f12000037fb21bfe2e0005759197fdc4c82f
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 2e, fr: 868.950M, s+0.023 > f10000037fb21bfe2e0005759197fdc4c82f
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 2e, fr: 868.950M, s+0.023 > f10000037fb21bfe2e0005759197fdc4c82f
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 2e, fr: 868.950M, s+0.023 > f10000037fb21bfe2e0005759197fdc4c82f
+
+1W remote registration: cmd 0x39, 0x30
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00003f, cmd: 39, fr: 868.950M, s+0.000 > f10000003fb21bfe39000576d4cdba8238ac
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00003f, cmd: 39, fr: 868.950M, s+0.022 > f10000003fb21bfe39000576d4cdba8238ac
+Len: 17, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00003f, cmd: 39, fr: 868.950M, s+0.046 > f10000003fb21bfe39000576d4cdba8238ac
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000bf, cmd: 30, fr: 868.950M, s+0.059 > fc000000bfb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010577
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000bf, cmd: 30, fr: 868.950M, s+0.052 > fc000000bfb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010577
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 30, fr: 868.950M, s+0.032 > fc000000ffb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010578
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 0000ff, cmd: 30, fr: 868.950M, s+0.078 > fc000000ffb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010578
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 30, fr: 868.950M, s+0.032 > fc0000037fb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010579
+Len: 28, mode: 1W, first: T, last: T, b: 0, r: 0, lp: 0, ack: 0, prt: 0 from: b21bfe, to: 00037f, cmd: 30, fr: 868.950M, s+0.078 > fc0000037fb21bfe303e68a1bf84fe918de5affbbc3bb57e5c01010579

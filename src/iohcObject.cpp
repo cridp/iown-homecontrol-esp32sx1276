@@ -3,6 +3,10 @@
 
 namespace IOHC
 {
+    iohcObject::iohcObject()
+    {
+    }
+
     iohcObject::iohcObject(address node, address backbone, uint8_t actuator[2], uint8_t manufacturer, uint8_t flags)
     {
         for (uint8_t i=0; i<3; i++)
@@ -15,6 +19,14 @@ namespace IOHC
 
         iohcDevice.flags = flags;
         iohcDevice.io_manufacturer = manufacturer;
+    }
+
+    iohcObject::iohcObject(std::string serialized)
+    {
+        uint8_t eval[sizeof(iohcObject_t)];
+
+        hexStringToBytes(serialized, eval);
+        memcpy(iohcDevice.node, eval, sizeof(iohcObject_t));
     }
 
     address *iohcObject::getNode(void)
@@ -32,6 +44,11 @@ namespace IOHC
         return std::make_tuple(((iohcDevice.actuator[0]<<8) + (iohcDevice.actuator[1]))>>6, iohcDevice.actuator[1] & 0x3f);
     }
 
+    std::string iohcObject::serialize(void)
+    {
+        return (bytesToHexString(iohcDevice.node, sizeof(iohcObject_t)));
+    }
+    
     void iohcObject::dump(void)
     {
         Serial.printf("Address: %2.2x%2.2x%2.2x, ", iohcDevice.node[0], iohcDevice.node[1], iohcDevice.node[2]);
