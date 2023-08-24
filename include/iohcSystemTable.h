@@ -1,6 +1,6 @@
 #pragma once
 
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <map>
 #include <string>
 #include <iohcObject.h>

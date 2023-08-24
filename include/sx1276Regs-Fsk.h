@@ -1020,7 +1020,7 @@
  */
 #define RF_IRQFLAGS2_FIFOFULL                       0x80
 
-#define RF_IRQFLAGS2_FIFOEMPTY                      0x40
+#define RF_IRQFLAGS2_FIFOEMPTY                      0x40 // 0100 0000
 
 #define RF_IRQFLAGS2_FIFOLEVEL                      0x20
 

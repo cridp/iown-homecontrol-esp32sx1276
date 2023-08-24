@@ -14,6 +14,8 @@ void printFileInfo(const char* dirName, const char* filePath, uint8_t level) {
 }
 
 void traverseDirectory(const char* dirName, uint8_t level) {
+
+#if defined(ESP8266)    
   Dir dir = LittleFS.openDir(dirName);
 
   while (dir.next()) {
@@ -29,6 +31,22 @@ void traverseDirectory(const char* dirName, uint8_t level) {
       printFileInfo(dirName, fileName.c_str(), level);
     }
   }
+#elif defined(ESP32)
+  File root = LittleFS.open(dirName);
+  File fileName;
+  while (fileName = root.openNextFile()){
+    if(fileName.isDirectory()){
+      std::string depth((level), '\t');
+      Serial.printf("%s", depth.c_str());
+      Serial.printf("%s\n", fileName.name());
+      traverseDirectory((String(dirName) + "/" + fileName).c_str(), level+1);
+    }else{
+      printFileInfo(dirName, fileName.name(), level);
+    }
+  }
+
+    
+#endif
 }
 
 void listFS(void)

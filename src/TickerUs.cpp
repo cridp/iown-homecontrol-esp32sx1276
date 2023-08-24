@@ -1,5 +1,6 @@
 #define USE_US_TIMER
 
+#if defined(ESP8266)
 #include "c_types.h"
 #include "eagle_soc.h"
 #include "osapi.h"
@@ -67,4 +68,5 @@ namespace Timers
         if (_this && _this->_callback_function)
             _this->_callback_function();
     }
-}
+} 
+#endif

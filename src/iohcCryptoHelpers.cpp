@@ -35,8 +35,13 @@ namespace iohcUtils
     std::string transfer_key = "34c3466ed88f4e8e16aa473949884373";
 
 
+#if defined(ESP8266)
     AES128 aes128;
     CTR<AES128> ctraes128;
+#elif defined(ESP32)
+    mbedtls_aes_context aes;
+#endif
+    
 
 
     uint16_t computeCrc(uint8_t data, uint16_t crc = 0)
@@ -140,11 +145,23 @@ namespace iohcUtils
     void create_1W_hmac(uint8_t *hmac, const uint8_t *seq_number, uint8_t *controller_key, const std::vector<uint8_t>& frame_data)
     {
         std::vector<uint8_t> iv;
+#if defined(ESP32)
+        mbedtls_aes_init(&aes);
+#endif
 
         iv = constructInitialValue(frame_data, nullptr, seq_number);
 
+#if defined(ESP8266)
         aes128.setKey(controller_key, 16);
         aes128.encryptBlock(hmac, iv.data());
+#elif defined(ESP32)
+        mbedtls_aes_setkey_enc( &aes, controller_key, 128 );
+        for (uint8_t a=0; a<16; a++){
+            hmac[a] = 0;
+        }
+        mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, iv.data(), hmac);
+        mbedtls_aes_free( &aes );
+#endif        
     }
 
 /*
@@ -154,7 +171,12 @@ namespace iohcUtils
 */
     void encrypt_1W_key(const uint8_t *node_address, uint8_t *key)
     {
+#if defined(ESP32)
+        mbedtls_aes_init(&aes);
+#endif
+
         uint8_t btransfer[16];
+        uint8_t captured[16] = {0};
 
         hexStringToBytes(transfer_key, btransfer);
 
@@ -175,10 +197,19 @@ namespace iohcUtils
         for (int i = 0; i < 16; ++i)
             key[i] ^= captured[i];
     */
+#if defined(ESP8266)
     //  Use CTR encryption instead of AES. It includes xor with the key
         ctraes128.setKey(btransfer, 16);
         ctraes128.setIV(iv.data(), 16);
         ctraes128.setCounterSize(4);
         ctraes128.encrypt(key, key, 16);
+#elif defined(ESP32)
+        size_t iv_offset = 0;
+        mbedtls_aes_setkey_enc( &aes, (uint8_t *)btransfer, 128 );
+        mbedtls_aes_crypt_cfb128(&aes, MBEDTLS_AES_ENCRYPT, 16, &iv_offset, iv.data(), (uint8_t *)key, captured);
+        for (int i = 0; i < 16; ++i)
+            key[i] = captured[i];
+        mbedtls_aes_free( &aes );
+#endif
     }
 }

@@ -3,6 +3,7 @@
 #include <Arduino.h>
 #include <string>
 #include <iohcRadio.h>
+#include <vector> 
 
 
 #define IOHC_1W_REMOTE  "/1W.json"

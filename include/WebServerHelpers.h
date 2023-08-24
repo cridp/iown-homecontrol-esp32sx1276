@@ -26,7 +26,8 @@ void onEvent(AsyncWebSocket * server, AsyncWebSocketClient * client, AwsEventTyp
 void testmDNS (char *qs)
 {
   Serial.println("Sending mDNS query");
-  int n = MDNS.queryService(qs, "tcp");  // Send out query for esp tcp services
+  //int n = MDNS.queryService(qs, "tcp");  // Send out query for esp tcp services  
+  int n = MDNS.queryService((const char*) qs, "tcp");  // Send out query for esp tcp services   IS VALID?
   Serial.println("mDNS query done");
   if (n == 0) {
     Serial.println("no services found");

@@ -1,7 +1,16 @@
-#include <SX1276Helpers.h>
-#include <map>
-#include <TickerUs.h>
+#include <Arduino.h>                // Is this not required?
 
+#include <SX1276Helpers.h>
+#if defined(SX1276)
+
+
+#include <map>
+#if defined(ESP8266)
+    #include <TickerUs.h>
+#elif defined(ESP32)  	
+    #include <TickerUsESP32.h>
+    #include <esp_task_wdt.h>
+#endif
 
 namespace Radio
 {
@@ -44,19 +53,29 @@ namespace Radio
     {
         Serial.println("SPI Init");
         // SPI pins configuration
+    #if defined(ESP8266)
         SPI.pins(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
+    #endif
         pinMode(RADIO_RESET, INPUT);    // Connected to Reset; floating for POR
 
         // Check the availability of the Radio
         do {
             delayMicroseconds(1);
+    #if defined(ESP8266)
             wdt_reset();
+    #elif defined(ESP32)
+            esp_task_wdt_reset();        
+    #endif
         } while (!digitalRead(RADIO_RESET));
         delayMicroseconds(BOARD_READY_AFTER_POR);
         Serial.printf("Radio Chip is ready\n");
 
         // Initialize SPI bus
+    #if defined(ESP8266)
         SPI.begin();
+    #elif defined(ESP32)
+        SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
+    #endif
         // Disable SPI device
         // Disable device NRESET pin
         pinMode(RADIO_NSS, OUTPUT);
@@ -352,3 +371,4 @@ namespace Radio
         Serial.printf("\n");
     }
 }
+#endif

@@ -2,9 +2,15 @@
 
 #include <Arduino.h>
 #include <string>
-#include <Crypto.h>
-#include <AES.h>
-#include <CTR.h>
+
+#if defined(ESP8266)
+    #include <Crypto.h>
+    #include <AES.h>
+    #include <CTR.h>
+#elif defined(ESP32)
+    #include "mbedtls/aes.h"        // AES functions
+    #include <vector> 
+#endif
 
 
 #define CRC_POLYNOMIAL_CCITT    0x8408

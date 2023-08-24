@@ -27,6 +27,7 @@ namespace IOHC
         iohcObject *tmp;
         tmp = new iohcObject (node, backbone, actuator, manufacturer, flags);
         bool inserted = _objects.insert_or_assign(s0, tmp).second;
+        //bool inserted = 0;
         save();
         return(inserted);
     }

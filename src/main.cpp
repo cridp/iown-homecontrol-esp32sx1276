@@ -1,11 +1,28 @@
-#include <ESP8266WiFi.h>
-#include "ESPAsyncTCP.h"
-#include <ESPAsyncWebServer.h>
-#include <ESP8266mDNS.h>
-#include <ESP8266SSDP.h>
+#include <Arduino.h>                // Is this not required?
 
+#if defined(ESP8266)
+    #include <ESP8266WiFi.h>
+    #include "ESPAsyncTCP.h"
+    #include <ESP8266mDNS.h>
+    #include <ESP8266SSDP.h>
+#elif defined(ESP32)
+    #include <WiFi.h>
+    #include <AsyncTCP.h>           // ESPAsyncWebServer & OTA
+    #include <ESPmDNS.h>            // ESPAsyncWebServer & OTA
+    #include <ESP32SSDP.h>
+#endif
+
+
+#include <ESPAsyncWebServer.h>
 #include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration - Async branch
-#include <SX1276Helpers.h>
+/*
+// Transceivers Helpers defined inside de iohcRadio header
+#if defined(SX1276)
+    #include <SX1276Helpers.h>
+#elif defined(CC1101)
+    #include <CC1101Helpers.h>
+#endif
+*/
 #include <board-config.h>
 #include <user_config.h>
 #include <globals.h>
@@ -54,13 +71,19 @@ void discovery(void);
 void setup() {
 //    Timers::init_us();
 //    system_timer_reinit();
+#if defined(ESP8266)
     INIT_US;
+#endif
+    
 
     Serial.begin(SERIALSPEED);
 //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
+
     pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
     digitalWrite( RX_LED, true);
+
+/*
     WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP 
     wm.autoConnect();
     
@@ -79,13 +102,19 @@ void setup() {
     else {
         LOG(printf_P("Configportal running\n"));
     }
+*/
 
     // Mount LittleFS filesystem
+#if defined(ESP8266)
     LittleFSConfig lcfg;
     lcfg.setAutoFormat(false);
     LittleFS.setConfig(lcfg);
     LittleFS.begin();
+#elif defined(ESP32)
+    LittleFS.begin();    
+#endif
 
+/*
     // Start MDNS
     if (! MDNS.begin("IO-Homecontrol_gateway")) 
         Serial.println(F("Error setting up MDNS responder"));
@@ -96,7 +125,14 @@ void setup() {
     SSDP.setSchemaURL("description.xml");
     SSDP.setHTTPPort(HTTP_LISTEN_PORT);
     SSDP.setName("Velux remote gateway");
+#if defined(ESP8266)
     SSDP.setSerialNumber(ESP.getChipId());
+#elif defined(ESP32)
+    uint64_t macAddress = ESP.getEfuseMac();
+    uint64_t macAddressTrunc = macAddress << 40;
+    SSDP.setSerialNumber(macAddressTrunc >> 40);
+#endif
+
     SSDP.setURL("/");
     SSDP.setDeviceType("upnp:rootdevice");
     SSDP.begin();
@@ -109,6 +145,7 @@ void setup() {
 
     // attach AsyncEventSource
     server.addHandler(&events);
+*/
 
     /*
     To be completed
@@ -174,16 +211,17 @@ void setup() {
     // Catch-All Handlers
     // Any request that can not find a Handler that canHandle it
     // ends in the callbacks below.
-    server.onNotFound(onRequest);
-    server.onRequestBody(onBody);
-    server.begin();
+//    server.onNotFound(onRequest);
+//    server.onRequestBody(onBody);
+//    server.begin();
 
     sysTable = IOHC::iohcSystemTable::getInstance();
     remote1W = IOHC::iohcRemote1W::getInstance();
     radioInstance = IOHC::iohcRadio::getInstance();
 
     Cmd::init();    // Initialize Serial commands reception and handlers
-    Cmd::addHandler((char *)"dump", (char *)"Dump SX1276 registers", [](Tokens*cmd)->void {Radio::dump(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
+    Cmd::addHandler((char *)"dump", (char *)"Dump Trasnceiver registers", [](Tokens*cmd)->void {Radio::dump(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
+    Cmd::addHandler((char *)"dump2", (char *)"Dump Trasnceiver registers 1Col", [](Tokens*cmd)->void {Radio::dump2(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
     Cmd::addHandler((char *)"list", (char *)"List received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) msgRcvd(radioPackets[i]); sysTable->dump();});
     Cmd::addHandler((char *)"save", (char *)"Saves Objects table", [](Tokens*cmd)->void {sysTable->save(true);});
     Cmd::addHandler((char *)"erase", (char *)"Erase received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) free(radioPackets[i]); nextPacket = 0;});
@@ -212,11 +250,15 @@ void setup() {
     Serial.printf(" Startup completed. type help to see what you can do!\n");
     Serial.printf("------------------------------------------------------\n");
     Serial.printf("------------------------------------------------------\n");
+
+    //Serial.println("SPI Speed:" + String(SPI.))
 }
 
 void loop() {
-    wm.process();
+//    wm.process();
+#if defined(ESP8266)
     MDNS.update();
+#endif
 
     return;
 /*
@@ -382,6 +424,10 @@ void discovery()
     packets2send[0]->millis = 1750;
     packets2send[0]->repeat = 4;
     packets2send[0]->lock = false;
+    if(MAX_FREQS>1)
+        packets2send[0]->frequency = frequencies[1];
+    else
+        packets2send[0]->frequency = frequencies[0];
     packets2send[1] = nullptr;
 
     digitalWrite(RX_LED, digitalRead(RX_LED)^1);

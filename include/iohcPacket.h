@@ -1,7 +1,11 @@
 #pragma once
 
 #include <Arduino.h>
-#include <SX1276Helpers.h>
+#if defined(SX1276)
+        #include <SX1276Helpers.h>
+#elif defined(CC1101)
+        #include <CC1101Helpers.h>
+#endif
 
 #define RESET_AFTER_LAST_MSG_US 15000
 #define MAX_FRAME_LEN   32
