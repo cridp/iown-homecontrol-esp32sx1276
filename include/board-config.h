@@ -63,7 +63,7 @@
 #endif
 
 
-#define SPI_CLK_FRQ                                 1000000
+#define SPI_CLK_FRQ                                 10000000
 
 
 #define PREAMBLE_MSB                                0x00
