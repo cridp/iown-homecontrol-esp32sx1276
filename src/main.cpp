@@ -120,7 +120,7 @@ void setup() {
         Serial.println(F("Error setting up MDNS responder"));
 
     MDNS.addService("http", "tcp", HTTP_LISTEN_PORT);
-    testmDNS((char *)"http");
+    //testmDNS((char *)"http");
     // Start SSDP
     SSDP.setSchemaURL("description.xml");
     SSDP.setHTTPPort(HTTP_LISTEN_PORT);
