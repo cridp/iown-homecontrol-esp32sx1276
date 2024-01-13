@@ -1,6 +1,7 @@
-#pragma once
+#ifndef IOHC_RADIO_H
+#define IOHC_RADIO_H
 
-#include <Arduino.h>
+//#include <Arduino.h>
 #include <board-config.h>
 
 #include <map>
@@ -15,46 +16,44 @@
 #include <iohcPacket.h>
 #if defined(ESP8266)
   #include <TickerUs.h>
-#elif defined(ESP32)  	
-  #include <TickerUsESP32.h>
+#elif defined(HELTEC)  	
+    #include <TickerUsESP32.h>
 #endif
 
-#define DEFAULT_SCAN_INTERVAL_US        1000    // Default uS between frequency changes
-#define SM_GRANULARITY_US               100     // Ticker function frequency in uS
+#define SM_GRANULARITY_US               100ULL  // Ticker function frequency in uS (100 min)
 #define SM_GRANULARITY_MS               1       // Ticker function frequency in uS
-#define SM_PREAMBLE_RECOVERY_TIMEOUT_US 12500   // Maximum duration in uS of Preamble before reset of receiver
-#define IOHC_INBOUND_MAX_PACKETS        199     // Maximum Inbound packets buffer
-#define IOHC_OUTBOUND_MAX_PACKETS       20      // Maximum Outbound packets
-
+#define SM_PREAMBLE_RECOVERY_TIMEOUT_US 12500   // SM_GRANULARITY_US * PREAMBLE_LSB //12500   // Maximum duration in uS of Preamble before reset of receiver
+#define DEFAULT_SCAN_INTERVAL_US        13520   // Default uS between frequency changes
 
 /*
     Singleton class to implement an IOHC Radio abstraction layer for controllers.
     Implements all needed functionalities to receive and send packets from/to the air, masking complexities related to frequency hopping
     IOHC timings, async sending and receiving through callbacks, ...
 */
-namespace IOHC
-{
-    using IohcPacketDelegate = Delegate<bool(IOHC::iohcPacket *iohc)>;
+namespace IOHC {
+    using IohcPacketDelegate = Delegate<bool(iohcPacket *iohc)>;
 
-    class iohcRadio
-    {
+    class iohcRadio  {
         public:
             static iohcRadio *getInstance();
-            virtual ~iohcRadio() {};
+            virtual ~iohcRadio() = default;
             void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback, IohcPacketDelegate txCallback);
-            void send(IOHC::iohcPacket *iohcTx[]);
+//            void send(iohcPacket *iohcTx[]);
+            template <size_t Size>
+            void send(std::array<iohcPacket*, Size>& iohcTx);
 
         private:
             iohcRadio();
-            bool receive(void);
-            bool sent(IOHC::iohcPacket *packet);
+            bool receive();
+            bool sent(iohcPacket *packet);
 
             static iohcRadio *_iohcRadio;
-            volatile static bool __g_preamble;
-            volatile static bool __g_payload;
+            volatile static bool _g_preamble;
+            volatile static bool _g_payload;
 //            volatile static bool __g_timeout;
-            static uint8_t __flags[2];
-            volatile static unsigned long __g_payload_millis;
+            static uint8_t _flags[2];
+            volatile static unsigned long _g_payload_millis;
+            
             volatile static bool f_lock;
             volatile static bool send_lock;
             volatile static bool txMode;
@@ -64,44 +63,37 @@ namespace IOHC
             volatile uint8_t txCounter = 0;
 
             uint8_t num_freqs = 0;
-            uint32_t *scan_freqs;
-            uint32_t scanTimeUs;
-            uint8_t currentFreq = 0;
+            uint32_t *scan_freqs{};
+            uint32_t scanTimeUs{};
+            uint8_t currentFreqIdx = 0;
 
 
-#if defined(ESP8266)
+        #if defined(ESP8266)
             Timers::TickerUs TickTimer;
             Timers::TickerUs Sender;
 //            Timers::TickerUs FreqScanner;
-#elif defined(ESP32)
-            //Timers::TickerUsESP32 TickTimer;
-            //Timers::TickerUsESP32 Sender;
-            TickerUsESP32 TickTimer;
-            TickerUsESP32 Sender;
-//            Timers::TickerUsESP32 FreqScanner;    
-#endif
-
-
-
-            IOHC::iohcPacket *iohc;
+        #elif defined(HELTEC)
+            TimersUS::TickerUsESP32 TickTimer;
+            TimersUS::TickerUsESP32 Sender;
+//            TickerUsESP32 TickTimer;
+//            TickerUsESP32 Sender;
+            //Timers::TickerUsESP32 FreqScanner;    
+        #endif
+            iohcPacket *iohc{};
             IohcPacketDelegate rxCB = nullptr;
             IohcPacketDelegate txCB = nullptr;
-            IOHC::iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS];
-
+//            iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS]{};
+            std::array<iohcPacket*, 25> packets2send{};
+            
         protected:
-//#if defined(SX1276)
-            static void IRAM_ATTR i_preamble(void);
-            static void IRAM_ATTR i_payload(void);
-            static void tickerCounter(iohcRadio *radio);
+            static void IRAM_ATTR i_preamble();
+            static void IRAM_ATTR i_payload();
+            static void IRAM_ATTR tickerCounter(iohcRadio *radio);
             static void packetSender(iohcRadio *radio);
-//#elif defined(CC1101)
-            //static void IRAM_ATTR i_preamble(void);
-            //static void IRAM_ATTR i_payload(void);
-            //static void tickerCounter(iohcRadio *radio);
-            //static void packetSender(iohcRadio *radio);
-//#endif
-#if defined(CC1101)
+
+        #if defined(CC1101)
             uint8_t lenghtFrame=0;
-#endif
+        #endif
     };
 }
+#endif
