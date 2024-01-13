@@ -4,15 +4,11 @@
 #include <Schedule.h>
 #include <ets_sys.h>
 
-
 void system_timer_reinit();
 #define INIT_US system_timer_reinit();
 
-
-namespace Timers
-{
-    class TickerUs
-    {
+namespace Timers {
+    class TickerUs {
     public:
         TickerUs();
         ~TickerUs();

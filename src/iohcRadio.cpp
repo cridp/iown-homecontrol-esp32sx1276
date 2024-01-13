@@ -1,20 +1,18 @@
+#include <Arduino.h>
 #include <iohcRadio.h>
+#include <utility>
 
-
-namespace IOHC
-{
-    iohcRadio *iohcRadio::_iohcRadio = nullptr;
-    volatile bool iohcRadio::__g_preamble = false;
-    volatile bool iohcRadio::__g_payload = false;
-    volatile unsigned long iohcRadio::__g_payload_millis = 0;
-    uint8_t iohcRadio::__flags[2] = {0, 0};
+namespace IOHC {
+    iohcRadio* iohcRadio::_iohcRadio = nullptr;
+    volatile bool iohcRadio::_g_preamble = false;
+    volatile bool iohcRadio::_g_payload = false;
+    volatile unsigned long iohcRadio::_g_payload_millis = 0L;
+    uint8_t iohcRadio::_flags[2] = {0, 0};
     volatile bool iohcRadio::f_lock = false;
     volatile bool iohcRadio::send_lock = false;
     volatile bool iohcRadio::txMode = false;
 
-
-    iohcRadio::iohcRadio()
-    {
+    iohcRadio::iohcRadio() {
         Radio::initHardware();
         Radio::initRegisters(MAX_FRAME_LEN);
         Radio::setCarrier(Radio::Carrier::Deviation, 19200);
@@ -30,95 +28,87 @@ namespace IOHC
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
 
-#if defined(ESP8266)
-        TickTimer.attach_us(SM_GRANULARITY_US, tickerCounter, this);
-#elif defined(ESP32)
-        // Quick solution, but less precise than 100uS of the ESP8266, which would require to implement the check in a timer interruption
-        // Ticker lib on ESP32 relay on RTOS tick period. To change it its needed to recompile ESP-IDF, but this is already compiled
-        // into the Arduino Framework
-        // Good enought?
-        TickTimer.attach_us(SM_GRANULARITY_MS, tickerCounter, this);
-#endif
+        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
     }
 
-    iohcRadio *iohcRadio::getInstance()
-    {
+    iohcRadio* iohcRadio::getInstance() {
         if (!_iohcRadio)
             _iohcRadio = new iohcRadio();
         return _iohcRadio;
     }
 
-    void iohcRadio::start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr)
-    {
+    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs,
+                          IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
-        this->scanTimeUs = scanTimeUs?scanTimeUs:DEFAULT_SCAN_INTERVAL_US;
-        this->rxCB = rxCallback;
-        this->txCB = txCallback;
+        this->scanTimeUs = scanTimeUs ? scanTimeUs : DEFAULT_SCAN_INTERVAL_US;
+        this->rxCB = std::move(rxCallback);
+        this->txCB = std::move(txCallback);
 
         Radio::clearBuffer();
         Radio::clearFlags();
-        Radio::setCarrier(Radio::Carrier::Frequency, 868950000);
+        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]);
+        // 868950000); // We always start at freq[0] the 1W/2W channel
         Radio::calibrate();
         Radio::setRx();
-
     }
 
-    void iohcRadio::tickerCounter(iohcRadio *radio)
-    {
+    void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio* radio) {
+        // Not need to put in IRAM as we reuse task for µs instead ISR
 #if defined(SX1276)
-        Radio::readBytes(REG_IRQFLAGS1, __flags, sizeof(__flags));
+        Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
 
-        if (__g_payload)                                                // If Int of PayLoad
-        {
-            if (__flags[0] & RF_IRQFLAGS1_TXREADY)                      // if TX ready?
-            {
-                radio->sent(radio->iohc);
+        if (_g_payload) {
+            // If Int of PayLoad
+            if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
+                // if TX ready?
+                // radio->sent(radio->iohc);
                 Radio::clearFlags();
-                if (!txMode)
-                {
+                if (!txMode) {
                     Radio::setRx();
                     f_lock = false;
                 }
+                radio->sent(radio->iohc); // Workaround to permit MQTT sending
                 return;
             }
-            else                                                        // if in RX mode?
-            {
-                radio->receive();
+            else {
+                // if in RX mode?
+                radio->receive(false);
                 radio->tickCounter = 0;
                 radio->preCounter = 0;
                 return;
             }
         }
 
-        if (__g_preamble)
-        {
+        if (_g_preamble) {
             radio->tickCounter = 0;
             radio->preCounter += 1;
-            if (__flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;  // In case of Sync received resets the preamble duration
-            if ((radio->preCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) // Avoid hanging on a too long preamble detect 
-            {
+            if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
+            // In case of Sync received resets the preamble duration
+            if ((radio->preCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) {
+                // Avoid hanging on a too long preamble detect
                 Radio::clearFlags();
                 radio->preCounter = 0;
             }
         }
 
-        if (f_lock)
-            return;
+        if (f_lock) return;
 
+        if ((++radio->tickCounter * SM_GRANULARITY_US) < radio->scanTimeUs) return;
 
-        if ((++radio->tickCounter * SM_GRANULARITY_US) < radio->scanTimeUs)
-            return;
-
-        digitalWrite(SCAN_LED, false);
+        //        digitalWrite(SCAN_LED, false);
         radio->tickCounter = 0;
-        radio->currentFreq += 1;
-        if (radio->currentFreq >= radio->num_freqs)
-            radio->currentFreq = 0;
-        Radio::setCarrier(Radio::Carrier::Frequency, radio->scan_freqs[radio->currentFreq]);
-        digitalWrite(SCAN_LED, true);
 
-        return;
+        if (radio->num_freqs == 1) return;
+
+        radio->currentFreqIdx += 1;
+        if (radio->currentFreqIdx >= radio->num_freqs)
+            radio->currentFreqIdx = 0;
+
+        Radio::setCarrier(Radio::Carrier::Frequency, radio->scan_freqs[radio->currentFreqIdx]);
+        //        digitalWrite(SCAN_LED, true);
+
+        // return;
 
 #elif defined(CC1101)
         if (__g_preamble){
@@ -134,87 +124,120 @@ namespace IOHC
         if ((++radio->tickCounter * SM_GRANULARITY_US) < radio->scanTimeUs)
             return;
 #endif
-
     }
 
-    void iohcRadio::send(IOHC::iohcPacket *iohcTx[])
-    {
-        uint8_t idx = 0;
+    //     template <size_t N>
+    //     void iohcRadio::send(std::array<iohcPacket*, N>& iohcTx) {
+    //         uint8_t idx = 0;
 
-        if (txMode)
-            return;
+    //         if (txMode)  return;
+    //         do {
+    //             packets2send[idx] = iohcTx[idx];
+    //         } while (iohcTx[idx++]);
+    // //         for (auto packet : iohcTx) {
+    // //             if (!packet) break;
+    // //             packets2send[idx++] = packet;
+    // //         }
+    //         txCounter = 0;
+    //         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+    //     }
 
-        do
-        {
-            packets2send[idx] = iohcTx[idx];
-        } while (iohcTx[idx++]);
+    void iohcRadio::packetSender(iohcRadio* radio) {
+        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-        txCounter = 0;
-        Sender.attach_ms(packets2send[txCounter]->millis, packetSender, this);
-    }
+        f_lock = true; // Stop frequency hopping
+        txMode = true; // Avoid Radio put in Rx mode at next packet sent/received
+        //        Serial.printf("Using Delayed Packet %u !\n", radio->txCounter);
+        if (radio->packets2send[radio->txCounter] == nullptr) {
+            //            Serial.printf("Plus de Delayed Packet !\n");
+            if (radio->delayed != nullptr)
+                //               Serial.printf("Use Saved Delayed Packet !\n");
+                //           f_lock = false; txMode = false; return;
+                radio->iohc = std::move(radio->delayed);
+        }
+        else
+            radio->iohc = radio->packets2send[radio->txCounter];
 
-    void iohcRadio::packetSender(iohcRadio *radio)
-    {
-Serial.println("packetSender");
-        f_lock = true;  // Stop frequency hopping
-        txMode = true;  // Avoid Radio put in Rx mode at next packet sent/received
-
-        radio->iohc = radio->packets2send[radio->txCounter];
         if (radio->iohc->frequency != 0)
             Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
         else
-            radio->iohc->frequency = radio->scan_freqs[radio->currentFreq];
+            radio->iohc->frequency = radio->scan_freqs[radio->currentFreqIdx];
 
         Radio::setStandby();
         Radio::clearFlags();
 
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
 #if defined(SX1276)
-        for (uint8_t idx=0; idx < radio->iohc->buffer_length; ++idx)
-        {
-            Radio::writeByte(REG_FIFO, radio->iohc->payload.buffer[idx]);       // Is valid for both SX1276 & CC1101?
-        }
+        Radio::writeBytes(REG_FIFO, radio->iohc->payload.buffer, radio->iohc->buffer_length);
+        // Is valid for both SX1276 & CC1101?
+
 #elif defined(CC1101)
         Radio::sendFrame(radio->iohc->payload.buffer, radio->iohc->buffer_length); // Prepare (encode, add crc, and so no) the packet for CC1101
 #endif
 
-        radio->iohc->millis = millis();
+        // Serial.printf("Size %u Counter %u", radio->packets2send.size(), radio->txCounter );
+
+        /*radio->iohc->*/packetStamp = esp_timer_get_time(); //millis();
+        radio->iohc->decode();
+        IOHC::lastSendCmd = radio->iohc->payload.packet.header.cmd;
+
         Radio::setTx();
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        txMode = radio->iohc->lock; // There is no need to maintain radio locked between packets transmission unless clearly asked
+        // There is no need to maintain radio locked between packets transmission unless clearly asked
+        txMode = radio->iohc->lock;
 
         if (radio->iohc->repeat)
             radio->iohc->repeat -= 1;
-        if (radio->iohc->repeat == 0)
-        {
+        if (radio->iohc->repeat == 0) {
             radio->Sender.detach();
-            if (radio->packets2send[++(radio->txCounter)])
-                radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->millis, radio->packetSender, radio);
-            else
-            {
-                txMode = false;     // In any case, after last packet sent, unlock the radio
+            ++radio->txCounter;
+            if (radio->txCounter < radio->packets2send.size() && radio->packets2send[radio->txCounter] != nullptr) {
+                //if (radio->packets2send[++(radio->txCounter)]) {
+                if (radio->packets2send[radio->txCounter]->delayed != 0) {
+                    radio->delayed = radio->packets2send[radio->txCounter];
+                    radio->packets2send[radio->txCounter] = nullptr;
+                    radio->Sender.delay_ms(radio->delayed/*radio->packets2send[radio->txCounter]*/->delayed, packetSender, radio);
+                }
+                else {
+                    radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->repeatTime, packetSender, radio);
+                }
             }
+            else { 
+                // In any case, after last packet sent, unlock the radio
+                txMode = false; 
+                radio->packets2send.clear();
+                }
         }
+        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
 
-    bool iohcRadio::sent(IOHC::iohcPacket *packet)
-    {
+    bool iohcRadio::sent(iohcPacket* packet) {
         bool ret = false;
-
-        if (txCB)
+        if (txCB) {
             ret = txCB(packet);
+        }
         return ret;
     }
 
-    bool iohcRadio::receive()
-    {
-        bool frmErr=false;
-        iohc = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+    //    static uint8_t RF96lnaMap[] = { 0, 0, 6, 12, 24, 36, 48, 48 };
+    bool iohcRadio::receive(bool stats = false) {
+        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        bool frmErr = false;
+        iohc = new iohcPacket; //(iohcPacket *)malloc(sizeof(iohcPacket));
         iohc->buffer_length = 0;
-        iohc->frequency = scan_freqs[currentFreq];
-        iohc->millis = __g_payload_millis;
+        iohc->frequency = scan_freqs[currentFreqIdx];
+        /*iohc->*/
+        packetStamp = _g_payload_millis;
 #if defined(SX1276)
-        iohc->rssi = (float)(Radio::readByte(REG_RSSIVALUE)/2)*-1;          //
+        if (stats) {
+            iohc->rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
+            int16_t thres = Radio::readByte(REG_RSSITHRESH);
+            iohc->snr = iohc->rssi > thres ? 0 : (thres - iohc->rssi);
+            //            iohc->lna = RF96lnaMap[ (Radio::readByte(REG_LNA) >> 5) & 0x7 ];
+            int16_t f = (uint16_t)Radio::readByte(REG_AFCMSB);
+            f = (f << 8) | (uint16_t)Radio::readByte(REG_AFCLSB);
+            //            iohc->afc = f * (32000000.0 / 524288.0); // static_cast<float>(1 << 19));
+            iohc->afc = /*(int32_t)*/f * 61.0;
+            //            iohc->rssiAt = micros();
+        }
 #elif defined(CC1101)
         __g_preamble = false;
 
@@ -229,16 +252,13 @@ Serial.println("packetSender");
         uint32_t lastPop = millis();
 #endif
 
-
 #if defined(SX1276)
-        while (!Radio::dataAvail())
-            ;
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        do
-        {
-            iohc->payload.buffer[iohc->buffer_length] = Radio::readByte(REG_FIFO);
-            iohc->buffer_length += 1;
-        } while (Radio::dataAvail());
+        while (!Radio::dataAvail());
+
+        while (Radio::dataAvail()) {
+            iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
+        }
+
 #elif defined(CC1101)
         uint8_t lenghtFrameCoded = 0xFF;
         uint8_t tmpBuffer[64]={0x00};
@@ -295,30 +315,34 @@ Serial.println("packetSender");
         f_lock = false;
         Radio::SPIsendCommand(CMD_RX);
 
-#endif        
+#endif
 
-//        Radio::clearFlags();
+        //        Radio::clearFlags();
+        iohc->decode();
+        // IOHC::lastSendCmd = iohc->payload.packet.header.cmd;
+
         if (rxCB && !frmErr) rxCB(iohc);
-        free(iohc);
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
+
+        //        delete iohc; //free(iohc);
+
+        digitalWrite(RX_LED, false); //digitalRead(RX_LED)^1);
         return true;
     }
 
     void IRAM_ATTR iohcRadio::i_preamble() {
 #if defined(SX1276)
-        __g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED) ? true:false;
+        _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
 #elif defined(CC1101)
         __g_preamble = true;
 #endif
-        f_lock = __g_preamble;
+        f_lock = _g_preamble;
     }
 
     void IRAM_ATTR iohcRadio::i_payload() {
 #if defined(SX1276)
-            __g_payload = digitalRead(RADIO_PACKET_AVAIL) ? true:false;
-            if (__g_payload)
-                __g_payload_millis = millis();
+        _g_payload = digitalRead(RADIO_PACKET_AVAIL);
+        if (_g_payload)
+            _g_payload_millis = esp_timer_get_time(); // millis();
 #endif
     }
-
 }

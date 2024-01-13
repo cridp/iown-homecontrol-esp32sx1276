@@ -1,60 +1,68 @@
 #include <iohcObject.h>
 
+#include <utility>
 
-namespace IOHC
-{
-    iohcObject::iohcObject()
-    {
-    }
+namespace IOHC {
+    iohcObject::iohcObject() = default;
 
-    iohcObject::iohcObject(address node, address backbone, uint8_t actuator[2], uint8_t manufacturer, uint8_t flags)
-    {
-        for (uint8_t i=0; i<3; i++)
-        {
-            iohcDevice.node[i] = node[i];
-            iohcDevice.backbone[i] = backbone[i];
+    iohcObject::iohcObject(const address node, const address backbone, const uint8_t actuator[2], uint8_t manufacturer, uint8_t flags) {
+        for (uint8_t i=0; i<3; i++) {
+            object.node[i] = node[i];
+            object.backbone[i] = backbone[i];
             if (i<2)
-                iohcDevice.actuator[i] = actuator[i];
+                object.actuator[i] = actuator[i];
         }
 
-        iohcDevice.flags = flags;
-        iohcDevice.io_manufacturer = manufacturer;
+        object.flags = flags;
+        object.io_manufacturer = manufacturer;
     }
 
-    iohcObject::iohcObject(std::string serialized)
-    {
-        uint8_t eval[sizeof(iohcObject_t)];
+//    iohcObject::iohcObject(IOHC::iohcPacket *iohc) { }
 
-        hexStringToBytes(serialized, eval);
-        memcpy(iohcDevice.node, eval, sizeof(iohcObject_t));
+    iohcObject::iohcObject(std::string serialized) {
+        uint8_t eval[sizeof(object)];
+
+        hexStringToBytes(std::move(serialized), eval);
+        memcpy(object.node, eval, sizeof(object));
     }
 
-    address *iohcObject::getNode(void)
-    {
-        return((address *)iohcDevice.node);
+    // iohcObject::iohc2WObject(std::string serialized) {
+    //     uint8_t eval[sizeof(iohc2WObject_t /*iohcObject_t*/)];
+
+    //     hexStringToBytes(serialized, eval);
+    //     memcpy(iohc2WDevice.node, eval, sizeof(iohc2WObject_t/*iohcObject_t*/));
+    // }
+    
+    iohcObject::~iohcObject() = default;
+
+    address* iohcObject::getNode() {
+        return reinterpret_cast<address*>(object.node); // ((address *)object.node);
     }
 
-    address *iohcObject::getBackbone(void)
-    {
-        return((address *)iohcDevice.backbone);
+    address *iohcObject::getBackbone() {
+        return reinterpret_cast<address*>(object.backbone); // ((address *)object.backbone);
     }
 
-    std::tuple<uint16_t, uint8_t> iohcObject::getTypeSub(void)
-    {
-        return std::make_tuple(((iohcDevice.actuator[0]<<8) + (iohcDevice.actuator[1]))>>6, iohcDevice.actuator[1] & 0x3f);
+    std::tuple<uint16_t, uint8_t> iohcObject::getTypeSub() {
+        return std::make_tuple(((object.actuator[0]<<8) + (object.actuator[1]))>>6, object.actuator[1] & 0x3f);
     }
 
-    std::string iohcObject::serialize(void)
-    {
-        return (bytesToHexString(iohcDevice.node, sizeof(iohcObject_t)));
+    std::string iohcObject::serialize() {
+        return (bytesToHexString(object.node, sizeof(iohcObject_t)));
     }
     
-    void iohcObject::dump(void)
-    {
-        Serial.printf("Address: %2.2x%2.2x%2.2x, ", iohcDevice.node[0], iohcDevice.node[1], iohcDevice.node[2]);
-        Serial.printf("Backbone: %2.2x%2.2x%2.2x, ", iohcDevice.backbone[0], iohcDevice.backbone[1], iohcDevice.backbone[2]);
-        Serial.printf("Typ/Sub: %2.2x%2.2x, ", iohcDevice.actuator[0], iohcDevice.actuator[1]);
-        Serial.printf("lp: %u, io: %u, rf: %u, ta: %2.2ums, ", iohcDevice.flags&0x03?1:0, iohcDevice.flags&0x04?1:0, iohcDevice.flags&0x08?1:0, 5<<(iohcDevice.flags>>6));
-        Serial.printf("%s\n", (iohcDevice.io_manufacturer <= MAX_MANUFACTURER)?man_id[iohcDevice.io_manufacturer-1]:man_id[MAX_MANUFACTURER-1]);
+    void iohcObject::dump1W() {
+        printf("Address: %2.2x%2.2x%2.2x, ", object.node[0], object.node[1], object.node[2]);
+        printf("Backbone: %2.2x%2.2x%2.2x, ", object.backbone[0], object.backbone[1], object.backbone[2]);
+        printf("Typ/Sub: %2.2x%2.2x, ", object.actuator[0], object.actuator[1]);
+        printf("lp: %u, io: %u, rf: %u, ta: %2.2ums, ", object.flags&0x03?1:0, object.flags&0x04?1:0, object.flags&0x08?1:0, 5<<(object.flags>>6));
+        printf("%s\n", (object.io_manufacturer <= MAX_MANUFACTURER)?man_id[object.io_manufacturer-1]:man_id[MAX_MANUFACTURER-1]);
+    }
+    void iohcObject::dump2W() {
+//        Serial.printf("Address: %2.2x%2.2x%2.2x, ", object.node[0], object.node[1], object.node[2]);
+//        Serial.printf("Backbone: %2.2x%2.2x%2.2x, ", object.backbone[0], object.backbone[1], object.backbone[2]);
+//        Serial.printf("Typ/Sub: %2.2x%2.2x, ", object.actuator[0], object.actuator[1]);
+//        Serial.printf("lp: %u, io: %u, rf: %u, ta: %2.2ums, ", object.flags&0x03?1:0, object.flags&0x04?1:0, object.flags&0x08?1:0, 5<<(object.flags>>6));
+//        Serial.printf("%s\n", (object.io_manufacturer <= MAX_MANUFACTURER)?man_id[object.io_manufacturer-1]:man_id[MAX_MANUFACTURER-1]);
     }
 }

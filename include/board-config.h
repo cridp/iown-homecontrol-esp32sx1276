@@ -1,20 +1,33 @@
-#pragma once
+#ifndef IOHC_BOARD_H
+#define IOHC_BOARD_H
 
-//#define SX1276
-#define CC1101
+#define SX1276
+#undef CC1101
+#define HELTEC
+#undef ESP8266
 
-
-/*!
+/*
  * Defines the time required for the TCXO to wakeup [ms].
  */
 
 #define BOARD_TCXO_WAKEUP_TIME                      0
 #define BOARD_READY_AFTER_POR						10000
 
-
-/*!
+/*
  * Board MCU pins definitions - NodeMCUv2
  */
+// OK Heltec
+#define RADIO_SCLK_PIN  5  
+#define RADIO_MISO_PIN 19 
+#define RADIO_MOSI_PIN 27 
+#define RADIO_CS_PIN   18 
+#define RADIO_DIO0_PIN 26 
+#define RADIO_RST_PIN  14
+#define RADIO_DIO1_PIN 35 
+#define RADIO_DIO2_PIN 34
+#define RADIO_BUSY_PIN 32
+#define BOARD_LED_PIN  25
+
 #if defined(ESP8266)
 #define RADIO_RESET                                 4   // NodeMCU D2
 
@@ -22,33 +35,31 @@
 #define RADIO_MISO                                  12  // NodeMCU D6
 #define RADIO_SCLK                                  14  // NodeMCU D5
 #define RADIO_NSS                                   15  // NodeMCU D8
-#elif defined(ESP32)
-    #define RADIO_MOSI                              23  // Default VSPI
-    #define RADIO_MISO                              19  // Default VSPI
-    #define RADIO_SCLK                              18  // Default VSPI
+#elif defined(HELTEC)
+    #define RADIO_MOSI             RADIO_MOSI_PIN //                 23  // Default VSPI
+    #define RADIO_MISO             RADIO_MISO_PIN //                 19  // Default VSPI
+    #define RADIO_SCLK             RADIO_SCLK_PIN //                 18  // Default VSPI
     #if defined(SX1276)
-        #define RADIO_RESET                         12
-        #define RADIO_NSS                           25
+        #define RADIO_RESET        RADIO_RST_PIN  //                 12
+        #define RADIO_NSS          RADIO_CS_PIN   //                 25
     #elif defined(CC1101)
         #define RADIO_NSS                           32
     #endif
 #endif
-
 
 #if defined(SX1276)
     //#define RADIO_DIO_0                             5   // NodeMCU D1
     //#define RADIO_DIO_1                             2   // NodeMCU D4 // Not used - No wire
     //#define RADIO_DIO_2                             2   // NodeMCU D4 // Not used - No wire
     //#define RADIO_DIO_4                             2   // NodeMCU D4
-    #define RADIO_DIO_0                             35
+    #define RADIO_DIO_0                             RADIO_DIO0_PIN //                 35
     //#define RADIO_DIO_1                             34      // Not used - No wire
     //#define RADIO_DIO_2                             34      // Not used - No wire
-    #define RADIO_DIO_4                             34
+    #define RADIO_DIO_4                             RADIO_DIO2_PIN //                 34
 #elif defined(CC1101)
     #define RADIO_DIO_0                             14
     #define RADIO_DIO_2                             33
 #endif
-
 
 #if defined(SX1276)
     #define RADIO_PACKET_AVAIL                      RADIO_DIO_0     // Packet Received / CRC ok from Radio
@@ -62,25 +73,27 @@
     // GD2 
 #endif
 
-
 #define SPI_CLK_FRQ                                 10000000
 
-
 #define PREAMBLE_MSB                                0x00
-#define PREAMBLE_LSB                                0x34    // 0x34: 12ms to have receiver up and running (52 0x55 bytes - 13,54mS)
+#define PREAMBLE_LSB                                52  // 0x34: 12ms to have receiver up and running (52 0x55 bytes - 13,54mS)
 #define SYNC_BYTE_1                                 0xff
-#define SYNC_BYTE_2                                 0x33    // Sync word - Size must be set to 2; fist byte 0xff then 0x33 size-1 times
-#define SYNC_BYTE_2_ENC                             0xB3    // Sync word Inverted + Enconded with start & stop bits
+#define SYNC_BYTE_2                                 0x33    // Sync word - Size must be set to 2; first byte 0xff then 0x33 size-1 times
+//#define SYNC_BYTE_2_ENC                             0xB3    // Sync word Inverted + Encoded with start & stop bits
 
-//#define MAX_FREQS                                   3       // Number of Frequencies to scan through Fast Hopping
-//#define FREQS2SCAN                                  {868250000, 868950000, 869850000}
+  #define CHANNEL1  868250000 //2W
+  #define CHANNEL2  868950000 //1W 2W
+  #define CHANNEL3  869850000 //2W
+
+#define FREQS2SCAN   {CHANNEL2, CHANNEL1, CHANNEL3} 
 #define MAX_FREQS                                   1       // Number of Frequencies to scan through Fast Hopping
-#define FREQS2SCAN                                  {868950000}
+//#define FREQS2SCAN                                  { CHANNEL2 } //
 
 #if defined(ESP8266)
     #define SCAN_LED                                D0
-#elif defined(ESP32)
-    #define SCAN_LED                                22
-    #define LED_BUILTIN                             21
+#elif defined(HELTEC)
+    #define SCAN_LED                  BOARD_LED_PIN //              22
 #endif
-#define RX_LED                                      LED_BUILTIN
+#define RX_LED                        SCAN_LED
+
+#endif

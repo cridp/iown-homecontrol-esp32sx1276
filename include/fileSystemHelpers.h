@@ -4,11 +4,11 @@
 #include <string>
 #include <LittleFS.h>
 
-#if defined(ESP32)
+#if defined(HELTEC)
     #include <FS.h>
 #endif
 
 
-void listFS(void);
+void listFS();
 void cat(const char *fname);
 void rm(const char *fname);

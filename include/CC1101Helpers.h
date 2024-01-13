@@ -7,7 +7,7 @@
 
 #if defined(ESP8266)
 
-#elif defined(ESP32)
+#elif defined(HELTEC)
     #include "mbedtls/aes.h"        // AES functions
 #endif
 

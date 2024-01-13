@@ -22,8 +22,7 @@ template <typename> class Delegate; /* undefined */
 /** @brief  Delegate class
 */
 template <typename ReturnType, typename... ParamTypes>
-class Delegate<ReturnType(ParamTypes...)> : public std::function<ReturnType(ParamTypes...)>
-{
+class Delegate<ReturnType(ParamTypes...)> : public std::function<ReturnType(ParamTypes...)> {
 	using StdFunc = std::function<ReturnType(ParamTypes...)>;
 
 public:

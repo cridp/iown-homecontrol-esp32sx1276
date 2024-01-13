@@ -7,7 +7,7 @@
 #include <map>
 #if defined(ESP8266)
     #include <TickerUs.h>
-#elif defined(ESP32)  	
+#elif defined(HELTEC)  	
     #include <TickerUsESP32.h>
     #include <esp_task_wdt.h>
 #endif
@@ -65,7 +65,7 @@ namespace Radio
         
     #if defined(ESP8266)
         SPI.begin();
-    #elif defined(ESP32)
+    #elif defined(HELTEC)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
     #endif
 
@@ -759,10 +759,10 @@ void SPItransfer(uint8_t cmd, uint8_t reg, uint8_t* dataOut, uint8_t* dataIn, si
         SPIsendCommand(CMD_IDLE);
 
     // wait until idle is reached
-    uint32_t start = millis();
+    uint32_t start = stamp();
     while(SPIgetRegValue(REG_MARCSTATE, 4, 0) != RF_MARC_STATE_IDLE) {
         yield();
-        if(millis() - start > 100) {
+        if(stamp() - start > 100) {
         // timeout, this should really not happen
         Serial.println("Critical Err. CC1101 do not enter in IDLE STATE");
         return(-1);

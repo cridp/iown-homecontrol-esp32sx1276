@@ -1,20 +1,40 @@
-#include <Arduino.h>                // Is this not required?
+#include <board-config.h>
+#include <user_config.h>
+
+#include <interact.h>
+#include <crypto2Wutils.h>
+#include <iohcCryptoHelpers.h>
+#include <iohcRadio.h>
+
+#include <iohcSystemTable.h>
+#include <fileSystemHelpers.h>
+#include <ArduinoJson.h>
+#include <iohcRemote1W.h>
+#include <iohcCozyDevice2W.h>
+#include <iohcOtherDevice2W.h>
+//#include <WiFi.h>
+//#include <Arduino.h>
 
 #if defined(ESP8266)
-    #include <ESP8266WiFi.h>
-    #include "ESPAsyncTCP.h"
-    #include <ESP8266mDNS.h>
-    #include <ESP8266SSDP.h>
-#elif defined(ESP32)
-    #include <WiFi.h>
-    #include <AsyncTCP.h>           // ESPAsyncWebServer & OTA
-    #include <ESPmDNS.h>            // ESPAsyncWebServer & OTA
-    #include <ESP32SSDP.h>
+//    #include <ESP8266WiFi.h>
+//    #include "ESPAsyncTCP.h"
+//    #include <ESP8266mDNS.h>
+//    #include <ESP8266SSDP.h>
+#elif defined(HELTEC)
+//    #include <WiFi.h>
+//    #include "esp_wifi.h"
+//   #include "mqtt_client.h"
+//    #include <AsyncMqttClient.h>
+//    #include <picoMQTT.h>
+//    #include <AsyncTCP.h>           // ESPAsyncWebServer & OTA
+//    #include <ESPmDNS.h>            // ESPAsyncWebServer & OTA
+//    #include <ESP32SSDP.h>
 #endif
 
 
-#include <ESPAsyncWebServer.h>
-#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration - Async branch
+//#include <ESPAsyncWebServer.h>
+//#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration - Async branch
+
 /*
 // Transceivers Helpers defined inside de iohcRadio header
 #if defined(SX1276)
@@ -23,133 +43,137 @@
     #include <CC1101Helpers.h>
 #endif
 */
-#include <board-config.h>
-#include <user_config.h>
-#include <globals.h>
-#include <WebServerHelpers.h>
-#include <iohcCryptoHelpers.h>
-#include <iohcRadio.h>
-#include <iohcSystemTable.h>
-#include <iohcRemote1W.h>
-#include <fileSystemHelpers.h>
 
+//#include <WebServerHelpers.h>
+//const char* http_username = HTTP_USERNAME;
+//const char* http_password = HTTP_PASSWORD;
+//WiFiManager wm;
 
-const char* http_username = HTTP_USERNAME;
-const char* http_password = HTTP_PASSWORD;
-WiFiManager wm;
-
-AsyncWebServer server(HTTP_LISTEN_PORT);
-AsyncWebSocket ws("/ws"); // access at ws://[esp ip]/ws
-AsyncEventSource events("/events"); // event source (Server-Sent events)
-
+//AsyncWebServer server(HTTP_LISTEN_PORT);
+//AsyncWebSocket ws("/ws"); // access at ws://[esp ip]/ws
+//AsyncEventSource events("/events"); // event source (Server-Sent events)
 
 // Receiving buffer
 bool verbosity = true;
-void txUserBuffer(Tokens*cmd);
-void testKey(void);
-uint8_t keyCap[16] = {0};
-uint8_t source_originator[3] = {0};
+bool pairMode = false;
+bool scanMode = false;
 
-unsigned long relTime;
+void txUserBuffer(Tokens* cmd);
+void testKey();
+void scanDump();
+
+uint8_t keyCap[16] = {0};
+//uint8_t source_originator[3] = {0};
+//unsigned long relStamp; // In all Devvices
 
 //#define MAXPACKETS  199
-IOHC::iohcRadio *radioInstance;
-IOHC::iohcPacket *radioPackets[IOHC_INBOUND_MAX_PACKETS];
-IOHC::iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS];
+IOHC::iohcRadio* radioInstance;
+IOHC::iohcPacket* radioPackets[IOHC_INBOUND_MAX_PACKETS];
+//IOHC::iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS];
+//std::array<IOHC::iohcPacket *, 25> packets2send;
+std::vector<IOHC::iohcPacket*> packets2send{};
+
 uint8_t nextPacket = 0;
-IOHC::iohcSystemTable *sysTable;
-IOHC::iohcRemote1W *remote1W;
+
+IOHC::iohcSystemTable* sysTable;
+IOHC::iohcRemote1W* remote1W;
+IOHC::iohcCozyDevice2W* cozyDevice2W;
+IOHC::iohcOtherDevice2W* otherDevice2W;
 //IOHC::iohcObject *dev;
 
-uint32_t frequencies[MAX_FREQS] = FREQS2SCAN;
+uint32_t frequencies[] = FREQS2SCAN;
 
-bool msgRcvd(IOHC::iohcPacket *iohc);
-bool msgArchive(IOHC::iohcPacket *iohc);
-void discovery(void);
+bool publishMsg(IOHC::iohcPacket* iohc);
+bool msgRcvd(IOHC::iohcPacket* iohc);
+bool msgArchive(IOHC::iohcPacket* iohc);
 
+//void discovery(void);
+
+#if defined(ESP8266)
+      Timers::TickerUs kbd_tick;
+#elif defined(HELTEC)
+//      TickerUsESP32 kbd_tick;
+#endif
 
 void setup() {
-//    Timers::init_us();
-//    system_timer_reinit();
+    //    Timers::init_us();
+    //    system_timer_reinit();
 #if defined(ESP8266)
-    INIT_US;
+        INIT_US;
 #endif
-    
 
     Serial.begin(SERIALSPEED);
-//    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
-
+    //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
     pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
-    digitalWrite( RX_LED, true);
+    digitalWrite(RX_LED, 1);
 
-/*
-    WiFi.mode(WIFI_STA); // explicitly set mode, esp defaults to STA+AP 
-    wm.autoConnect();
-    
-    // WiFi Manager setup
-    // Reset settings - wipe credentials for testing
-    //wm.resetSettings();
-    wm.setConfigPortalBlocking(false);
-    wm.setConfigPortalTimeout(120);
-    // automatically connect using saved credentials if they exist
-    // If connection fails it starts an access point with the specified name
-    if(wm.autoConnect("AutoConnectAP")){
-        LOG(printf_P, PSTR("Connected :)"));
-        // Show the current IP Address
-        LOG(printf_P, PSTR("IP got: %s\n"), WiFi.localIP().toString());
-    }
-    else {
-        LOG(printf_P("Configportal running\n"));
-    }
-*/
+    /*
+        wm.autoConnect();
+
+        // WiFi Manager setup
+        // Reset settings - wipe credentials for testing
+        //wm.resetSettings();
+        wm.setConfigPortalBlocking(false);
+        wm.setConfigPortalTimeout(120);
+        // automatically connect using saved credentials if they exist
+        // If connection fails it starts an access point with the specified name
+        if(wm.autoConnect("AutoConnectAP")){
+            LOG(printf_P, PSTR("Connected :)"));
+            // Show the current IP Address
+            LOG(printf_P, PSTR("IP got: %s\n"), WiFi.localIP().toString());
+        }
+        else {
+            LOG(printf_P("Configportal running\n"));
+        }
+    */
 
     // Mount LittleFS filesystem
 #if defined(ESP8266)
     LittleFSConfig lcfg;
     lcfg.setAutoFormat(false);
     LittleFS.setConfig(lcfg);
+//    LittleFS.begin();
+#endif //#elif defined(HELTEC)
     LittleFS.begin();
-#elif defined(ESP32)
-    LittleFS.begin();    
-#endif
+    //#endif
 
-/*
-    // Start MDNS
-    if (! MDNS.begin("IO-Homecontrol_gateway")) 
-        Serial.println(F("Error setting up MDNS responder"));
+    /*
+        // Start MDNS
+        if (! MDNS.begin("IO-Homecontrol_gateway"))
+            Serial.println(F("Error setting up MDNS responder"));
 
-    MDNS.addService("http", "tcp", HTTP_LISTEN_PORT);
-    //testmDNS((char *)"http");
-    // Start SSDP
-    SSDP.setSchemaURL("description.xml");
-    SSDP.setHTTPPort(HTTP_LISTEN_PORT);
-    SSDP.setName("Velux remote gateway");
-#if defined(ESP8266)
-    SSDP.setSerialNumber(ESP.getChipId());
-#elif defined(ESP32)
-    uint64_t macAddress = ESP.getEfuseMac();
-    uint64_t macAddressTrunc = macAddress << 40;
-    SSDP.setSerialNumber(macAddressTrunc >> 40);
-#endif
+        MDNS.addService("http", "tcp", HTTP_LISTEN_PORT);
+        //testmDNS((char *)"http");
+        // Start SSDP
+        SSDP.setSchemaURL("description.xml");
+        SSDP.setHTTPPort(HTTP_LISTEN_PORT);
+        SSDP.setName("Velux remote gateway");
+    #if defined(ESP8266)
+        SSDP.setSerialNumber(ESP.getChipId());
+    #elif defined(HELTEC)
+        uint64_t macAddress = ESP.getEfuseMac();
+        uint64_t macAddressTrunc = macAddress << 40;
+        SSDP.setSerialNumber(macAddressTrunc >> 40);
+    #endif
 
-    SSDP.setURL("/");
-    SSDP.setDeviceType("upnp:rootdevice");
-    SSDP.begin();
-    //server.on("/description.xml", HTTP_GET, [](AsyncWebServerRequest *request) { SSDP.schema((Print&)std::ref(request->client())); });
+        SSDP.setURL("/");
+        SSDP.setDeviceType("upnp:rootdevice");
+        SSDP.begin();
+        //server.on("/description.xml", HTTP_GET, [](AsyncWebServerRequest *request) { SSDP.schema((Print&)std::ref(request->client())); });
 
-    // Web Server
-    // attach AsyncWebSocket
-    ws.onEvent(onEvent);
-    server.addHandler(&ws);
+        // Web Server
+        // attach AsyncWebSocket
+        ws.onEvent(onEvent);
+        server.addHandler(&ws);
 
-    // attach AsyncEventSource
-    server.addHandler(&events);
-*/
+        // attach AsyncEventSource
+        server.addHandler(&events);
+    */
 
     /*
     To be completed
-    
+
     // respond to GET requests on URL /heap
     server.on("/heap", HTTP_GET, [](AsyncWebServerRequest *request){
     request->send(200, "text/plain", String(ESP.getFreeHeap()));
@@ -202,176 +226,511 @@ void setup() {
         }
     }
     });
-    
+
     */
 
     // attach filesystem root at URL /fs
-//    server.serveStatic("/fs", LittleFS, "/");
+    //    server.serveStatic("/fs", LittleFS, "/");
 
     // Catch-All Handlers
     // Any request that can not find a Handler that canHandle it
     // ends in the callbacks below.
-//    server.onNotFound(onRequest);
-//    server.onRequestBody(onBody);
-//    server.begin();
+    //    server.onNotFound(onRequest);
+    //    server.onRequestBody(onBody);
+    //    server.begin();
+    radioInstance = IOHC::iohcRadio::getInstance();
+    radioInstance->start(MAX_FREQS, frequencies, 0, msgRcvd, nullptr); //publishMsg); //msgArchive); //, msgRcvd);
 
     sysTable = IOHC::iohcSystemTable::getInstance();
+
     remote1W = IOHC::iohcRemote1W::getInstance();
-    radioInstance = IOHC::iohcRadio::getInstance();
+    cozyDevice2W = IOHC::iohcCozyDevice2W::getInstance();
+    otherDevice2W = IOHC::iohcOtherDevice2W::getInstance();
 
-    Cmd::init();    // Initialize Serial commands reception and handlers
-    Cmd::addHandler((char *)"dump", (char *)"Dump Trasnceiver registers", [](Tokens*cmd)->void {Radio::dump(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
-    Cmd::addHandler((char *)"dump2", (char *)"Dump Trasnceiver registers 1Col", [](Tokens*cmd)->void {Radio::dump2(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
-    Cmd::addHandler((char *)"list", (char *)"List received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) msgRcvd(radioPackets[i]); sysTable->dump();});
-    Cmd::addHandler((char *)"save", (char *)"Saves Objects table", [](Tokens*cmd)->void {sysTable->save(true);});
-    Cmd::addHandler((char *)"erase", (char *)"Erase received packets", [](Tokens*cmd)->void {for (uint8_t i=0; i<nextPacket; i++) free(radioPackets[i]); nextPacket = 0;});
-    Cmd::addHandler((char *)"send", (char *)"Send packet from cmd line", [](Tokens*cmd)->void {txUserBuffer(cmd);});
-    Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens*cmd)->void {discovery();});
-    Cmd::addHandler((char *)"verbose", (char *)"Toggle verbose output on packets list", [](Tokens*cmd)->void {verbosity=!verbosity;});
-    Cmd::addHandler((char *)"ls", (char *)"List filesystem", [](Tokens*cmd)->void {listFS();});
-    Cmd::addHandler((char *)"cat", (char *)"Print file content", [](Tokens*cmd)->void {cat(cmd->at(1).c_str());});
-    Cmd::addHandler((char *)"rm", (char *)"Remove file", [](Tokens*cmd)->void {rm(cmd->at(1).c_str());});
-    Cmd::addHandler((char *)"key", (char *)"Test keys generation", [](Tokens*cmd)->void {testKey();});
-    Cmd::addHandler((char *)"pair", (char *)"1W put device in pair mode", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Pair);});
-    Cmd::addHandler((char *)"add", (char *)"1W add controller to device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Add);});
-    Cmd::addHandler((char *)"remove", (char *)"1W remove controller from device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Remove);});
-    Cmd::addHandler((char *)"open", (char *)"1W open device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Open);});
-    Cmd::addHandler((char *)"close", (char *)"1W close device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Close);});
-    Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Stop);});
-    Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::Vent);});
-    Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens*cmd)->void {remote1W->cmd(IOHC::RemoteButton::ForceOpen);});
+    //   AES_init_ctx(&ctx, transfert_key); // PreInit AES for cozy (1W use original version) TODO
 
+    Cmd::init(); // Initialize Serial commands reception and handlers
+    // Cozybox Kizbox Conexoon 2W
+    Cmd::addHandler((char *)"powerOn", (char *)"Permit to retrieve paired devices", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::powerOn, nullptr);    });
+    Cmd::addHandler((char *)"setTemp", (char *)"7.0 to 28.0 - 0 get actual temp", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::setTemp, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"setMode", (char *)"auto prog manual off - FF to get actual mode", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::setMode, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"setPresence", (char *)"on off", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::setPresence, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"setWindow", (char *)"open close", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::setWindow, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"midnight", (char *)"Synchro Paired", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::midnight, nullptr);    });
+    Cmd::addHandler((char *)"associate", (char *)"Synchro Paired", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::associate, nullptr);    });
+    Cmd::addHandler((char *)"custom", (char *)"test unknown commands", [](Tokens* cmd)-> void {scanMode = true;       cozyDevice2W->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);    });
+    // 1W
+    Cmd::addHandler((char *)"pair", (char *)"1W put device in pair mode", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Pair);    });
+    Cmd::addHandler((char *)"add", (char *)"1W add controller to device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Add);    });
+    Cmd::addHandler((char *)"remove", (char *)"1W remove controller from device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Remove);    });
+    Cmd::addHandler((char *)"open", (char *)"1W open device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Open);    });
+    Cmd::addHandler((char *)"close", (char *)"1W close device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Close);    });
+    Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Stop);    });
+    Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent);    });
+    Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen);    });
+    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey);    });
+    // Other 2W
+    Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery);    });
+    // Utils
+    Cmd::addHandler((char *)"dump", (char *)"Dump Transceiver registers", [](Tokens* cmd)-> void {
+        Radio::dump();
+        Serial.printf("*%d packets in memory\t", nextPacket);
+        Serial.printf("*%d devices discovered\n\n", sysTable->size());
+    });
+    //    Cmd::addHandler((char *)"dump2", (char *)"Dump Transceiver registers 1Col", [](Tokens*cmd)->void {Radio::dump2(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
+    Cmd::addHandler((char *)"list1W", (char *)"List received packets", [](Tokens* cmd)-> void {
+        for (uint8_t i = 0; i < nextPacket; i++) msgRcvd(radioPackets[i]);
+        sysTable->dump1W();
+    });
+    Cmd::addHandler((char *)"save", (char *)"Saves Objects table", [](Tokens* cmd)-> void { sysTable->save(true); });
+    Cmd::addHandler((char *)"erase", (char *)"Erase received packets", [](Tokens* cmd)-> void {
+        for (uint8_t i = 0; i < nextPacket; i++) free(radioPackets[i]);
+        nextPacket = 0;
+    });
+    Cmd::addHandler((char *)"send", (char *)"Send packet from cmd line", [](Tokens* cmd)-> void { txUserBuffer(cmd); });
+    Cmd::addHandler((char *)"verbose", (char *)"Toggle verbose output on packets list", [](Tokens* cmd)-> void { verbosity = !verbosity; });
+    Cmd::addHandler((char *)"ls", (char *)"List filesystem", [](Tokens* cmd)-> void { listFS(); });
+    Cmd::addHandler((char *)"cat", (char *)"Print file content", [](Tokens* cmd)-> void { cat(cmd->at(1).c_str()); });
+    Cmd::addHandler((char *)"rm", (char *)"Remove file", [](Tokens* cmd)-> void { rm(cmd->at(1).c_str()); });
+    Cmd::addHandler((char *)"list2W", (char *)"List received packets", [](Tokens* cmd)-> void {
+        for (uint8_t i = 0; i < nextPacket; i++) msgRcvd(radioPackets[i]);
+        sysTable->dump2W();
+    });
+    // Unnecessary just for test
+    Cmd::addHandler((char *)"discover28", (char *)"discover28", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover28, nullptr/*"00FFFB"*/);    });
+    Cmd::addHandler((char *)"discover2A", (char *)"discover2A", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover2A, nullptr/*"00FFFB"*/);    });
+    Cmd::addHandler((char *)"fake0", (char *)"fake0", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::fake0, nullptr);    });
+    Cmd::addHandler((char *)"ack", (char *)"ack33", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::ack, nullptr);    });
+    Cmd::addHandler((char *)"pairMode", (char *)"pairMode", [](Tokens* cmd)-> void { pairMode = !pairMode; });
 
-    radioInstance->start(MAX_FREQS, frequencies, 0, msgArchive, msgRcvd);
-    relTime = millis();
+    Cmd::addHandler((char *)"scanMode", (char *)"scanMode", [](Tokens* cmd)-> void {scanMode = true; cozyDevice2W->cmd(IOHC::DeviceButton::checkCmd, nullptr/*"00FFFB"*/);});
+    Cmd::addHandler((char *)"scanDump", (char *)"Dump Scan Results", [](Tokens* cmd)-> void {scanMode = false;  cozyDevice2W->scanDump(); });
 
-    Serial.printf("------------------------------------------------------\n");
-    Serial.printf("------------------------------------------------------\n");
-    Serial.printf(" Startup completed. type help to see what you can do!\n");
-    Serial.printf("------------------------------------------------------\n");
-    Serial.printf("------------------------------------------------------\n");
+    // cozyDevice2W->scanDump();
 
+    Serial.printf("Startup completed. type help to see what you can do!\n");
+    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     //Serial.println("SPI Speed:" + String(SPI.))
 }
 
 void loop() {
-//    wm.process();
+    //    wm.process();
 #if defined(ESP8266)
-    MDNS.update();
+        MDNS.update();
 #endif
 
-    return;
-/*
+    //    return;
+    /*
 
-    if(shouldReboot){
-    Serial.println("Rebooting...");
-    delay(100);
-    ESP.restart();
-    }
-    static char temp[128];
-    sprintf(temp, "Seconds since boot: %lu", millis()/1000);
-    events.send(temp, "time"); //send event "time"
-*/
+        if(shouldReboot){
+        Serial.println("Rebooting...");
+        delay(100);
+        ESP.restart();
+        }
+        static char temp[128];
+        sprintf(temp, "Seconds since boot: %lu", millis()/1000);
+        events.send(temp, "time"); //send event "time"
+    */
 }
 
-bool msgRcvd(IOHC::iohcPacket *iohc)
-{
-    unsigned char _dir;
-    if ((iohc->millis - relTime) > 3000)
-    {
-        Serial.printf("\n");
-        relTime = iohc->millis;
-        for (uint8_t i=0; i<3; i++)
-            source_originator[i] = iohc->payload.packet.header.source[i];
-    }
-    if (!memcmp(source_originator, iohc->payload.packet.header.source, 3))
-        _dir = '>';
-    else
-        _dir = '<';
+bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
+    // iohc->decode(verbosity);
 
+    DynamicJsonDocument doc(256);
+    doc["type"] = "Unk";
+    switch (iohc->payload.packet.header.cmd) {
+        case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
+            if (!pairMode) break;
 
-    if (verbosity)
-    {
-        Serial.printf("Len: %2.2u, mode: %1xW, first: %s, last: %s,", iohc->payload.packet.header.framelength, iohc->payload.packet.header.mode?1:2, iohc->payload.packet.header.first?"T":"F", iohc->payload.packet.header.last?"T":"F");
-        Serial.printf(" b: %u, r: %u, lp: %u, ack: %u, prt: %u", iohc->payload.packet.header.use_beacon, iohc->payload.packet.header.routed, iohc->payload.packet.header.low_p, iohc->payload.packet.header.ack, iohc->payload.packet.header.prot_v);
-        Serial.printf(" from: %2.2x%2.2x%2.2x, to: %2.2x%2.2x%2.2x, cmd: %2.2x, fr: %6.3fM, s+%5.3f",
-            iohc->payload.packet.header.source[0], iohc->payload.packet.header.source[1], iohc->payload.packet.header.source[2],
-            iohc->payload.packet.header.target[0], iohc->payload.packet.header.target[1], iohc->payload.packet.header.target[2],
-            iohc->payload.packet.header.cmd, (float)(iohc->frequency)/1000000, (float)(iohc->millis - relTime)/1000);
-        Serial.printf(" %c ", _dir);
-    }
-    for (uint8_t idx=0; idx<iohc->buffer_length; ++idx)
-        Serial.printf("%2.2x",iohc->payload.buffer[idx]);
-    Serial.printf("\n");
+            packets2send.clear();
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            printf("Pairing Asked\n");
+            std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0c, 0xcc, 0x00, 0x00};
 
-/*
-*/
-    if (verbosity)
-    {
-        switch (iohc->payload.packet.header.cmd)
-        {
-            case 0x2b:
-            {
-                sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
-                    iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer, iohc->payload.packet.msg.p0x2b.info);
-                break;
-            }
+            //Easy way to copy array to struct
+            //_p0x2b _p_0x29;
+            //std::copy(toSend.begin(), toSend.begin() + sizeof(_p_0x29), reinterpret_cast<uint8_t*>(&_p_0x29));
 
-            case 0x30:
-            {
-                for (uint8_t idx=0; idx < 16; idx ++)
-                    keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
+//            packets2send[0] = new IOHC::iohcPacket;
+            packets2send.push_back(new IOHC::iohcPacket);
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+            // Header len if protocol version is 8 else 10 ;)
+            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ANSWER_0x29;
+            /* Swap */
+            memcpy(packets2send.back()->payload.packet.header.source, cozyDevice2W->gateway, 3);
+            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-                iohcUtils::encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)keyCap);
-                Serial.printf("Controller key in clear: ");
-                for (uint8_t idx=0; idx < 16; idx ++)
-                    Serial.printf("%2.2x", keyCap[idx]);
-                Serial.printf("\n");
-                break;
-            }
-            
-            case 0x39:
-            {
-                if (keyCap[0] == 0)
-                    break;
-                uint8_t hmac[6];
-                std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd+2);
-                iohcUtils::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
-                Serial.printf("hmac: ");
-                for (uint8_t idx=0; idx < 6; idx ++)
-                    Serial.printf("%2.2x", hmac[idx]);
-                Serial.printf("\n");
-                break;
-            }
+            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+            // packets2send[i]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+            // packets2send[i]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
+
+            packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()->frequency = CHANNEL3;
+            packets2send.back()->repeatTime = 25;
+            IOHC::packetStamp = esp_timer_get_time(); //
+            packets2send.back()->repeat = 0; // Need to stop txMode
+            packets2send.back()->lock = false; //true; // Need to received ASAP
+//            packets2send[0 + 1] = nullptr;
+
+            radioInstance->send(packets2send);
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        break;
         }
+        case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
+            if (!pairMode) break;
+            
+            packets2send.clear();
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            printf("Actuator Ack Asked\n");
+            std::vector<uint8_t> toSend = {};
+//            packets2send[0] = new IOHC::iohcPacket;
+            packets2send.push_back(new IOHC::iohcPacket);
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+            // Header len if protocol version is 8 else 10 ;)
+            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ACTUATOR_ACK_0x2D;
+            /* Swap */
+            memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+
+            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
+            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+
+            packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()->frequency = CHANNEL3;
+            packets2send.back()->repeatTime = 25;
+            IOHC::packetStamp = esp_timer_get_time(); //
+            packets2send.back()->repeat = 0; // Need to stop txMode
+            packets2send.back()->lock = false; //true; // Need to received ASAP
+//            packets2send[0 + 1] = nullptr;
+
+            radioInstance->send(packets2send);
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        break;
+        }
+        case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
+            if (!pairMode) break;
+            
+            packets2send.clear();
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            printf("Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
+            std::vector<uint8_t> key_transfert;
+            key_transfert.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 15);
+
+            for (unsigned char i: key_transfert) {
+                printf("%02X ", i);
+            }
+            printf("\n");
+            std::vector<uint8_t> data = {IOHC::iohcDevice::SEND_ASK_CHALLENGE_0x31}; //0x38
+            unsigned char initial_value[16];
+            constructInitialValue(data, initial_value, data.size(), key_transfert, nullptr);
+            Serial.printf("2) Initial value used for key encryption: ");
+            for (unsigned char i: initial_value) {
+                printf("%02X ", i);
+            }
+            printf("\n");
+
+            AES_init_ctx(&ctx, transfert_key);
+            uint8_t encrypted_key[16];
+            AES_ECB_encrypt(&ctx, initial_value);
+            // Appliquer le XOR avec la clé du système
+            for (int i = 0; i < 16; i++) {
+                encrypted_key[i] = initial_value[i] ^ transfert_key[i];
+            }
+            printf("2) Encrypted 2-way key to be sent with 0x32: ");
+            for (unsigned char i: encrypted_key) {
+                printf("%02X ", i);
+            }
+            printf("\n");
+            std::vector<uint8_t> toSend;
+            toSend.assign(encrypted_key, encrypted_key + 16);
+
+            // packets2send[0] = new IOHC::iohcPacket;
+            packets2send.push_back(new IOHC::iohcPacket);
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+            // Header len if protocol version is 8 else 10 ;)
+            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
+            cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
+
+            /* Swap */
+            memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+
+            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
+            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+
+            packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()->frequency = CHANNEL3;
+            packets2send.back()->repeatTime = 25;
+            IOHC::packetStamp = esp_timer_get_time(); //
+            packets2send.back()->repeat = 0; // Need to stop txMode
+            packets2send.back()->lock = false; //true; // Need to received ASAP
+//            packets2send[0 + 1] = nullptr;
+
+            radioInstance->send(packets2send);
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        break;
+        }
+        case 0x20:
+            cozyDevice2W->memorizeSend.memorizedCmd = iohc->payload.packet.header.cmd;
+            IOHC::lastSendCmd = iohc->payload.packet.header.cmd;
+            break;
+        case 0x21: {
+            // Answer of 0x20, publish the confirmed command
+            // doc["type"] = "Cozy";
+            // doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
+            // doc["to"] = bytesToHexString(iohc->payload.packet.header.source, 3);
+            // doc["cmd"] = to_hex_str(iohc->payload.packet.header.cmd).c_str();
+            // doc["_data"] = bytesToHexString(iohc->payload.buffer + 9, iohc->buffer_length - 9);
+            // std::string message;
+            // size_t messageSize = serializeJson(doc, message);
+            // mqttClient.publish("iown/Frame", 0, false, message.c_str(), messageSize);
+            break;
+        }
+        case 0x3C: {
+            // Answer only to our gateway, not to others devices
+            if (cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) { // (true) { //
+                packets2send.clear();
+               
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+
+                doc["type"] = "Gateway";
+                if (!cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) {
+                    //                        AES_init_ctx(&ctx, setgo); // PreInit AES for other2W (1W use original version) TODO
+                }
+                //                    else
+                AES_init_ctx(&ctx, transfert_key);
+
+                // IVdata is the challenge with commandId put on start
+                std::vector<uint8_t> challengeAsked;
+                //                    challengeAsked.assign(iohc->payload.packet.msg.variableData.data, iohc->payload.packet.msg.variableData.data + iohc->payload.packet.msg.variableData.size);
+                challengeAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 15);
+                printf("Challenge asked after LastSend Command %2.2X\n", IOHC::lastSendCmd);
+                printf("Challenge asked after Memorized Command %2.2X\n", cozyDevice2W->memorizeSend.memorizedCmd);
+               
+if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
+
+                std::vector<uint8_t> IVdata = cozyDevice2W->memorizeSend.memorizedData;
+                IVdata.insert(IVdata.begin(), cozyDevice2W->memorizeSend.memorizedCmd);
+                // packets2send[0] = new IOHC::iohcPacket; //(IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+                packets2send.push_back(new IOHC::iohcPacket);
+ 
+                packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_CHALLENGE_ANSWER_0x3D;
+
+                unsigned char initial_value[16];
+                constructInitialValue(IVdata, initial_value, IVdata.size(), challengeAsked, nullptr);
+                AES_ECB_encrypt(&ctx, initial_value);
+                uint8_t dataLen = 6;
+
+                if (cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::RECEIVED_ASK_CHALLENGE_0x31) {
+                    packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
+                    dataLen = 16;
+                    IVdata = {0x31};
+                    constructInitialValue(IVdata, initial_value, 1, challengeAsked, nullptr);
+                    AES_ECB_encrypt(&ctx, initial_value);
+                    for (int i = 0; i < dataLen; i++)
+                        initial_value[i] = initial_value[i] ^ transfert_key[i];
+                    cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
+                    cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
+                }
+
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+                // Header len if protocol version is 8 else 10 ;)
+                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte2.asByte = 0;
+                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += dataLen;
+                /* Swap */
+                memcpy(packets2send.back()/*[0]*/->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+                memcpy(packets2send.back()/*[0]*/->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+
+                memcpy(packets2send.back()/*[0]*/->payload.buffer + 9, initial_value, dataLen);
+
+                packets2send.back()/*[0]*/->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
+                //packet2send[0]->payload.packet.header.framelength +1;
+                packets2send.back()/*[0]*/->frequency = CHANNEL3;
+                packets2send.back()/*[0]*/->repeatTime = 6;
+                IOHC::packetStamp/*packets2send[0]->stamp*/ = esp_timer_get_time(); //
+                packets2send.back()/*[0]*/->repeat = 1; // Need to stop txMode
+                packets2send.back()/*[0]*/->lock = false; //true; // Need to received ASAP
+                //                    packets2send[0+1] = nullptr;
+                //                    packets2send[0]->decode(verbosity);
+                radioInstance->send(packets2send);
+
+                // Serial.print("IV used for key encryption: ");
+                // for (int i = 0; i < 16; i++)
+                //     Serial.printf("%02X ", initial_value[i]);
+                // Serial.println();
+                printf("Key to be sent with %2.2X: ", packets2send[0]->payload.packet.header.cmd);
+                for (int i = 0; i < dataLen; i++)
+                    printf("%02X ", initial_value[i]);
+                printf("\n");
+
+                //                sysTable->addObject(iohc);
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            }
+        break;
+        }
+        case 0X00:
+        case 0x01:
+        case 0x03:
+        case 0x19: {
+            //                memorizeSend.memorizedData = toSend;
+            doc["type"] = "Other";
+            otherDevice2W->memorizeOther2W.memorizedCmd = iohc->payload.packet.header.cmd;
+            cozyDevice2W->memorizeSend.memorizedCmd = iohc->payload.packet.header.cmd;
+            break;
+        }
+        case 0x04:
+        case 0x0D:
+        case 0x2D:
+        case 0x4B:
+        case 0x51:
+        case 0x55:
+        case 0x57:
+        case 0x59:            
+            if (scanMode) { 
+                otherDevice2W->memorizeOther2W = {0};
+                    printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
+                    cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd; 
+            }
+            break;
+        case 0xFE: {
+            if (scanMode) { 
+                otherDevice2W->memorizeOther2W = {0};
+                    printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
+                    cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9]; 
+            }
+            break;
+        }
+         case 0x29: {
+            printf("A Device want to be paired\n");
+            std::vector<uint8_t> deviceAsked;
+            deviceAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 18);
+            for (unsigned char i: deviceAsked) {
+                printf("%02X ", i);
+            }
+            printf("\n");
+
+            printf("Sending 0x38 \n");
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+
+            packets2send.clear();
+            packets2send.push_back(new IOHC::iohcPacket);
+
+            // init(packets2send[0]);
+            packets2send.back()->payload.packet.header.cmd = 0x38;
+            // cozyDevice2W->memorizeSend.memorizedData = toSend;
+            // cozyDevice2W->memorizeSend.memorizedCmd = 0x2C;
+
+            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+
+            /* Swap */
+            memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+
+            memcpy(packets2send.back()/*[0]*/->payload.buffer + 9, toSend.data(), toSend.size());
+
+            packets2send.back()/*[0]*/->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()/*[0]*/->frequency = CHANNEL3;
+            packets2send.back()/*[0]*/->repeatTime = 25;
+            IOHC::packetStamp/*packets2send[0]->stamp*/ = esp_timer_get_time(); //
+            packets2send.back()/*[0]*/->repeat = 1; // Need to stop txMode
+            packets2send.back()/*[0]*/->lock = false; //true; // Need to received ASAP
+            //                    packets2send[0+1] = nullptr;
+            //                    packets2send[0]->decode(verbosity);
+            radioInstance->send(packets2send); // Verify !
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        break;
+        }
+
+        case 0x2B: {
+            sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
+                                iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
+                                iohc->payload.packet.msg.p0x2b.info);
+       break;
+        }
+ 
+        case 0x30: {
+            for (uint8_t idx = 0; idx < 16; idx++)
+                keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
+
+            iohcCrypto::encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)keyCap);
+            Serial.printf("Controller key in clear: ");
+            for (unsigned char idx: keyCap)
+                Serial.printf("%2.2x", idx);
+            Serial.printf("\n");
+        break;
+        }
+
+        case 0x39: {
+            if (keyCap[0] == 0)
+                break;
+            uint8_t hmac[6];
+            std::vector frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2);
+            iohcCrypto::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
+            Serial.printf("hmac: ");
+            for (unsigned char idx: hmac)
+                Serial.printf("%2.2x", idx);
+            Serial.printf("\n");
+        break;
+        }
+        default:
+            //               printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);
+            return false;
+            break;
     }
 
-    relTime = iohc->millis;    
     return true;
 }
 
-bool msgArchive(IOHC::iohcPacket *iohc)
-{
-    radioPackets[nextPacket] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
-    if (!radioPackets[nextPacket])
-    {
+
+/*TODO Merge with decode here (radio.cpp line 168)*/
+bool publishMsg(IOHC::iohcPacket* iohc) {
+    //                if(iohc->payload.packet.header.cmd == 0x20 || iohc->payload.packet.header.cmd == 0x00) {
+    DynamicJsonDocument doc(256);
+    doc["type"] = "Cozy";
+    doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
+    doc["to"] = bytesToHexString(iohc->payload.packet.header.source, 3);
+    doc["cmd"] = to_hex_str(iohc->payload.packet.header.cmd).c_str();
+    doc["_data"] = bytesToHexString(iohc->payload.buffer + 9, iohc->buffer_length - 9);
+    std::string message;
+    size_t messageSize = serializeJson(doc, message);
+    mqttClient.publish("iown/Frame", 1, false, message.c_str(), messageSize);
+    // }
+    return false;
+}
+
+bool msgArchive(IOHC::iohcPacket* iohc) {
+    radioPackets[nextPacket] = new IOHC::iohcPacket; //(IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+    if (!radioPackets[nextPacket]) {
         Serial.printf("*** Malloc failed!\n");
         return false;
     }
 
     radioPackets[nextPacket]->buffer_length = iohc->buffer_length;
     radioPackets[nextPacket]->frequency = iohc->frequency;
-    radioPackets[nextPacket]->millis = iohc->millis;
+    //    radioPackets[nextPacket]->stamp = iohc->stamp;
     radioPackets[nextPacket]->rssi = iohc->rssi;
 
-    for (uint8_t i=0; i<iohc->buffer_length; i++)
+    for (uint8_t i = 0; i < iohc->buffer_length; i++)
         radioPackets[nextPacket]->payload.buffer[i] = iohc->payload.buffer[i];
 
     nextPacket += 1;
     Serial.printf("-> %d\r", nextPacket);
-    if (nextPacket >= IOHC_INBOUND_MAX_PACKETS)
-    {
-        nextPacket = IOHC_INBOUND_MAX_PACKETS -1;
+    if (nextPacket >= IOHC_INBOUND_MAX_PACKETS) {
+        nextPacket = IOHC_INBOUND_MAX_PACKETS - 1;
         Serial.printf("*** Not enough buffers available. Please erase current ones\n");
         return false;
     }
@@ -379,165 +738,29 @@ bool msgArchive(IOHC::iohcPacket *iohc)
     return true;
 }
 
-void txUserBuffer(Tokens*cmd)
-{
-    if (cmd->size() < 2)
-    {
+void txUserBuffer(Tokens* cmd) {
+    if (cmd->size() < 2) {
         Serial.printf("No packet to be sent!\n");
         return;
     }
-    else
-    {
-        if (!packets2send[0])
-            packets2send[0] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
-
-        if (cmd->size() == 3)
-            packets2send[0]->frequency = frequencies[atoi(cmd->at(2).c_str())-1];
-        else
-            packets2send[0]->frequency = 0;
-
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);;
-        packets2send[0]->millis = 35;
-        packets2send[0]->repeat = 1;
-        packets2send[1] = nullptr;
-
-        digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-        radioInstance->send(packets2send);
-        
-        // Do not deallocate buffers as send is asynchronous
-//        free(packets2send[0]);
-//        packets2send[0] = nullptr;
-    }
-}
-
-void discovery()
-{
+    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     if (!packets2send[0])
-        packets2send[0] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+        packets2send[0] = new IOHC::iohcPacket;
 
-    std::string discovery = "d43000003b5cd68f2a578ebc37334d6e2f50a4dfa9";
-    packets2send[0]->frequency = 0;
-
-    digitalWrite(RX_LED, digitalRead(RX_LED)^1);
-    packets2send[0]->buffer_length = hexStringToBytes(discovery, packets2send[0]->payload.buffer);;
-    packets2send[0]->millis = 1750;
-    packets2send[0]->repeat = 4;
-    packets2send[0]->lock = false;
-    if(MAX_FREQS>1)
-        packets2send[0]->frequency = frequencies[1];
+    if (cmd->size() == 3)
+        packets2send[0]->frequency = frequencies[atoi(cmd->at(2).c_str()) - 1];
     else
-        packets2send[0]->frequency = frequencies[0];
+        packets2send[0]->frequency = 0;
+
+    packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);
+    packets2send[0]->repeatTime = 35;
+    packets2send[0]->repeat = 1;
     packets2send[1] = nullptr;
 
-    digitalWrite(RX_LED, digitalRead(RX_LED)^1);
     radioInstance->send(packets2send);
-}
+    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-void testKey()
-{
-    std::string controller_key = "d94a00399a46b5aba67f3809b68ecc52";    // In clear
-    std::string node_address = "8ad42e";
-    std::string dest_address = "00003f";
-//    std::string sequence = "1934";
-
-    uint8_t bcontroller[16];
-    uint8_t bnode[3];
-    uint8_t bdest[3];
-    uint8_t bseq[2] = {0x1a, 0x40}; // <-- Set Sequance number here
-    uint8_t output[16];
-
-
-    hexStringToBytes(controller_key, bcontroller);
-    hexStringToBytes(node_address, bnode);
-    hexStringToBytes(dest_address, bdest);
-
-    std::string tmp = "f60000003f8ad42e000161d20000001a4731661e6275d2";
-    uint8_t btmp[32];
-    uint8_t bLen = hexStringToBytes(tmp, btmp);
-    std::vector<uint8_t> buffer(btmp, btmp + bLen);
-    uint16_t crc = iohcUtils::radioPacketComputeCrc(btmp, bLen);
-    Serial.printf("--> %s (%d) crc %2.2x%2.2x <--\t\t", tmp.c_str(), bLen, crc&0x00ff, crc>>8);
-    crc = iohcUtils::radioPacketComputeCrc(buffer);
-    Serial.printf("--> alt crc %2.2x%2.2x <--\n\n", crc&0x00ff, crc>>8);
-
-
-    Serial.printf("Node address: ");
-    for (uint8_t idx=0; idx < 3; idx ++)
-        Serial.printf("%2.2x", bnode[idx]);
-    Serial.printf("\n");
-    Serial.printf("Dest address: ");
-    for (uint8_t idx=0; idx < 3; idx ++)
-        Serial.printf("%2.2x", bdest[idx]);
-    Serial.printf("\n");
-    Serial.printf("Controller key in clear:  ");
-    for (uint8_t idx=0; idx < sizeof(bcontroller); idx ++)
-        Serial.printf("%2.2x", bcontroller[idx]);
-    Serial.printf("\n");
-
-    std::vector<uint8_t> node(bnode, bnode+3);
-    std::vector<uint8_t> controller(bcontroller, bcontroller+16);
-    std::vector<uint8_t> ret;
-
-    iohcUtils::encrypt_1W_key(bnode, bcontroller);
-    Serial.printf("Controller key encrypted: ");
-    for (uint8_t idx=0; idx < 16; idx ++)
-        Serial.printf("%2.2x", bcontroller[idx]);
-    Serial.printf("\n");
-
-
-    uint16_t test = (bseq[0]<<8)+bseq[1];
-    
-    for (uint8_t i=0; i<0x20; i++)
-    {
-        test += 1;
-        bseq[1] = test & 0x00ff;
-        bseq[0] = test >> 8;
-
-/*
-Main parameter: 
-0x0000    100% Open
-0xd200    Current (used as stop)
-0xC800    0% Open
-0xD803    Secured ventilation
-*/
-    //  00 01 61 c800 00 00 1a05
-    //    uint8_t bframe[9] = {0x00, 0x01, 0x61, 0xc8, 0x00, 0x02, 0x00, 0x1a, 0x07};
-        std::vector<uint8_t> seq(bseq, bseq+2);
-        uint8_t bframe1[7] = {0x00, 0x01, 0x61, 0x00, 0x00, 0x02, 0x00}; // <-- Set packet here, excluding sequence number, then adjust length
-        std::vector<uint8_t> frame1(bframe1, bframe1+7); // <-- adjust packet length
-        hexStringToBytes(controller_key, bcontroller);
-        iohcUtils::create_1W_hmac(output, bseq, bcontroller, frame1);
-
-        Serial.printf("Open: f620");
-        for (uint8_t idx=0; idx < 3; idx ++)
-            Serial.printf("%2.2x", bdest[idx]);
-        for (uint8_t idx=0; idx < 3; idx ++)
-            Serial.printf("%2.2x", bnode[idx]);
-        for (uint8_t idx=0; idx < 7; idx ++) // <-- adjust packet length
-            Serial.printf("%2.2x", bframe1[idx]);
-        for (uint8_t idx=0; idx < 2; idx ++)
-            Serial.printf("%2.2x", bseq[idx]);
-        for (uint8_t idx=0; idx < 6; idx ++)
-            Serial.printf("%2.2x", output[idx]);
-        Serial.printf("\t\t");
-
-        uint8_t bframe2[7] = {0x00, 0x01, 0x61, 0xC8, 0x00, 0x02, 0x00}; // <-- Set packet here, excluding sequence number, then adjust length
-        std::vector<uint8_t> frame2(bframe2, bframe2+7); // <-- adjust packet length
-        hexStringToBytes(controller_key, bcontroller);
-        iohcUtils::create_1W_hmac(output, bseq, bcontroller, frame2);
-
-        Serial.printf("Close: f620");
-        for (uint8_t idx=0; idx < 3; idx ++)
-            Serial.printf("%2.2x", bdest[idx]);
-        for (uint8_t idx=0; idx < 3; idx ++)
-            Serial.printf("%2.2x", bnode[idx]);
-        for (uint8_t idx=0; idx < 7; idx ++) // <-- adjust packet length
-            Serial.printf("%2.2x", bframe2[idx]);
-        for (uint8_t idx=0; idx < 2; idx ++)
-            Serial.printf("%2.2x", bseq[idx]);
-        for (uint8_t idx=0; idx < 6; idx ++)
-            Serial.printf("%2.2x", output[idx]);
-        Serial.printf("\n");
-    }
+    // Do not deallocate buffers as send is asynchronous
+    //        free(packets2send[0]);
+    //        packets2send[0] = nullptr;
 }

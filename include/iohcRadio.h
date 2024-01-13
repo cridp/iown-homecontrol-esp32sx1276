@@ -1,7 +1,7 @@
 #ifndef IOHC_RADIO_H
 #define IOHC_RADIO_H
 
-//#include <Arduino.h>
+#include <memory>
 #include <board-config.h>
 
 #include <map>
@@ -38,13 +38,37 @@ namespace IOHC {
             static iohcRadio *getInstance();
             virtual ~iohcRadio() = default;
             void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback, IohcPacketDelegate txCallback);
-//            void send(iohcPacket *iohcTx[]);
-            template <size_t Size>
-            void send(std::array<iohcPacket*, Size>& iohcTx);
+            //void send(std::array<iohcPacket*, 25>& iohcTx);
+            // template <size_t N> //Just for the fun, waiting to use a vector for all
+            // void send(std::array<iohcPacket*, N>& iohcTx) {
+            //     uint8_t idx = 0;
+            
+            //     if (txMode)  return;
+            //     do {
+            //         packets2send[idx] = iohcTx[idx];
+            //     } while (iohcTx[idx++]);
+            //              // for (auto packet : iohcTx) {
+            //              //     if (!packet) break;
+            //              //     packets2send[idx++] = packet;
+            //              // }
+            //     txCounter = 0;
+            //     Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+            // }
+
+        void send(std::vector<iohcPacket*>& iohcTx) {
+                // uint8_t idx = 0;
+                if (txMode)  return;
+
+                packets2send = iohcTx; //std::move(iohcTx); //
+                iohcTx.clear();
+
+                txCounter = 0;
+                Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+            }
 
         private:
             iohcRadio();
-            bool receive();
+            bool receive(bool stats);
             bool sent(iohcPacket *packet);
 
             static iohcRadio *_iohcRadio;
@@ -80,11 +104,12 @@ namespace IOHC {
             //Timers::TickerUsESP32 FreqScanner;    
         #endif
             iohcPacket *iohc{};
+            iohcPacket *delayed{};
+            
             IohcPacketDelegate rxCB = nullptr;
             IohcPacketDelegate txCB = nullptr;
-//            iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS]{};
-            std::array<iohcPacket*, 25> packets2send{};
-            
+//            std::array<iohcPacket*, 25> packets2send{};
+            std::vector<iohcPacket*> packets2send{};
         protected:
             static void IRAM_ATTR i_preamble();
             static void IRAM_ATTR i_payload();
@@ -96,4 +121,6 @@ namespace IOHC {
         #endif
     };
 }
+
+//#include <iohcRadio.tpp>
 #endif
