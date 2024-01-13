@@ -1,0 +1,5 @@
+{
+    "ba11ad":{"type": "gateway", "dst": "ballad"},
+    "477706":{"type": "master", "dst": "487902"},
+    "8ccb30":{"type": "slave", "dst": "8ccb31"}
+}
