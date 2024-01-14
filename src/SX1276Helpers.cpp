@@ -47,7 +47,7 @@ namespace Radio {
     }
 
     void initHardware() {
-        Serial.println("SPI Init");
+        printf("\nSPI Init");
         // SPI pins configuration
     #if defined(ESP8266)
         SPI.pins(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
@@ -64,7 +64,7 @@ namespace Radio {
     #endif
         } while (!digitalRead(RADIO_RESET));
         delayMicroseconds(BOARD_READY_AFTER_POR);
-        Serial.printf("Radio Chip is ready\n");
+        printf("\nRadio Chip is ready\n");
 
         // Initialize SPI bus
     #if defined(ESP8266)
