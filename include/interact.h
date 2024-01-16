@@ -274,27 +274,30 @@ namespace Cmd {
   }
 
   inline std::vector<uint8_t> mqttData;
+
   inline void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+    if (topic[0] == '\0') return;
+
     StaticJsonDocument<200> doc;
 
-	payload[len] = '\0';
+	  payload[len] = '\0';
 
     Serial.printf("Received MQTT %s %s %d\n", topic, payload, len);
 
-    if (deserializeJson(doc, payload/*_data*/) != DeserializationError::Ok) {
+    if (deserializeJson(doc, payload) != DeserializationError::Ok) {
       Serial.println(F("Failed to parse JSON"));
-    return;
+      return;
     }
 
     const char *data = doc["_data"];
 
     // Calcul de la taille du tampon nécessaire
-    size_t bufferSize = strlen(topic) + 15; // +13 +2 pour l'espace et le caractère nul de fin de chaîne
+    size_t bufferSize = strlen(topic) + len + 7; // +5 word "MQTT " +2 pour l'espace et le caractère nul de fin de chaîne
     // Allouer le tampon
     char message[bufferSize];
-    if (len == 0/* || payload == nullptr*/) {snprintf(message, sizeof(message), "MQTT %s", topic); /*data = " ";*/}
+    if (len == 0) {snprintf(message, sizeof(message), "MQTT %s", topic); }
     // Utiliser snprintf pour éviter les dépassements de tampon
-    else snprintf(message, sizeof(message), "MQTT %s %s", topic, doc["_data"]/*data*/);
+    else snprintf(message, sizeof(message), "MQTT %s %s", topic, data);
       
     mqttFuncHandler(message);
   }
