@@ -275,7 +275,7 @@ namespace IOHC {
                 packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
                 memcpy(packets2send.back()/*[0]*/->payload.packet.header.source, from/*gateway*/, 3);
                 memcpy(packets2send.back()/*[0]*/->payload.packet.header.target, to_1, 3);
@@ -341,7 +341,7 @@ namespace IOHC {
                     packets2send[i]->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
                     memcpy(packets2send[i]->payload.packet.header.source, gateway, 3);
                     memcpy(packets2send[i]->payload.packet.header.target, broadcast, 3);
@@ -394,10 +394,11 @@ namespace IOHC {
                 // const char* dat = data->at(1).c_str();
                 // hexStringToBytes(dat, broadcast);
                 //                uint8_t broadcast[3];
-                uint8_t broadcast[3] = {0x00, 0xFF, 0xFB}; //data->at(1).c_str();
+                uint8_t broadcast_1[3] = {0x00, 0xFF, 0xFB}; //data->at(1).c_str();
+                uint8_t broadcast_2[3] = {0x00, 0x0d, 0x3b};
                 //                hexStringToBytes(dat, broadcast);
                 size_t i = 0;
-                for (i = 0; i < 10; i++) {
+                for (i = 0; i < 20; i++) {
                     //                    packets2send[k] = new iohcPacket;
                     packets2send.push_back(new iohcPacket);
                     init(packets2send.back());
@@ -410,15 +411,17 @@ namespace IOHC {
                     packets2send.back()->payload.packet.header.CtrlByte1.asByte += sizeof(toSend); ///*.size()*/ + 8;
 
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
 
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
-                    memcpy(packets2send.back()->payload.packet.header.target, broadcast/*associated_to*/, 3);
+if( i < 10)                    memcpy(packets2send.back()->payload.packet.header.target, broadcast_2/*associated_to*/, 3);
+else                    memcpy(packets2send.back()->payload.packet.header.target, broadcast_1, 3);
+
                     memcpy(packets2send.back()->payload.buffer + 9, toSend, 12);
 
                     packets2send.back()->buffer_length = sizeof(toSend) + 9;
-                    packets2send.back()->delayed = 500;
+                    packets2send.back()->delayed = 950;
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back() = nullptr;
@@ -555,7 +558,7 @@ uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                         packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                         packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
                         // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk2 = 1;
                         // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
                         packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();

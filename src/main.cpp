@@ -340,12 +340,12 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
+            printf("Pairing Asked\n");
             if (!pairMode) break;
 
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            printf("Pairing Asked\n");
-            std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0c, 0xcc, 0x00, 0x00};
+            std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00}; // 0x0b OverKiz 0x0c Atlantic
 
             //Easy way to copy array to struct
             //_p0x2b _p_0x29;
@@ -368,8 +368,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             // packets2send[i]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
 
             packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
-            packets2send.back()->frequency = CHANNEL3;
+            packets2send.back()->frequency = CHANNEL2;
             packets2send.back()->repeatTime = 25;
+            packets2send.back()->delayed = 250;
             IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
@@ -380,11 +381,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
+            printf("Actuator Ack Asked\n");
             if (!pairMode) break;
             
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            printf("Actuator Ack Asked\n");
             std::vector<uint8_t> toSend = {};
 //            packets2send[0] = new IOHC::iohcPacket;
             packets2send.push_back(new IOHC::iohcPacket);
@@ -403,8 +404,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
 
             packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
-            packets2send.back()->frequency = CHANNEL3;
+            packets2send.back()->frequency = CHANNEL2;
             packets2send.back()->repeatTime = 25;
+            packets2send.back()->delayed = 250;
             IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
@@ -415,11 +417,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
+            printf("Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
             if (!pairMode) break;
             
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            printf("Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
             std::vector<uint8_t> key_transfert;
             key_transfert.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 15);
 
@@ -613,6 +615,8 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
         }
          case 0x29: {
             printf("A Device want to be paired\n");
+            if (!pairMode) break;
+
             std::vector<uint8_t> deviceAsked;
             deviceAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 18);
             for (unsigned char i: deviceAsked) {
@@ -620,15 +624,18 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             }
             printf("\n");
 
-            printf("Sending 0x38 \n");
+            // printf("Sending 0x38 \n");
+            printf("Sending 0x2C \n");
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06};
+            // std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; // 38
+            std::vector<uint8_t> toSend = {}; // 2C
 
             packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
 
             // init(packets2send[0]);
-            packets2send.back()->payload.packet.header.cmd = 0x38;
+            // packets2send.back()->payload.packet.header.cmd = 0x38;
+            packets2send.back()->payload.packet.header.cmd = 0x2C;
             // cozyDevice2W->memorizeSend.memorizedData = toSend;
             // cozyDevice2W->memorizeSend.memorizedCmd = 0x2C;
 

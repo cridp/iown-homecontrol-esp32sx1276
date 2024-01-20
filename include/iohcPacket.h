@@ -30,9 +30,9 @@ typedef struct  {
 } CB1;
 typedef struct  {
   uint8_t Version : 2;
-  uint8_t Unk1 : 1;
-  uint8_t Unk2 : 1;
   uint8_t Prio : 1;
+  uint8_t Unk2 : 1;
+  uint8_t Unk3 : 1;
   uint8_t LPM : 1;
   uint8_t Routed : 1;
   uint8_t Beacon : 1;
@@ -54,12 +54,12 @@ union CtrlByte2Union {
         uint8_t         cmd;      //1
     };
 
-    typedef struct {
+    struct Acei {
         uint8_t isvalid: 1;
         uint8_t extended:2;
         uint8_t service: 2;
         uint8_t level:   3;
-    } Acei;
+    };
     union AceiUnion {
         uint8_t asByte;
         Acei asStruct;

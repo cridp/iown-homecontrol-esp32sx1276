@@ -25,8 +25,8 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
         // packet->payload.packet.header.CtrlByte2.asByte = 0;
         packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-        packet->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
-        packet->payload.packet.header.CtrlByte2.asStruct.Prio = 0;
+        packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+        // packet->payload.packet.header.CtrlByte2.asStruct.Unk3 = 0;
         // Broadcast Target
         u_int16_t bcast = typn;
         //            uint16_t bcast = /*(_type.at(typn)<<6)*/(typn)<<6 + 0b111111;

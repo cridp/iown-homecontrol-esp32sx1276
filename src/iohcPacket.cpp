@@ -25,9 +25,9 @@ namespace IOHC {
         if(this->payload.packet.header.CtrlByte2.asStruct.LPM)     printf("[LPM]");
         if(this->payload.packet.header.CtrlByte2.asStruct.Beacon)  printf("[B]");
         if(this->payload.packet.header.CtrlByte2.asStruct.Routed)  printf("[R]");
-        if(this->payload.packet.header.CtrlByte2.asStruct.Unk1)    printf("[U1]");
-        if(this->payload.packet.header.CtrlByte2.asStruct.Unk2)    printf("[U2]");
         if(this->payload.packet.header.CtrlByte2.asStruct.Prio)    printf("[PRIO]");
+        if(this->payload.packet.header.CtrlByte2.asStruct.Unk2)    printf("[U2]");
+        if(this->payload.packet.header.CtrlByte2.asStruct.Unk3)    printf("[U3]");
         if(this->payload.packet.header.CtrlByte2.asStruct.Version) printf("[V]%u", this->payload.packet.header.CtrlByte2.asStruct.Version);
         
 //            const char *commandName = commands[msg_cmd_id].c_str();  
