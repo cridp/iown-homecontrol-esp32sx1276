@@ -38,7 +38,7 @@ namespace IOHC {
         // packet->payload.packet.header.target[1] = bcast >> 8;
         // packet->payload.packet.header.target[2] = bcast & 0x00ff;
 
-        packet->frequency = CHANNEL3;
+        packet->frequency = CHANNEL2;
         packet->repeatTime = 25;
         packet->repeat = 0; // Need to stop txMode
         packet->lock = false; //true; // Need to received ASAP
@@ -124,7 +124,8 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
                 packets2send.back()/*[0]*/->buffer_length = toSend.size() + 9;
-                //packet2send[0]->payload.packet.header.framelength +1;
+                packets2send.back()->delayed = 50;
+
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                 //               packets2send.push_back(nullptr);
@@ -145,13 +146,13 @@ namespace IOHC {
                 // if (strcasecmp(data, "special") == 0) toSend[4] = 0x03;
                 if (strcasecmp(dat, "off") == 0) toSend[4] = 0x04; // TODO if mode off, disable setPresence
 
-                int addr = 0;
-                if (data->size() == 2) addr = 0;
-                else addr = std::stoi(data->at(2));
+                // int addr = 0;
+                // if (data->size() == 2) addr = 0;
+                // else addr = std::stoi(data->at(2));
 
                 size_t dest = 0;
 
-                for (const auto&addr: addresses) {
+                for (const auto &addr: addresses) {
                     packets2send.push_back(new iohcPacket);
                     init(packets2send.back());
                     packets2send.back()->payload.packet.header.cmd = SEND_WRITE_PRIVATE_0x20;
@@ -161,19 +162,16 @@ namespace IOHC {
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
-                    memcpy(packets2send.back()->payload.packet.header.target,
-                           addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
+                    memcpy(packets2send.back()->payload.packet.header.target, addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
                     memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
                     packets2send.back()->buffer_length = toSend.size() + 9;
                     dest++;
                 }
-                packets2send[1]->delayed = 450;
+                packets2send[1]->delayed = 250;
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                //               packets2send.back() = nullptr;
+
                 _radioInstance->send(packets2send);
-                //                packets2send.clear();
-                //                packets2send.fill(nullptr);
-                //                packets2send[1] = nullptr;
+
                 break;
             }
 
@@ -238,8 +236,8 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
                 packets2send.back()->buffer_length = toSend.size() + 9;
-                //packet2send[0]->payload.packet.header.framelength +1;
-                //                packets2send[0]->decode(verbosity);
+                packets2send.back()->delayed = 50;
+
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back() = nullptr;
                 _radioInstance->send(packets2send); // Verify !
@@ -291,27 +289,63 @@ namespace IOHC {
                 _radioInstance->send(packets2send); // Verify !
                 break;
             }
+            case DeviceButton::custom60: {
+                packets2send.clear();
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+                std::vector<uint8_t> toSend =  {0x0C, 0x60, 0x01, 0xFF};
+                // Accepted command {0x0C, 0x61, 0x01, 0xFF, FF};
+                //const char* dat = data->at(1).c_str();
+ 
+                for (int acei = 0; acei < 256; acei++) {
+ //               int custom = std::stoi(data->at(1));
+ 
+               toSend[3] = acei; //custom;
+
+                packets2send.push_back(new iohcPacket);
+                init(packets2send.back());
+                packets2send.back()->payload.packet.header.cmd = SEND_WRITE_PRIVATE_0x20;
+                memorizeSend.memorizedData = toSend;
+                memorizeSend.memorizedCmd = SEND_WRITE_PRIVATE_0x20;
+
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+
+                memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
+                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+                packets2send.back()->buffer_length = toSend.size() + 9;
+                
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+                packets2send.back()->delayed = 350;
+
+                }
+                _radioInstance->send(packets2send); // Verify !
+                break;
+            }
             case DeviceButton::midnight: {
                 packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                std::vector<uint8_t> toSend = {0x00, 0x0c, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01, 0x53};
-                // std::vector<uint8_t> toSend = {0x0c, 0x61, 0x01, 0x0f, 0x2b, 0x05, 0x00, 0x0f, 0x04, 0x0c, 0xe7, 0x07};
+                // std::vector<uint8_t> toSend = {0x00, 0x0c, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01, 0x53};
+                std::vector<uint8_t> toSend = {0x0c, 0x60, 0x01, 0x30}; //, 0x2b, 0x05, 0x00, 0x0f, 0x04, 0x0c, 0xe7, 0x07};
 
-                //                    packets2send[k] = new iohcPacket;
                 packets2send.push_back(new iohcPacket);
-                init(packets2send.back()/*[0]*/);
-                packets2send.back()/*[0]*/->payload.packet.header.cmd = 0x48; //0x20; //
+                init(packets2send.back());
+                packets2send.back()->payload.packet.header.cmd = 0x20; //0x48; //
                 memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = 0x48; //0x20; //
+                memorizeSend.memorizedCmd = 0x20; //0x48; //
 
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += toSend.size(); // + 8;
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size(); // + 8;
 
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.source, gateway, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.target, master_to, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.buffer + 9, toSend.data(), toSend.size());
+                memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
+                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()/*[0]*/->buffer_length = toSend.size() + 9;
+                packets2send.back()->buffer_length = toSend.size() + 9;
                 //packet2send[0]->payload.packet.header.framelength +1;
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back() = nullptr;

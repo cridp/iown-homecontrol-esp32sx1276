@@ -76,7 +76,7 @@
 #define SPI_CLK_FRQ                                 10000000
 
 #define PREAMBLE_MSB                                0x00
-#define PREAMBLE_LSB                                52  // 0x34: 12ms to have receiver up and running (52 0x55 bytes - 13,54mS)
+#define PREAMBLE_LSB                                64 //52  // 0x34: 12ms to have receiver up and running (52 0x55 bytes - 13,54mS)
 #define SYNC_BYTE_1                                 0xff
 #define SYNC_BYTE_2                                 0x33    // Sync word - Size must be set to 2; first byte 0xff then 0x33 size-1 times
 //#define SYNC_BYTE_2_ENC                             0xB3    // Sync word Inverted + Encoded with start & stop bits

@@ -261,7 +261,7 @@ static void Cipher(state_t* state, const uint8_t* RoundKey){
   AddRoundKey(Nr, state, RoundKey);
 }
 
-inline void AES_ECB_encrypt(const struct AES_ctx* ctx, uint8_t* buf) {
+inline void AES_ECB_encrypt(const AES_ctx* ctx, uint8_t* buf) {
   // The next function call encrypts the PlainText with the Key using AES algorithm.
   Cipher((state_t*)buf, ctx->RoundKey);
 }

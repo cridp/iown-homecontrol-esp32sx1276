@@ -26,6 +26,7 @@ namespace IOHC {
         midnight,
         associate,
         custom,
+        custom60,
         discover28,
         discover2A,
         fake0,

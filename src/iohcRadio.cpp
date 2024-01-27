@@ -37,8 +37,7 @@ namespace IOHC {
         return _iohcRadio;
     }
 
-    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs,
-                          IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
+    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
         this->scanTimeUs = scanTimeUs ? scanTimeUs : DEFAULT_SCAN_INTERVAL_US;
@@ -47,8 +46,7 @@ namespace IOHC {
 
         Radio::clearBuffer();
         Radio::clearFlags();
-        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]);
-        // 868950000); // We always start at freq[0] the 1W/2W channel
+        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]); // 868950000); // We always start at freq[0] the 1W/2W channel
         Radio::calibrate();
         Radio::setRx();
     }
@@ -94,7 +92,7 @@ namespace IOHC {
 
         if (f_lock) return;
 
-        if ((++radio->tickCounter * SM_GRANULARITY_US) < radio->scanTimeUs) return;
+        if (++radio->tickCounter * SM_GRANULARITY_US < radio->scanTimeUs) return;
 
         //        digitalWrite(SCAN_LED, false);
         radio->tickCounter = 0;
@@ -107,8 +105,6 @@ namespace IOHC {
 
         Radio::setCarrier(Radio::Carrier::Frequency, radio->scan_freqs[radio->currentFreqIdx]);
         //        digitalWrite(SCAN_LED, true);
-
-        // return;
 
 #elif defined(CC1101)
         if (__g_preamble){
@@ -141,6 +137,16 @@ namespace IOHC {
     //         txCounter = 0;
     //         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
     //     }
+        void iohcRadio::send(std::vector<iohcPacket*>& iohcTx) {
+
+               if (txMode)  return;
+
+                packets2send = iohcTx; //std::move(iohcTx); //
+                iohcTx.clear();
+
+                txCounter = 0;
+                Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+            }
 
     void iohcRadio::packetSender(iohcRadio* radio) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -153,7 +159,7 @@ namespace IOHC {
             if (radio->delayed != nullptr)
                 //               Serial.printf("Use Saved Delayed Packet !\n");
                 //           f_lock = false; txMode = false; return;
-                radio->iohc = std::move(radio->delayed);
+                radio->iohc = radio->delayed;
         }
         else
             radio->iohc = radio->packets2send[radio->txCounter];

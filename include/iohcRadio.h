@@ -38,7 +38,9 @@ namespace IOHC {
             static iohcRadio *getInstance();
             virtual ~iohcRadio() = default;
             void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback, IohcPacketDelegate txCallback);
-            //void send(std::array<iohcPacket*, 25>& iohcTx);
+            void send(std::vector<iohcPacket*>&iohcTx);
+
+            // void send(std::array<iohcPacket*, 25>& iohcTx);
             // template <size_t N> //Just for the fun, waiting to use a vector for all
             // void send(std::array<iohcPacket*, N>& iohcTx) {
             //     uint8_t idx = 0;
@@ -55,16 +57,16 @@ namespace IOHC {
             //     Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
             // }
 
-        void send(std::vector<iohcPacket*>& iohcTx) {
-                // uint8_t idx = 0;
-                if (txMode)  return;
+        // void send(std::vector<iohcPacket*>& iohcTx) {
+        //         // uint8_t idx = 0;
+        //         if (txMode)  return;
 
-                packets2send = iohcTx; //std::move(iohcTx); //
-                iohcTx.clear();
+        //         packets2send = iohcTx; //std::move(iohcTx); //
+        //         iohcTx.clear();
 
-                txCounter = 0;
-                Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
-            }
+        //         txCounter = 0;
+        //         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+        //     }
 
         private:
             iohcRadio();
@@ -114,6 +116,7 @@ namespace IOHC {
             static void IRAM_ATTR i_preamble();
             static void IRAM_ATTR i_payload();
             static void IRAM_ATTR tickerCounter(iohcRadio *radio);
+
             static void packetSender(iohcRadio *radio);
 
         #if defined(CC1101)

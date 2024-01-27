@@ -17,7 +17,7 @@
 
 #define CRC_POLYNOMIAL_CCITT    0x8408
 
-uint8_t hexStringToBytes(const std::string hexString, uint8_t *byteString);
+uint8_t hexStringToBytes(std::string hexString, uint8_t *byteString);
 std::string bytesToHexString(const uint8_t *byteString, uint8_t len);
 
 namespace iohcCrypto {

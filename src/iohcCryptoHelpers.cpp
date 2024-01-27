@@ -143,12 +143,13 @@ namespace iohcCrypto {
         #elif defined(HELTEC)
             mbedtls_aes_setkey_enc( &aes, controller_key, 128 );
            
-        for (uint8_t a=0; a<16; a++){
-            hmac[a] = 0;
-        }
+//        for (uint8_t a=0; a<16; a++){
+//            hmac[a] = 0;
+//        }
         mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, iv.data(), hmac);
-        mbedtls_aes_free( &aes );
+//        mbedtls_aes_free( &aes );
         #endif        
+
     }
 
 /*
