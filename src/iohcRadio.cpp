@@ -66,7 +66,7 @@ namespace IOHC {
                     Radio::setRx();
                     f_lock = false;
                 }
-                radio->sent(radio->iohc); // Workaround to permit MQTT sending
+                radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending
                 return;
             }
             else {
@@ -122,21 +122,6 @@ namespace IOHC {
 #endif
     }
 
-    //     template <size_t N>
-    //     void iohcRadio::send(std::array<iohcPacket*, N>& iohcTx) {
-    //         uint8_t idx = 0;
-
-    //         if (txMode)  return;
-    //         do {
-    //             packets2send[idx] = iohcTx[idx];
-    //         } while (iohcTx[idx++]);
-    // //         for (auto packet : iohcTx) {
-    // //             if (!packet) break;
-    // //             packets2send[idx++] = packet;
-    // //         }
-    //         txCounter = 0;
-    //         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
-    //     }
         void iohcRadio::send(std::vector<iohcPacket*>& iohcTx) {
 
                if (txMode)  return;
@@ -215,7 +200,7 @@ namespace IOHC {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
 
-    bool iohcRadio::sent(iohcPacket* packet) {
+    bool IRAM_ATTR iohcRadio::sent(iohcPacket* packet) {
         bool ret = false;
         if (txCB) {
             ret = txCB(packet);
@@ -224,14 +209,13 @@ namespace IOHC {
     }
 
     //    static uint8_t RF96lnaMap[] = { 0, 0, 6, 12, 24, 36, 48, 48 };
-    bool iohcRadio::receive(bool stats = false) {
+    bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         bool frmErr = false;
-        iohc = new iohcPacket; //(iohcPacket *)malloc(sizeof(iohcPacket));
+        iohc = new iohcPacket;
         iohc->buffer_length = 0;
         iohc->frequency = scan_freqs[currentFreqIdx];
-        /*iohc->*/
-        packetStamp = _g_payload_millis;
+        /*iohc->*/packetStamp = _g_payload_millis;
 #if defined(SX1276)
         if (stats) {
             iohc->rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
@@ -259,8 +243,7 @@ namespace IOHC {
 #endif
 
 #if defined(SX1276)
-        while (!Radio::dataAvail());
-
+        while (!Radio::dataAvail()) ;
         while (Radio::dataAvail()) {
             iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
         }
@@ -324,11 +307,8 @@ namespace IOHC {
 #endif
 
         //        Radio::clearFlags();
-        iohc->decode();
-        // IOHC::lastSendCmd = iohc->payload.packet.header.cmd;
-
         if (rxCB && !frmErr) rxCB(iohc);
-
+        iohc->decode();
         //        delete iohc; //free(iohc);
 
         digitalWrite(RX_LED, false); //digitalRead(RX_LED)^1);

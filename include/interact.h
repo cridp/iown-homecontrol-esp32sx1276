@@ -70,8 +70,8 @@ inline  void connectToMqtt() {
     ESP_ERROR_CHECK(esp_wifi_set_promiscuous(false));
      
     // TODO put the wifi task in core 1 as tickerUS cant be changed of core
-    // constexpr wifi_init_config_t tweak = {.wifi_task_core_id = 1, }; // For fun
-    //ESP_ERROR_CHECK(esp_wifi_init(&tweak));
+    constexpr wifi_init_config_t tweak = {.wifi_task_core_id = 1, }; // For fun
+    ESP_ERROR_CHECK(esp_wifi_init(&tweak));
     // This do the job avoiding crash with MQTT
     ESP_ERROR_CHECK(esp_wifi_scan_stop()); 
     // WiFi.printDiag(Serial);

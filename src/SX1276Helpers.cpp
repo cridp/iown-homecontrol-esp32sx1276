@@ -126,7 +126,7 @@ namespace Radio {
         // writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
 
         // PA Ramp: No Shaping, Ramp up/down 15us
-        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US); //_0012_US);// 
+        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US);// _0015_US); //
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
         writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
@@ -163,6 +163,7 @@ namespace Radio {
         // Wait end of calibration
         while (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING);
 
+        // PA boost maximum power
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
         writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
@@ -241,12 +242,10 @@ namespace Radio {
         SPI_endTransaction();
 
         if (check) {
-            uint8_t getByte;
-
             SPI_beginTransaction();
             SPI.transfer(regAddr);                  // Send Address
             for (uint8_t idx=0; idx < len; ++idx) {
-                getByte = SPI.transfer(regAddr);    // Get data
+                uint8_t getByte = SPI.transfer(regAddr);    // Get data
                 if (in[idx] != getByte) {
                     SPI_endTransaction();
                     return false;
@@ -299,7 +298,7 @@ namespace Radio {
                 break;
             case Carrier::Modulation:
                 switch (value) {
-                    case Modulation::FSK:
+                    case Modulation::FSK: {
                         uint8_t rfOpMode = readByte(REG_OPMODE);
                         rfOpMode &= RF_OPMODE_LONGRANGEMODE_MASK;
                         rfOpMode |= RF_OPMODE_LONGRANGEMODE_OFF;
@@ -310,6 +309,10 @@ namespace Radio {
                         rfOpMode &= ~0x08;
                         writeByte(REG_OPMODE, rfOpMode);
                         break;
+                    }
+                    case Modulation::LoRa:
+                    case Modulation::OOK:
+                    default: break;
                 }
                 break;
             case Carrier::Bitrate:

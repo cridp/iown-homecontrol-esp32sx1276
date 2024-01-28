@@ -259,8 +259,8 @@ void setup() {
     Cmd::addHandler((char *)"setWindow", (char *)"open close", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::setWindow, cmd /*cmd->at(1).c_str()*/);    });
     Cmd::addHandler((char *)"midnight", (char *)"Synchro Paired", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::midnight, nullptr);    });
     Cmd::addHandler((char *)"associate", (char *)"Synchro Paired", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::associate, nullptr);    });
-    Cmd::addHandler((char *)"custom", (char *)"test unknown commands", [](Tokens* cmd)-> void {scanMode = true;       cozyDevice2W->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);    });
-    Cmd::addHandler((char *)"custom60", (char *)"test 0x60 commands", [](Tokens* cmd)-> void {cozyDevice2W->cmd(IOHC::DeviceButton::custom60, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"custom", (char *)"test unknown commands", [](Tokens* cmd)-> void {/*scanMode = true;*/       cozyDevice2W->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);    });
+    Cmd::addHandler((char *)"custom60", (char *)"test 0x60 commands", [](Tokens* cmd)-> void {/*scanMode = true;*/ cozyDevice2W->cmd(IOHC::DeviceButton::custom60, cmd /*cmd->at(1).c_str()*/);    });
     // 1W
     Cmd::addHandler((char *)"pair", (char *)"1W put device in pair mode", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Pair);    });
     Cmd::addHandler((char *)"add", (char *)"1W add controller to device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Add);    });
@@ -550,21 +550,21 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
 
                 packets2send_tmp.back()->payload.packet.header.CtrlByte1.asByte = 8;
                 // Header len if protocol version is 8 else 10 ;)
-                packets2send_tmp.back()/*[0]*/->payload.packet.header.CtrlByte2.asByte = 0;
-                packets2send_tmp.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += dataLen;
+                packets2send_tmp.back()->payload.packet.header.CtrlByte2.asByte = 0;
+                packets2send_tmp.back()->payload.packet.header.CtrlByte1.asByte += dataLen;
                 /* Swap */
-                memcpy(packets2send_tmp.back()/*[0]*/->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-                memcpy(packets2send_tmp.back()/*[0]*/->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+                memcpy(packets2send_tmp.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+                memcpy(packets2send_tmp.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-                memcpy(packets2send_tmp.back()/*[0]*/->payload.buffer + 9, initial_value, dataLen);
+                memcpy(packets2send_tmp.back()->payload.buffer + 9, initial_value, dataLen);
 
-                packets2send_tmp.back()/*[0]*/->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
+                packets2send_tmp.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
                 //packet2send[0]->payload.packet.header.framelength +1;
-                packets2send_tmp.back()/*[0]*/->frequency = CHANNEL2;
-                packets2send_tmp.back()/*[0]*/->repeatTime = 6;
+                packets2send_tmp.back()->frequency = CHANNEL2;
+                packets2send_tmp.back()->repeatTime = 6;
                 IOHC::packetStamp/*packets2send[0]->stamp*/ = esp_timer_get_time(); //
-                packets2send_tmp.back()/*[0]*/->repeat = 1; // Need to stop txMode
-                packets2send_tmp.back()/*[0]*/->lock = false; //true; // Need to received ASAP
+                packets2send_tmp.back()->repeat = 1; // Need to stop txMode
+                packets2send_tmp.back()->lock = false; //true; // Need to received ASAP
                 //                    packets2send[0+1] = nullptr;
                 //                    packets2send[0]->decode(verbosity);
                 radioInstance->send(packets2send_tmp);
@@ -667,6 +667,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
                                 iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
                                 iohc->payload.packet.msg.p0x2b.info);
+
        break;
         }
  
@@ -675,29 +676,29 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
                 keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
 
             iohcCrypto::encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)keyCap);
-            Serial.printf("Controller key in clear: ");
+            printf("Controller key in clear: ");
             for (unsigned char idx: keyCap)
-                Serial.printf("%2.2x", idx);
-            Serial.printf("\n");
+                printf("%2.2x", idx);
+            printf("\n");
         break;
         }
         case 0X2E:
-            Serial.printf("\n1W Learning mode ");
+            printf("\n1W Learning mode ");
             break;
             
         case 0x39: {
             if (keyCap[0] == 0) break;
             uint8_t hmac[16];
             // Serial.printf("before frame: ");
-            std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2); //{0x39, 0x00}; // 
+            std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2); // = {0x39, 0x00}; // 
             // Serial.printf("after frame: ");
             // Serial.printf("%2.2x %2.2X\n", frame[0],  frame[1]);
             // printf("calling create hmac: ");
             iohcCrypto::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
-            Serial.printf("hmac: ");
+            printf("hmac: ");
             for (unsigned char idx: hmac)
-                Serial.printf("%2.2x", idx);
-            Serial.printf("\n");
+                printf("%2.2x", idx);
+            printf("\n");
         break;
         }
         case 0X3D: break;
