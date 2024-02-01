@@ -249,9 +249,9 @@ namespace IOHC {
                 std::vector<uint8_t> toSend =  {0x03, 0xe7, 0x32, 0x00, 0x00, 0x00}; //{0x03, 0x65, 0xd4, 0x00, 0x00, 0x00}; //{0x0C, 0x60, 0x01, 0xFF, 0xFF};
                 // Accepted command {0x0C, 0x61, 0x01, 0xFF, FF};
                 //const char* dat = data->at(1).c_str();
- AceiUnion ACEI;
                 for (int acei = 0; acei < 256; acei++) {
  //               int custom = std::stoi(data->at(1));
+ AceiUnion ACEI{};
  ACEI.asByte = acei;
  if (!ACEI.asStruct.isvalid || ACEI.asStruct.service != 0) continue;
 
@@ -618,6 +618,7 @@ uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                 //                packets2send.fill(nullptr);
                 break;
             }
+            default: break;
         }
         IOHC::packetStamp = esp_timer_get_time();
         //        save(); // Save Cozy associated devices
@@ -631,7 +632,7 @@ uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
 // 50 51 - 52(16) 53 - 54 55 - 56 57 - 60(21) .. - 64(2) 65 - 6e(9) fe - 6f(9) .. - 71 72 - 73(3) .. - 80 81 - 82(21) .. - 84  85 - 86 87 - 88 89 - 8a(18) 8c - 8b(1) 8c - 8e .. - 90 91 - 92(16) 93 - 94 95 - 96(12) 97 - 98 99
 
         size_t validKey = 0;
-        std::vector<uint8_t> valid = std::vector<uint8_t>(256);
+        auto valid = std::vector<uint8_t>(256);
         std::iota(valid.begin(), valid.end(), 0);
 
 valid = {

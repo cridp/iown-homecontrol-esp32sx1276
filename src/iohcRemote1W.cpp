@@ -33,7 +33,7 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
-        packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+        // packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         // Broadcast Target
         uint16_t bcast = (_type.at(typn) << 6) + 0b111111;
         packet->payload.packet.header.target[0] = 0x00;
@@ -41,9 +41,9 @@ namespace IOHC {
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
 
         packet->frequency = CHANNEL2;
-        packet->repeatTime = 50;
-        packet->repeat = 4;
-        packet->lock = true;
+        packet->repeatTime = 26;
+        packet->repeat = 4 ;
+        packet->lock = false;
         // }
     }
 
@@ -291,7 +291,7 @@ namespace IOHC {
                     auto *packet = new iohcPacket; // packets2send[typn];
                     _iohcRemote1W->init(packet, typn);
                     // Packet length
-                    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
+                    // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
                         packet->payload.packet.header.source[i] = _node[i];
@@ -325,8 +325,21 @@ namespace IOHC {
                         default: // If reaching default here, then cmd is not recognized, then return
                             return;
                     }
-                    packet->payload.packet.msg.p0x00.fp1 = 0xAA;
-                    packet->payload.packet.msg.p0x00.fp2 = 0x00;
+                    if(typn == 0) {
+                        packet->payload.packet.msg.p0x00.fp1 = 0x80;
+                        packet->payload.packet.msg.p0x00.fp2 = 0xD3;
+                    // Packet length
+                        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
+                    }
+                    if(typn == 2) {
+                        packet->payload.packet.msg.p0x00.fp1 = 0x80;
+                        packet->payload.packet.msg.p0x00.fp2 = 0xC8;
+                     // Packet length
+                        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
+                    }
+                    if(typn == 1) {
+                       packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_all);
+                    }
                     // Sequence
                     packet->payload.packet.msg.p0x00.sequence[0] = _sequence >> 8;
                     packet->payload.packet.msg.p0x00.sequence[1] = _sequence & 0x00ff;

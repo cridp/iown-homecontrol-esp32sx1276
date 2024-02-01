@@ -45,18 +45,18 @@ namespace Radio {
         LoRa
     };
 
-    typedef struct {
+    struct WorkingParams {
         uint32_t    carrierFrequency;
         uint8_t     rfOpMode;
         uint32_t    bitRate;
         uint32_t    deviation;
         uint8_t     seqConf[2];
-    } WorkingParams;
+    };
 
-    typedef struct {
+    struct regBandWidth {
         uint8_t     Mant;
         uint8_t     Exp;
-    } regBandWidth;
+    };
 
     void initHardware(void);
     void initRegisters(uint8_t maxPayloadLength);
