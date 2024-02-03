@@ -287,6 +287,7 @@ namespace IOHC {
             default: {              
                 IOHC::relStamp = esp_timer_get_time(); // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
                 for (size_t typn = 0; typn < _type.size(); typn++) {
+                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto *packet = new iohcPacket; // packets2send[typn];
                     _iohcRemote1W->init(packet, typn);
@@ -325,12 +326,14 @@ namespace IOHC {
                         default: // If reaching default here, then cmd is not recognized, then return
                             return;
                     }
+
                     if(typn == 0) {
                         packet->payload.packet.msg.p0x00.fp1 = 0x80;
                         packet->payload.packet.msg.p0x00.fp2 = 0xD3;
                     // Packet length
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
+                    uint8_t toAdd = 2;
                     if(typn == 2) {
                         packet->payload.packet.msg.p0x00.fp1 = 0x80;
                         packet->payload.packet.msg.p0x00.fp2 = 0xC8;
@@ -338,7 +341,14 @@ namespace IOHC {
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
                     if(typn == 1) {
-                       packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_all);
+                        // packet->payload.packet.header.cmd = 0x01;
+                        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_all);
+                        _sequence -= 1; // Use same sequence as light
+                        toAdd = 0;
+                    }
+                    if(typn == 3) {
+                        packet->payload.packet.header.cmd = 0x20;
+                        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
                     // Sequence
                     packet->payload.packet.msg.p0x00.sequence[0] = _sequence >> 8;
@@ -346,12 +356,11 @@ namespace IOHC {
                     _sequence += 1;
                     // hmac
                     uint8_t hmac[16];
-                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7);
+                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
                     iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, _key, frame);
                     for (uint8_t i = 0; i < 6; i++)
                         packet->payload.packet.msg.p0x00.hmac[i] = hmac[i];
 
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                     packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
                     packets2send.push_back(packet);

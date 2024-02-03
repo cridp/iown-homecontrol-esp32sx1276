@@ -70,8 +70,8 @@ namespace IOHC {
 
         private:
             iohcRadio();
-            bool receive(bool stats);
-            bool sent(iohcPacket *packet);
+            bool IRAM_ATTR receive(bool stats);
+            bool IRAM_ATTR sent(iohcPacket *packet);
 
             static iohcRadio *_iohcRadio;
             volatile static bool _g_preamble;
