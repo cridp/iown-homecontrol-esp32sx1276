@@ -62,7 +62,7 @@ void txUserBuffer(Tokens* cmd);
 void testKey();
 void scanDump();
 
-uint8_t keyCap[16] = {0};
+uint8_t keyCap[16] = {};
 //uint8_t source_originator[3] = {0};
 //unsigned long relStamp; // In all Devvices
 
@@ -602,14 +602,14 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
         case 0x57:
         case 0x59:            
             if (scanMode) { 
-                otherDevice2W->memorizeOther2W = {0};
+                otherDevice2W->memorizeOther2W = {};
                     printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
                     cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd; 
             }
             break;
         case 0xFE: {
             if (scanMode) { 
-                otherDevice2W->memorizeOther2W = {0};
+                otherDevice2W->memorizeOther2W = {};
                     printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
                     cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9]; 
             }

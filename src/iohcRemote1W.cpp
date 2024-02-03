@@ -120,8 +120,7 @@ namespace IOHC {
                     // hmac
                     uint8_t hmac[16];
                     frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
-                    iohcCrypto::create_1W_hmac(hmac, packets2send[typn]->payload.packet.msg.p0x2e.sequence, _key,
-                                               frame);
+                    iohcCrypto::create_1W_hmac(hmac, packet/*s2send[typn]*/->payload.packet.msg.p0x2e.sequence, _key, frame);
                     for (uint8_t i = 0; i < 6; i++)
                         packet->payload.packet.msg.p0x2e.hmac[i] = hmac[i];
 
@@ -340,27 +339,45 @@ namespace IOHC {
                      // Packet length
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
+                    // hmac
+                    uint8_t hmac[16];
+                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7); // + toAdd);
+                
                     if(typn == 1) {
                         // packet->payload.packet.header.cmd = 0x01;
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_all);
                         _sequence -= 1; // Use same sequence as light
+                        packet->payload.packet.msg.p0x00_all.sequence[0] = _sequence >> 8;
+                        packet->payload.packet.msg.p0x00_all.sequence[1] = _sequence & 0x00ff;
                         toAdd = 0;
+                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
+                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00_all.sequence, _key, frame);
+                        for (uint8_t i = 0; i < 6; i++) {
+                            packet->payload.packet.msg.p0x00_all.hmac[i] = hmac[i];
+                        }
+                    } else {
+                        // Sequence
+                        packet->payload.packet.msg.p0x00.sequence[0] = _sequence >> 8;
+                        packet->payload.packet.msg.p0x00.sequence[1] = _sequence & 0x00ff;
+                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
+                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, _key, frame);
+                        for (uint8_t i = 0; i < 6; i++) {
+                            packet->payload.packet.msg.p0x00.hmac[i] = hmac[i];
+                        }
                     }
                     if(typn == 3) {
                         packet->payload.packet.header.cmd = 0x20;
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
-                    // Sequence
-                    packet->payload.packet.msg.p0x00.sequence[0] = _sequence >> 8;
-                    packet->payload.packet.msg.p0x00.sequence[1] = _sequence & 0x00ff;
                     _sequence += 1;
                     // hmac
-                    uint8_t hmac[16];
-                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
-                    iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, _key, frame);
-                    for (uint8_t i = 0; i < 6; i++)
-                        packet->payload.packet.msg.p0x00.hmac[i] = hmac[i];
-
+                    // uint8_t hmac[16];
+                    // frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
+                    // iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, _key, frame);
+                    // for (uint8_t i = 0; i < 6; i++) {
+                    //     packet->payload.packet.msg.p0x00.hmac[i] = hmac[i];
+                    //     packet->payload.packet.msg.p0x00_all.hmac[i] = hmac[i];
+                    // }
                     packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
                     packets2send.push_back(packet);
@@ -408,6 +425,7 @@ namespace IOHC {
             _manufacturer = jobj["manufacturer_id"].as<uint8_t>();
         }
         Serial.printf("Loading 1W remote  %d _typen\n", _type.size());
+        // _sequence = 0x1402;    // DEBUG
         return true;
     }
 
