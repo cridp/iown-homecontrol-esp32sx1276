@@ -23,7 +23,7 @@ namespace IOHC {
             virtual ~iohcSystemTable() = default;
             bool addObject(IOHC::iohcPacket *iohc);
             bool addObject(address node, address backbone, uint8_t actuator[2], uint8_t manufacturer, uint8_t flags);
-            bool addObject(iohcObject *obj);
+            bool addObject(IOHC::iohcObject *obj);
             bool addObject(std::string key, std::string serialized);
 //            bool add2WObject(std::string key, std::string serialized);
             bool empty();

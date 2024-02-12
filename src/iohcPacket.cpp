@@ -68,6 +68,7 @@ namespace IOHC {
                 }
                 case 0x28: {
                 }
+                case 0x01:
                 case 0x00: {
                     // auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.p0x00.main[1]);
                     // printf("Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x00.origin, this->payload.packet.msg.p0x00.acei, main, this->payload.packet.msg.p0x00.fp1, this->payload.packet.msg.p0x00.fp2);
@@ -122,8 +123,7 @@ namespace IOHC {
 16:10:27.594 > (24) 1W S 1 E 1  FROM 9A5CA0 TO 00003F CMD 20 <  DATA(16)  02ff 0143 0b05ff00      SEQ 1B47 MAC 5be27b33d3c2  Type All
         */
         if (this->payload.packet.header.cmd == 0x00 || this->payload.packet.header.cmd == 0x01) {
-            auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.
-                                              p0x00.main[1]);
+            auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.p0x00.main[1]);
             printf(" Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x00.origin,
                    this->payload.packet.msg.p0x00.acei.asByte, main, this->payload.packet.msg.p0x00.fp1,
                    this->payload.packet.msg.p0x00.fp2);

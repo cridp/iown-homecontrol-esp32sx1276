@@ -271,6 +271,8 @@ void setup() {
     Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent);    });
     Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen);    });
     Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey);    });
+
+        Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1);    });
     // Other 2W
     Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery);    });
     // Utils
@@ -667,8 +669,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
                                 iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
                                 iohc->payload.packet.msg.p0x2b.info);
-
-       break;
+            break;
         }
  
         case 0x30: {
@@ -676,32 +677,29 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
                 keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
 
             iohcCrypto::encrypt_1W_key((const uint8_t *)iohc->payload.packet.header.source, (uint8_t *)keyCap);
-            printf("Controller key in clear: ");
+            printf("CLEAR KEY: ");
             for (unsigned char idx: keyCap)
-                printf("%2.2x", idx);
+                printf("%2.2X", idx);
             printf("\n");
-        break;
+            break;
         }
         case 0X2E:
-            printf("\n1W Learning mode ");
+            printf("1W Learning mode\n");
             break;
             
         case 0x39: {
             if (keyCap[0] == 0) break;
             uint8_t hmac[16];
-            // Serial.printf("before frame: ");
             std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2); // = {0x39, 0x00}; // 
-            // Serial.printf("after frame: ");
-            // Serial.printf("%2.2x %2.2X\n", frame[0],  frame[1]);
-            // printf("calling create hmac: ");
             iohcCrypto::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
-            printf("hmac: ");
-            for (unsigned char idx: hmac)
-                printf("%2.2x", idx);
+            printf("MAC: ");
+            for (uint8_t idx = 0; idx < 6; idx++)
+                printf("%2.2X", hmac[idx]);
             printf("\n");
         break;
         }
         case 0X3D: break;
+        case 0X05: break;
         default:
             printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);
             return false;

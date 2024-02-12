@@ -22,7 +22,7 @@ namespace IOHC {
         Stop,
         Vent,
         ForceOpen,
-        testKey
+        testKey, Mode1
     };
 
     class iohcRemote1W : public iohcDevice {
@@ -35,18 +35,26 @@ namespace IOHC {
             bool save() override;
             void scanDump() override{}
 
-            void init(iohcPacket *packet, size_t typn);
+            static void init(iohcPacket *packet, uint16_t/*size_t*/ typn);
 
         private:
             iohcRemote1W();
             static iohcRemote1W *_iohcRemote1W;
 
         protected:
-            address _node{};
-            uint16_t _sequence{};
-            uint8_t _key[16]{};
-            std::vector<uint16_t> _type;
-            uint8_t _manufacturer{};
+            // address _node{};
+            // uint16_t _sequence{};
+            // uint8_t _key[16]{};
+            // uint16_t _type{};
+            // uint8_t _manufacturer{};
+        struct remote {
+            address node{};
+            uint16_t sequence{};
+            uint8_t key[16]{};
+            uint16_t type{};
+            uint8_t manufacturer{};
+        };
+        std::vector<remote> remotes;
 
 //            IOHC::iohcPacket *packets2send[25]{};
             // std::array<iohcPacket*, 25> packets2send{};

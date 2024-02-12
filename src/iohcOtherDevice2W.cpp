@@ -23,8 +23,8 @@ namespace IOHC {
         // packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 0;
         // packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
-        // packet->payload.packet.header.CtrlByte2.asByte = 0;
-        packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+        packet->payload.packet.header.CtrlByte2.asByte = 0;
+        // packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
         // packet->payload.packet.header.CtrlByte2.asStruct.Unk3 = 0;
         // Broadcast Target
@@ -72,9 +72,9 @@ namespace IOHC {
 
                             std::string discovery = "d430477706ba11ad31"; //28"; //"2b578ebc37334d6e2f50a4dfa9";
                             packets2send.back()/*[j]*/->buffer_length = hexStringToBytes(discovery, packets2send.back()/*[j]*/->payload.buffer);
-                            bec += 0x1;
                             init(packets2send.back()/*[j]*//*->payload.buffer[4]*/, bec);
-                            packets2send.back()/*[j]*/->repeatTime = 225;
+                            bec += 0x3F;
+                            // packets2send.back()/*[j]*/->repeatTime = 225;
 //                            packets2send.back()/*[j]*/->decode(); // Not for the cozydevice -> change and adapt for KLR 2W
                             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                         }

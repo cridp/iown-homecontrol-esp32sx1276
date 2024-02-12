@@ -26,15 +26,6 @@ namespace IOHC {
         return(inserted);
     }
 
-    // bool iohcSystemTable::addObject(IOHC::iohcPacket *iohc) {
-    //     changed = true;
-    //     std::string s0 = bytesToHexString(iohc->payload.packet.header.source, 3); //   (uint8_t *)obj->getNode(), 3);
-    //     iohcObject *obj = new iohcObject(iohc);
-    //     bool inserted = _objects.insert_or_assign(s0, obj).second;
-    //     save();
-    //     return(inserted);
-    // }
-
     bool iohcSystemTable::addObject(iohcObject *obj) {
         changed = true;
         std::string s0 = bytesToHexString((uint8_t *)obj->getNode(), 3);
@@ -49,14 +40,6 @@ namespace IOHC {
         save();
         return inserted;
     }
-
-    // bool iohcSystemTable::add2WObject(std::string node_id, std::string serialized)  {
-    //     iohc2WObject *tmp;
-    //     tmp = new iohc2WObject (serialized); 
-    //     bool inserted = _objects.insert_or_assign(node_id, tmp).second;
-    //     save();
-    //     return(inserted);
-    // }
 
     bool iohcSystemTable::empty() {
         return(_objects.empty());

@@ -126,7 +126,7 @@ namespace Radio {
         // writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
 
         // PA Ramp: No Shaping, Ramp up/down 15us
-        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US);// _0015_US); //
+        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US);//_0015_US); //_0031_US); // 
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
         writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
@@ -137,7 +137,7 @@ namespace Radio {
         // Set lenght checking if passed as parameter
         writeByte(REG_PAYLOADLENGTH, 0xff); // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
         // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_32);
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_256); // _32);
 
 
         // Activates Timeout interrupt on Preamble
@@ -145,15 +145,19 @@ namespace Radio {
         // 250KHz BW with AFC
         writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
 
-    writeByte(REG_AFCFEI, 0x01);
+        writeByte(REG_AFCFEI, 0x01);
 
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G2);
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G2); //_G1); // 
 
         // Enables Preamble Detect, 2 bytes
         writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
     }
 
     void calibrate() {
+
+        // Save context
+        uint8_t regPaConfigInitVal = readByte( REG_PACONFIG );
+
         // Cut the PA just in case, RFO output, power = -1 dBm
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_RFO);
         // RC Calibration (only call after setting correct frequency band)
@@ -161,15 +165,60 @@ namespace Radio {
         // Start image and RSSI calibration
         writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
-        while (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING);
+        while ( (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING ) {}
+        // Set a Frequency in HF band
+        Radio::setCarrier(Radio::Carrier::Frequency, 868000000);
+        // Start image and RSSI calibration
+        writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
+        // Wait end of calibration
+        while ( (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING ) {}
+        
+        // Restore context
+        writeByte( REG_PACONFIG, regPaConfigInitVal );
 
         // PA boost maximum power
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
         writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
-
     }
 
+/*!
+ * Performs the Rx chain calibration for LF and HF bands
+ * \remark Must be called just after the reset so all registers are at their
+ *         default values
+ */
+// void RxChainCalibration( void ) {
+//     uint8_t regPaConfigInitVal;
+//     uint32_t initialFreq;
+
+//     // Save context
+//     regPaConfigInitVal = readByte( REG_PACONFIG );
+//     initialFreq = ( double )( ( ( uint32_t )readByte( REG_FRFMSB ) << 16 ) |
+//                               ( ( uint32_t )readByte( REG_FRFMID ) << 8 ) |
+//                               ( ( uint32_t )readByte( REG_FRFLSB ) ) ) * ( double )FREQ_STEP;
+
+//     // Cut the PA just in case, RFO output, power = -1 dBm
+//     writeByte( REG_PACONFIG, 0x00 );
+
+//     // Launch Rx chain calibration for LF band
+//     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
+//     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
+//     {
+//     }
+
+//     // Sets a Frequency in HF band
+//     SetChannel( 868000000 );
+
+//     // Launch Rx chain calibration for HF band 
+//     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
+//     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
+//     {
+//     }
+
+//     // Restore context
+//     writeByte( REG_PACONFIG, regPaConfigInitVal );
+//     SetChannel( initialFreq );
+// }
     void setStandby() {
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
     }
@@ -177,13 +226,13 @@ namespace Radio {
     void setTx() {   // Uncommon and incompatible settings
         // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER); //RF_OPMODE_SYNTHESIZER_TX); // 
         TxReady;
     }
 
     void setRx() {   // Uncommon and incompatible settings
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER); //RF_OPMODE_SYNTHESIZER_RX); // 
         RxReady;
 /*
         // Start Sequencer
@@ -269,7 +318,7 @@ namespace Radio {
     bool setCarrier(Carrier param, uint32_t value) {
         uint32_t tmpVal;
         uint8_t out[4];
-        regBandWidth bw;
+        regBandWidth bw{};
 
 //  Change of Frequency can be done while the radio is working thanks to Freq Hopping
         if (!inStdbyOrSleep())
@@ -278,6 +327,7 @@ namespace Radio {
 
         switch (param) {
             case Carrier::Frequency:
+                /*uint32_t FRF = (newFreq * (uint32_t(1) << RADIOLIB_SX127X_DIV_EXPONENT)) / RADIOLIB_SX127X_CRYSTAL_FREQ;*/
                 tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
                 out[0] = (tmpVal & 0x00ff0000) >> 16;
                 out[1] = (tmpVal & 0x0000ff00) >> 8;

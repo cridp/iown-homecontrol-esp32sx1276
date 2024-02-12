@@ -246,7 +246,7 @@ namespace IOHC {
             case DeviceButton::custom: {
                 packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                std::vector<uint8_t> toSend =  {0x03, 0xe7, 0x32, 0x00, 0x00, 0x00}; //{0x03, 0x65, 0xd4, 0x00, 0x00, 0x00}; //{0x0C, 0x60, 0x01, 0xFF, 0xFF};
+                std::vector<uint8_t> toSend =  {0x01, 0x47, 0xc8, 0x00, 0x00, 0x00}; //{0x03, 0x65, 0xd4, 0x00, 0x00, 0x00}; //{0x0C, 0x60, 0x01, 0xFF, 0xFF};
                 // Accepted command {0x0C, 0x61, 0x01, 0xFF, FF};
                 //const char* dat = data->at(1).c_str();
                 for (int acei = 0; acei < 256; acei++) {
@@ -264,26 +264,26 @@ namespace IOHC {
 
                 //                    packets2send[k] = new iohcPacket;
                 packets2send.push_back(new iohcPacket);
-                init(packets2send.back()/*[0]*/);
-                packets2send.back()/*[0]*/->payload.packet.header.cmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
+                init(packets2send.back());
+                packets2send.back()->payload.packet.header.cmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
 
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += toSend.size();
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.source, from/*gateway*/, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.target, to_1, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.buffer + 9, toSend.data(), toSend.size());
+                memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
+                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()/*[0]*/->buffer_length = toSend.size() + 9;
+                packets2send.back()->buffer_length = toSend.size() + 9;
                 //packet2send[0]->payload.packet.header.framelength +1;
                 //                packets2send[0]->decode(verbosity);
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                packets2send.back()->delayed = 350;
+                packets2send.back()->delayed = 250;
 
                 }
                 _radioInstance->send(packets2send); // Verify !
@@ -294,12 +294,12 @@ namespace IOHC {
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 std::vector<uint8_t> toSend =  {0x0C, 0x60, 0x01, 0xFF};
                 // Accepted command {0x0C, 0x61, 0x01, 0xFF, FF};
-                //const char* dat = data->at(1).c_str();
+                const char* dat = data->at(1).c_str();
  
-                for (int acei = 0; acei < 256; acei++) {
- //               int custom = std::stoi(data->at(1));
+//                for (int custom = 0; custom < 256; custom++) {
+                int custom = std::stoi(data->at(1));
  
-               toSend[3] = acei; //custom;
+                toSend[3] = custom; //custom;
 
                 packets2send.push_back(new iohcPacket);
                 init(packets2send.back());
@@ -310,20 +310,20 @@ namespace IOHC {
                 packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                 packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+                // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
-                memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
-                memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
+                memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, slave_to, 3);
                 memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
                 packets2send.back()->buffer_length = toSend.size() + 9;
                 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                packets2send.back()->delayed = 350;
-
-                }
-                _radioInstance->send(packets2send); // Verify !
+                packets2send.back()->delayed = 501;
+                // packets2send.back()->repeat = 1;
+//                }
+               _radioInstance->send(packets2send); // Verify !
                 break;
             }
             case DeviceButton::midnight: {
@@ -468,7 +468,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 // 09:54:36.226 > (14) 2W S 1 E 0  FROM 0842E3 TO 14E00E CMD 00, F868.950 s+0.000   >  DATA(06)  03 e7 00 00 00 00
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 /*std::vector<uint8_t>*/
-                uint8_t toSend[] = {0x03, 0xe7, 0x4e, 0x00, 0x00, 0x00}; //{0x03, 0x00, 0x00}; //  Not good for Cmd 0x01 Answfer FE 0x10
+                uint8_t toSend[] = {0x03, 0xe7, 0x32, 0x00, 0x00, 0x00}; //{0x03, 0x00, 0x00}; //  Not good for Cmd 0x01 Answfer FE 0x10
 
                 uint8_t gateway[3] = {0xba, 0x11, 0xad}; //{0x08, 0x42, 0xe3};
                 uint8_t from[3] = {0x08, 0x42, 0xe3}; //data->at(1).c_str(); //

@@ -14,6 +14,8 @@ namespace IOHC {
 
     iohcRadio::iohcRadio() {
         Radio::initHardware();
+        Radio::calibrate();
+
         Radio::initRegisters(MAX_FRAME_LEN);
         Radio::setCarrier(Radio::Carrier::Deviation, 19200);
         Radio::setCarrier(Radio::Carrier::Bitrate, 38400);
@@ -47,7 +49,7 @@ namespace IOHC {
         Radio::clearBuffer();
         Radio::clearFlags();
         Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]); // 868950000); // We always start at freq[0] the 1W/2W channel
-        Radio::calibrate();
+        // Radio::calibrate();
         Radio::setRx();
     }
 
@@ -149,10 +151,12 @@ namespace IOHC {
         else
             radio->iohc = radio->packets2send[radio->txCounter];
 
-        if (radio->iohc->frequency != 0)
-            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
-        else
-            radio->iohc->frequency = radio->scan_freqs[radio->currentFreqIdx];
+//        if (radio->iohc->frequency != 0) {
+        if (radio->iohc->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
+            Serial.printf("ChangedFreq !\n");
+            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);}
+        else {
+            radio->iohc->frequency = radio->scan_freqs[radio->currentFreqIdx];}
 
         Radio::setStandby();
         Radio::clearFlags();

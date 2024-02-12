@@ -17,7 +17,7 @@ namespace IOHC {
         return _iohcRemote1W;
     }
 
-    void iohcRemote1W::init(iohcPacket* packet, size_t typn) {
+    void iohcRemote1W::init(iohcPacket* packet, uint16_t/*size_t*/ typn) {
         //           for (size_t typn=0; typn<_type.size(); typn++) { // Pre-allocate packets vector; one packet for each remote type loaded
         // Pas besoin de new ici, std::array gère automatiquement la mémoire
         // Vous pouvez directement accéder à l'élément avec l'opérateur [].
@@ -35,14 +35,14 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte2.asByte = 0;
         // packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         // Broadcast Target
-        uint16_t bcast = (_type.at(typn) << 6) + 0b111111;
+        uint16_t bcast = (typn << 6) + 0b111111; // (_type.at(typn) << 6) + 0b111111;
         packet->payload.packet.header.target[0] = 0x00;
         packet->payload.packet.header.target[1] = bcast >> 8;
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 26;
-        packet->repeat = 4 ;
+        packet->repeat = 4;
         packet->lock = false;
         // }
     }
@@ -52,32 +52,37 @@ namespace IOHC {
     void iohcRemote1W::cmd(RemoteButton cmd) {
         // Emulates remote button press
         switch (cmd) {
-            case RemoteButton::Pair: {// 0x2e: 0x1120 + target broadcast + source + 0x2e00 + sequence + hmac
+            case RemoteButton::Pair: {
+                // 0x2e: 0x1120 + target broadcast + source + 0x2e00 + sequence + hmac
+                packets2send.clear();
+
                 IOHC::relStamp = esp_timer_get_time();
-                for (size_t typn = 0; typn < _type.size(); typn++) {
+                for (auto & [node, sequence, key, type, manufacturer]: remotes) {
+                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-                    auto *packet = new iohcPacket; // packets2send[typn];
-                    _iohcRemote1W->init(packet, typn);
+                    auto* packet = new iohcPacket;
+                    IOHC::iohcRemote1W::init(packet, type); // typn);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = _node[i];
+                        packet->payload.packet.header.source[i] = node[i]; // _node[i];
 
                     //Command
                     packet->payload.packet.header.cmd = 0x2e;
                     // Data
                     packet->payload.packet.msg.p0x2e.data = 0x00;
                     // Sequence
-                    packet->payload.packet.msg.p0x2e.sequence[0] = _sequence >> 8;
-                    packet->payload.packet.msg.p0x2e.sequence[1] = _sequence & 0x00ff;
-                    _sequence += 1;
+                    packet->payload.packet.msg.p0x2e.sequence[0] = sequence >> 8; // _sequence >> 8;
+                    packet->payload.packet.msg.p0x2e.sequence[1] = sequence & 0x00ff; //_sequence & 0x00ff;
+                    sequence += 1; // _sequence += 1;
                     // hmac
                     frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
                     uint8_t hmac[16];
-                    iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x2e.sequence, _key, frame);
+                    iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x2e.sequence, key, frame);
+                    // _key, frame);
 
                     for (uint8_t i = 0; i < 6; i++)
                         packet->payload.packet.msg.p0x2e.hmac[i] = hmac[i];
@@ -90,37 +95,42 @@ namespace IOHC {
                     //                    packet->decode(); //  KLI 1W
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 }
-                    _radioInstance->send(packets2send);
-                    break; 
-                    }
+                _radioInstance->send(packets2send);
+                break;
+            }
 
-            case RemoteButton::Remove: {// 0x39: 0x1c00 + target broadcast + source + 0x3900 + sequence + hmac
+            case RemoteButton::Remove: {
+                // 0x39: 0x1c00 + target broadcast + source + 0x3900 + sequence + hmac
+                packets2send.clear();
+
                 IOHC::relStamp = esp_timer_get_time();
-                for (size_t typn = 0; typn < _type.size(); typn++) {
+                for (auto&r: remotes) {
+                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-                    auto *packet = new iohcPacket; // packets2send[typn];
-                    _iohcRemote1W->init(packet, typn);
+                    auto* packet = new iohcPacket; // packets2send[typn];
+                    IOHC::iohcRemote1W::init(packet, r.type); // typn);
                     // Packet length
                     //                    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = _node[i];
+                        packet->payload.packet.header.source[i] = r.node[i];
 
                     //Command
                     packet->payload.packet.header.cmd = 0x39;
                     // Data
                     packet->payload.packet.msg.p0x2e.data = 0x00;
                     // Sequence
-                    packet->payload.packet.msg.p0x2e.sequence[0] = _sequence >> 8;
-                    packet->payload.packet.msg.p0x2e.sequence[1] = _sequence & 0x00ff;
-                    _sequence += 1;
+                    packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
+                    packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
+                    r.sequence += 1;
                     // hmac
                     uint8_t hmac[16];
                     frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
-                    iohcCrypto::create_1W_hmac(hmac, packet/*s2send[typn]*/->payload.packet.msg.p0x2e.sequence, _key, frame);
+                    iohcCrypto::create_1W_hmac(hmac, packet/*s2send[typn]*/->payload.packet.msg.p0x2e.sequence, r.key,
+                                               frame);
                     for (uint8_t i = 0; i < 6; i++)
                         packet->payload.packet.msg.p0x2e.hmac[i] = hmac[i];
 
@@ -129,52 +139,56 @@ namespace IOHC {
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 }
-                    _radioInstance->send(packets2send);
-                    //printf("\n");
-                    break; 
-                    }
+                _radioInstance->send(packets2send);
+                //printf("\n");
+                break;
+            }
 
-            case RemoteButton::Add: {// 0x30: 0x1100 + target broadcast + source + 0x3000 + ???
+            case RemoteButton::Add: {
+                // 0x30: 0x1100 + target broadcast + source + 0x3000 + ???
+                packets2send.clear();
+
                 IOHC::relStamp = esp_timer_get_time();
-                for (size_t typn = 0; typn < _type.size(); typn++) {
+                for (auto&r: remotes) {
+                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-                     auto *packet = new iohcPacket; // packets2send[typn];
-                    _iohcRemote1W->init(packet, typn);
-                   // Packet length
+                    auto* packet = new iohcPacket;
+                    IOHC::iohcRemote1W::init(packet, r.type); // typn);
+                    // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
 
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = _node[i];
+                        packet->payload.packet.header.source[i] = r.node[i];
                     //Command
                     packet->payload.packet.header.cmd = 0x30;
 
                     // Encrypted key
                     uint8_t encKey[16];
-                    memcpy(encKey, _key, 16);
-                    iohcCrypto::encrypt_1W_key(_node, encKey);
+                    memcpy(encKey, r.key, 16);
+                    iohcCrypto::encrypt_1W_key(r.node, encKey);
                     memcpy(packet->payload.packet.msg.p0x30.enc_key, encKey, 16);
 
                     // Manufacturer
-                    packet->payload.packet.msg.p0x30.man_id = _manufacturer;
+                    packet->payload.packet.msg.p0x30.man_id = r.manufacturer;
                     // Data
                     packet->payload.packet.msg.p0x30.data = 0x01;
                     // Sequence
-                    packet->payload.packet.msg.p0x30.sequence[0] = _sequence >> 8;
-                    packet->payload.packet.msg.p0x30.sequence[1] = _sequence & 0x00ff;
-                    _sequence += 1;
+                    packet->payload.packet.msg.p0x30.sequence[0] = r.sequence >> 8;
+                    packet->payload.packet.msg.p0x30.sequence[1] = r.sequence & 0x00ff;
+                    r.sequence += 1;
 
                     packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 }
-                    _radioInstance->send(packets2send);
-                    //                packets2send[0]->decode(); //  KLI 1W
-                    //printf("\n");
-                    break; 
-                    }
+                _radioInstance->send(packets2send);
+                //                packets2send[0]->decode(); //  KLI 1W
+                //printf("\n");
+                break;
+            }
             case RemoteButton::testKey: {
                 std::string controller_key = "d94a00399a46b5aba67f3809b68ecc52"; // In clear
                 std::string node_address = "8ad42e";
@@ -283,21 +297,25 @@ namespace IOHC {
                 }
                 break;
             }
-            default: {              
-                IOHC::relStamp = esp_timer_get_time(); // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
-                for (size_t typn = 0; typn < _type.size(); typn++) {
+            default: {
+                packets2send.clear();
+
+                IOHC::relStamp = esp_timer_get_time();
+                // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
+                for (auto&r: remotes) {
+                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-                    auto *packet = new iohcPacket; // packets2send[typn];
-                    _iohcRemote1W->init(packet, typn);
+                    auto* packet = new iohcPacket;
+                    IOHC::iohcRemote1W::init(packet, r.type); // typn);
                     // Packet length
                     // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = _node[i];
+                        packet->payload.packet.header.source[i] = r.node[i];
                     //Command
                     packet->payload.packet.header.cmd = 0x00;
-                    packet->payload.packet.msg.p0x00.origin = 0x01; // Command Source Originator is: User
+                    packet->payload.packet.msg.p0x00.origin = 0x01; // Command Source Originator is: 0x01 User
                     //Acei packet->payload.packet.msg.p0x00.acei;
                     setAcei(packet->payload.packet.msg.p0x00.acei, 0x43); //0xE7); //0x61);
                     switch (cmd) {
@@ -322,54 +340,74 @@ namespace IOHC {
                             packet->payload.packet.msg.p0x00.main[0] = 0x64;
                             packet->payload.packet.msg.p0x00.main[1] = 0x00;
                             break;
+                        case RemoteButton::Mode1:
+                            /*
+                            08:13:46.921 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 >  DATA(13)  01430002a3218f7326ce5bab83 Type All  Org 1 Acei 43 Main 2 fp1 A3 fp2 21  Acei 2 0 1 1
+                            08:13:46.952 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002a3218f7326ce5bab83 Type All  Org 1 Acei 43 Main 2 fp1 A3 fp2 21  Acei 2 0 1 1
+                            08:13:46.976 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002a3218f7326ce5bab83 Type All  Org 1 Acei 43 Main 2 fp1 A3 fp2 21  Acei 2 0 1 1
+                            08:13:47.001 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002a3218f7326ce5bab83 Type All  Org 1 Acei 43 Main 2 fp1 A3 fp2 21  Acei 2 0 1 1
+                            */
+                            packet->payload.packet.header.cmd = 0x01;
+                            packet->payload.packet.msg.p0x00_all.main[0] = 0x00;
+                            packet->payload.packet.msg.p0x00_all.main[1] = 0x02;
+                            packet->payload.packet.msg.p0x00_all.fp1 = 0xA3;
+                            packet->payload.packet.msg.p0x00_all.fp2 = 0x21;
+                            break;
+
                         default: // If reaching default here, then cmd is not recognized, then return
                             return;
                     }
 
-                    if(typn == 0) {
+                    if (r.type == 6) {
+                        //typen
                         packet->payload.packet.msg.p0x00.fp1 = 0x80;
                         packet->payload.packet.msg.p0x00.fp2 = 0xD3;
-                    // Packet length
+                        // Packet length
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
-                    uint8_t toAdd = 2;
-                    if(typn == 2) {
+                    if (r.type/*typn*/ == 6) {
                         packet->payload.packet.msg.p0x00.fp1 = 0x80;
                         packet->payload.packet.msg.p0x00.fp2 = 0xC8;
-                     // Packet length
+                        // Packet length
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
                     // hmac
                     uint8_t hmac[16];
-                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7); // + toAdd);
-                
-                    if(typn == 1) {
+                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7);
+                    // + toAdd);
+
+                    if (r.type/*typn*/ == 0) {
                         // packet->payload.packet.header.cmd = 0x01;
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_all);
-                        _sequence -= 1; // Use same sequence as light
-                        packet->payload.packet.msg.p0x00_all.sequence[0] = _sequence >> 8;
-                        packet->payload.packet.msg.p0x00_all.sequence[1] = _sequence & 0x00ff;
-                        toAdd = 0;
-                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
-                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00_all.sequence, _key, frame);
+                        // _sequence -= 1; // Use same sequence as light
+                        packet->payload.packet.msg.p0x00_all.sequence[0] = r.sequence >> 8;
+                        packet->payload.packet.msg.p0x00_all.sequence[1] = r.sequence & 0x00ff;
+                        uint8_t toAdd = 0;
+                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
+                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00_all.sequence, r.key, frame);
                         for (uint8_t i = 0; i < 6; i++) {
                             packet->payload.packet.msg.p0x00_all.hmac[i] = hmac[i];
                         }
-                    } else {
+                    }
+                    else {
                         // Sequence
-                        packet->payload.packet.msg.p0x00.sequence[0] = _sequence >> 8;
-                        packet->payload.packet.msg.p0x00.sequence[1] = _sequence & 0x00ff;
-                    frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
-                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, _key, frame);
+                        packet->payload.packet.msg.p0x00.sequence[0] = r.sequence >> 8;
+                        packet->payload.packet.msg.p0x00.sequence[1] = r.sequence & 0x00ff;
+                        uint8_t toAdd = 2;
+                        frame = std::vector(&packet->payload.packet.header.cmd,
+                                            &packet->payload.packet.header.cmd + 7 + toAdd);
+                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00.sequence, r.key, frame);
                         for (uint8_t i = 0; i < 6; i++) {
                             packet->payload.packet.msg.p0x00.hmac[i] = hmac[i];
                         }
                     }
-                    if(typn == 3) {
+                    if (r.type/*typn*/ == 0xff) {
                         packet->payload.packet.header.cmd = 0x20;
+                        packet->payload.packet.msg.p0x00.origin = 0x02;
+                        packet->payload.packet.msg.p0x00.acei.asByte = 0xDB;
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     }
-                    _sequence += 1;
+                    r.sequence += 1;
                     // hmac
                     // uint8_t hmac[16];
                     // frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
@@ -385,7 +423,7 @@ namespace IOHC {
                 }
                 _radioInstance->send(packets2send);
                 break;
-            } 
+            }
         }
         save(); // Save sequence number
     }
@@ -401,52 +439,90 @@ namespace IOHC {
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(256);
-        deserializeJson(doc, f);
+        DynamicJsonDocument doc(1024);
+        
+        DeserializationError error = deserializeJson(doc, f); // buf.get());
+
+        if (error) {
+            Serial.print("Failed to parse JSON: ");
+            Serial.println(error.c_str());
+            return false;
+        }
         f.close();
 
         // Iterate through the JSON object
         for (JsonPair kv: doc.as<JsonObject>()) {
-            hexStringToBytes(kv.key().c_str(), _node);
+        
+            remote r;
+            // hexStringToBytes(kv.key().c_str(), _node);
+            hexStringToBytes(kv.key().c_str(), r.node);
+            // Serial.printf("%s\n", kv.key().c_str());
+
             auto jobj = kv.value().as<JsonObject>();
-            hexStringToBytes(jobj["key"].as<const char *>(), _key);
+            // hexStringToBytes(jobj["key"].as<const char *>(), _key);
+            hexStringToBytes(jobj["key"].as<const char *>(), r.key);
+
             uint8_t btmp[2];
             hexStringToBytes(jobj["sequence"].as<const char *>(), btmp);
-            _sequence = (btmp[0] << 8) + btmp[1];
-            JsonArray jarr = jobj["type"];
+            // _sequence = (btmp[0] << 8) + btmp[1];
+            r.sequence = (btmp[0] << 8) + btmp[1];
+            /*            JsonArray jarr = jobj["type"];
+                       // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
 
-            // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
-            _type.reserve(jarr.size());
-            // Iterate through the JSON  type array
-            for (auto && i : jarr) {
-                // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
-                _type.push_back(i.as<uint16_t>());
-            }
-            _manufacturer = jobj["manufacturer_id"].as<uint8_t>();
+                       _type.reserve(jarr.size());
+           r.type.reserve(jarr.size());
+
+                       // Iterate through the JSON  type array
+                       for (auto && i : jarr) {
+                           // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
+                           _type.push_back(i.as<uint16_t>());
+           r.type.push_back(i.as<uint16_t>());
+                       }
+                       */
+            // _type = jobj["type"].as<u_int16_t>();
+            r.type = jobj["type"].as<u_int16_t>();
+
+            // _manufacturer = jobj["manufacturer_id"].as<uint8_t>();
+            r.manufacturer = jobj["manufacturer_id"].as<uint8_t>();
+            remotes.push_back(r);
         }
-        Serial.printf("Loading 1W remote  %d _typen\n", _type.size());
+
+        Serial.printf("Loading 1W remote  %d remotes\n", remotes.size()); // _type.size());
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
 
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(256);
+        DynamicJsonDocument doc(1024);
+        for (const auto&r: remotes) {
+            // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
+            // jobj["key"] = bytesToHexString(_key, sizeof(_key));
+            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
+            jobj["key"] = bytesToHexString(r.key, sizeof(r.key));
 
-        JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
-        jobj["key"] = bytesToHexString(_key, sizeof(_key));
-        uint8_t btmp[2];
-        btmp[1] = _sequence & 0x00ff;
-        btmp[0] = _sequence >> 8;
-        jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
-        JsonArray jarr = jobj.createNestedArray("type");
-        for (uint16_t i : _type)
-            // if (i)
+            uint8_t btmp[2];
+            // btmp[1] = _sequence & 0x00ff;
+            // btmp[0] = _sequence >> 8;
+            btmp[1] = r.sequence & 0x00ff;
+            btmp[0] = r.sequence >> 8;
+
+            jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
+            /*
+            JsonArray jarr = jobj.createNestedArray("type");
+            // for (uint16_t i : _type)
+        for (uint16_t i : r.type) {
+                // if (i)
                 jarr.add(i);
-            // else
+                // else
                 // break;
-        jobj["manufacturer_id"] = _manufacturer;
+                }
+                */
+            jobj["type"] = r.type;
 
+            // jobj["manufacturer_id"] = _manufacturer;
+            jobj["manufacturer_id"] = r.manufacturer;
+        }
         serializeJson(doc, f);
         f.close();
 
