@@ -56,33 +56,40 @@ namespace IOHC {
 
             switch (this->payload.packet.header.cmd) {
                 case 0x30: {
+                    printf("\tMANU %X DATA %X ", this->payload.packet.msg.p0x30.man_id, this->payload.packet.msg.p0x30.data);
                     printf("\tKEY %s SEQ %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x30.enc_key, 16).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x30.sequence, 2).c_str());
-                    printf("Manuf %X Data %X ", this->payload.packet.msg.p0x30.man_id, this->payload.packet.msg.p0x30.data);
                     break;
                 }
                 case 0x2E:
                 case 0x39: {
+                    printf("\tDATA %X ", this->payload.packet.msg.p0x2e.data);
                     printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x2e.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x2e.hmac, 6).c_str());
-                    printf("Data %X ", this->payload.packet.msg.p0x2e.data);
                     break;
                 }
                 case 0x28: {
                 }
+                case 0x20:
                 case 0x01:
                 case 0x00: {
                     // auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.p0x00.main[1]);
                     // printf("Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x00.origin, this->payload.packet.msg.p0x00.acei, main, this->payload.packet.msg.p0x00.fp1, this->payload.packet.msg.p0x00.fp2);
-                    // printf("Seq %s Hmac %s", bitrow_to_hex_string(this->payload.packet.msg.p0x00.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00.hmac, 6).c_str());
-                    int msg_seq_nr = 0;
-                    msg_seq_nr = (this->payload.buffer[9 + data_length] << 8) | this->payload.buffer[9 + data_length + 1];
-                    printf("\tSEQ %3.2X", msg_seq_nr);
-                    std::string msg_mac = bitrow_to_hex_string(this->payload.buffer + 9 + data_length + 2, 6);
-                    printf(" MAC %s ", msg_mac.c_str());
-                    // if (data_length == 16)
-                    //     printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x00.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00.hmac, 6).c_str());
-                    // else
-                    //     printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x00_all.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00_all.hmac, 6).c_str());
-                } break;
+                    // printf("tSEQ %s Hmac %s", bitrow_to_hex_string(this->payload.packet.msg.p0x01_13.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x01_13.hmac, 6).c_str());
+//                    int msg_seq_nr = 0;
+//                    msg_seq_nr = (this->payload.buffer[9 + data_length] << 8) | this->payload.buffer[9 + data_length/* + 1*/];
+//                    printf("\tSEQ %3.2X", msg_seq_nr);
+//                    std::string msg_mac = bitrow_to_hex_string(this->payload.buffer + 9 + data_length + 2, 6);
+//                    printf(" MAC %s ", msg_mac.c_str());
+
+                     if (dataLen == 13)
+                         printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x01_13.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x01_13.hmac, 6).c_str());
+                     if (dataLen == 14)
+                         printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x00_14.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00_14.hmac, 6).c_str());
+                     if (dataLen == 16)
+                         printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x00_16.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00_16.hmac, 6).c_str());
+                     if (dataLen == 15)
+                         printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.hmac, 6).c_str());
+                    break;
+                } 
                 default: {
                     // std::string msg_data = bitrow_to_hex_string(this->payload.buffer + 9, data_length);
                     // printf(" %s", msg_data.c_str());
@@ -96,10 +103,8 @@ namespace IOHC {
 
                     // printf("\tSEQ %s MAC %s ", bitrow_to_hex_string(this->payload.packet.msg.p0x00.sequence, 2).c_str(), bitrow_to_hex_string(this->payload.packet.msg.p0x00.hmac, 6).c_str());
                 }
-
             }
-            uint16_t broadcast = ((this->payload.packet.header.target[1]) << 2) | (
-                                     (this->payload.packet.header.target[2] >> 6) & 0x03);
+            uint16_t broadcast = ((this->payload.packet.header.target[1]) << 2) | ((this->payload.packet.header.target[2] >> 6) & 0x03);
             const char* typeName = sDevicesType[broadcast].c_str();
             printf(" Type %s ", typeName);
         }
@@ -123,14 +128,13 @@ namespace IOHC {
 16:10:27.594 > (24) 1W S 1 E 1  FROM 9A5CA0 TO 00003F CMD 20 <  DATA(16)  02ff 0143 0b05ff00      SEQ 1B47 MAC 5be27b33d3c2  Type All
         */
         if (this->payload.packet.header.cmd == 0x00 || this->payload.packet.header.cmd == 0x01) {
-            auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.p0x00.main[1]);
-            printf(" Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x00.origin,
-                   this->payload.packet.msg.p0x00.acei.asByte, main, this->payload.packet.msg.p0x00.fp1,
-                   this->payload.packet.msg.p0x00.fp2);
+            auto main = static_cast<unsigned>((this->payload.packet.msg.p0x01_13.main)/*[0] << 8) | this->payload.packet.msg.p0x01_13.main[1]*/);
+            printf(" Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x01_13.origin,
+                   this->payload.packet.msg.p0x01_13.acei.asByte, main, this->payload.packet.msg.p0x01_13.fp1,
+                   this->payload.packet.msg.p0x01_13.fp2);
 
-            auto acei = this->payload.packet.msg.p0x00.acei;
-            printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended,
-                   acei.asStruct.isvalid);
+            auto acei = this->payload.packet.msg.p0x01_13.acei;
+            printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
 
             //            std::bitset<8> bits(acei.asByte);
             //            std::cout << "Acei " << bits[7] << " " << bits[6] << " " << bits[5] << " " << bits[4] << " " << bits[3] << " " << bits[2] << " " << bits[1] << " " << bits[0] << std::endl;

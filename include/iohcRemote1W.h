@@ -22,7 +22,7 @@ namespace IOHC {
         Stop,
         Vent,
         ForceOpen,
-        testKey, Mode1
+        testKey, Mode1, Mode2
     };
 
     class iohcRemote1W : public iohcDevice {
@@ -51,7 +51,7 @@ namespace IOHC {
             address node{};
             uint16_t sequence{};
             uint8_t key[16]{};
-            uint16_t type{};
+            std::vector<uint8_t> type{};
             uint8_t manufacturer{};
         };
         std::vector<remote> remotes;

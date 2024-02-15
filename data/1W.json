@@ -1,5 +1,4 @@
 {
-    "AD5F00": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "1359", "type": 6, "manufacturer_id": 2},
-    "B60D1A": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "21CB", "type": 0, "manufacturer_id": 2},
-    "B60D1B": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "07D3", "type": 0, "manufacturer_id": 2}
+    "B60D1A": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "2207", "type": [0,6], "manufacturer_id": 2},
+    "B60D1B": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "0815", "type": [0,6], "manufacturer_id": 2}
 }

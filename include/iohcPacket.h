@@ -75,7 +75,7 @@ union CtrlByte2Union {
         // acei.isvalid = value & 0x01;
     }
 
-    struct _p0x00 {
+    struct _p0x00_16 {
         uint8_t         origin;
         AceiUnion       acei;
         uint8_t         main[2];
@@ -85,7 +85,7 @@ union CtrlByte2Union {
         uint8_t         sequence[2];
         uint8_t         hmac[6];
     };
-    struct _p0x00_all {
+    struct _p0x00_14 {
         uint8_t         origin;
         AceiUnion       acei;
         uint8_t         main[2];
@@ -94,7 +94,26 @@ union CtrlByte2Union {
         uint8_t         sequence[2];
         uint8_t         hmac[6];
     };
-    
+    struct _p0x01_13 {
+        uint8_t         origin;
+        AceiUnion       acei;
+        uint8_t         main; //[2];
+        uint8_t         fp1;
+        uint8_t         fp2;   
+        uint8_t         sequence[2];
+        uint8_t         hmac[6];
+    };
+    struct _p0x20_15 {
+        uint8_t         origin;
+        AceiUnion       acei;
+        uint8_t         main[2];
+        uint8_t         fp1;
+        uint8_t         fp2;   
+        uint8_t         fp3;
+        uint8_t         sequence[2];
+        uint8_t         hmac[6];
+    };
+
     struct _p0x2b {
         uint8_t         actuator[2];
         address         backbone;
@@ -115,8 +134,10 @@ union CtrlByte2Union {
     };
 
     union _msg {
-        _p0x00  p0x00;
-        _p0x00_all  p0x00_all;
+        _p0x01_13  p0x01_13;
+        _p0x00_14  p0x00_14;
+        _p0x20_15  p0x20_15;
+        _p0x00_16  p0x00_16;
         _p0x2b  p0x29;
         _p0x2b  p0x2b;
         _p0x2e  p0x2e;

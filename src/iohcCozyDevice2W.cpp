@@ -262,7 +262,6 @@ namespace IOHC {
                 uint8_t to[3] = {0xda, 0x2e, 0xe6}; //
                 uint8_t to_1[3] = {0x05, 0x4e, 0x17}; //{0x31, 0x58, 0x24}; //
 
-                //                    packets2send[k] = new iohcPacket;
                 packets2send.push_back(new iohcPacket);
                 init(packets2send.back());
                 packets2send.back()->payload.packet.header.cmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
@@ -280,12 +279,10 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
                 packets2send.back()->buffer_length = toSend.size() + 9;
-                //packet2send[0]->payload.packet.header.framelength +1;
-                //                packets2send[0]->decode(verbosity);
-                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 packets2send.back()->delayed = 250;
 
                 }
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); // Verify !
                 break;
             }

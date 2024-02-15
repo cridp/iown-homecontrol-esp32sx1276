@@ -273,6 +273,7 @@ void setup() {
     Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey);    });
 
         Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1);    });
+        Cmd::addHandler((char *)"mode2", (char *)"1W Mode2", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode2);    });
     // Other 2W
     Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery);    });
     // Utils
