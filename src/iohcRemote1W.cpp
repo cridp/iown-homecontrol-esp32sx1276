@@ -338,41 +338,85 @@ namespace IOHC {
                             packet->payload.packet.msg.p0x00_14.main[1] = 0x00;
                             break;
                         case RemoteButton::Mode1:{
-                            /* fast = 4x13 slow = 4x13+4x14
-11:37:27.418 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 >  DATA(13)  01430500db21e7e3826605b897    SEQ 21E7 MAC e3826605b897  Type All  Org 1 Acei 43 Main 500 fp1 DB fp2 21  Acei 2 0 1 1
-11:37:27.441 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500db21e7e3826605b897    SEQ 21E7 MAC e3826605b897  Type All  Org 1 Acei 43 Main 500 fp1 DB fp2 21  Acei 2 0 1 1 
-11:37:27.466 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500db21e7e3826605b897    SEQ 21E7 MAC e3826605b897  Type All  Org 1 Acei 43 Main 500 fp1 DB fp2 21  Acei 2 0 1 1 
-11:37:27.490 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500db21e7e3826605b897    SEQ 21E7 MAC e3826605b897  Type All  Org 1 Acei 43 Main 500 fp1 DB fp2 21  Acei 2 0 1 1 
-11:37:27.819 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000021e891384722ec23  SEQ 21E8 MAC 91384722ec23  Type All  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1 
-11:37:27.852 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000021e891384722ec23  SEQ 21E8 MAC 91384722ec23  Type All  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1 
-11:37:27.876 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000021e891384722ec23  SEQ 21E8 MAC 91384722ec23  Type All  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1 
-11:37:27.901 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000021e891384722ec23  SEQ 21E8 MAC 91384722ec23  Type All  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1 
+                            /* fast = 4x13 Increment fp2 - slow = 0x01 4x13 followed 0x00 4x14 Main 0xD2
+11:28:23.599 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 >  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1
+11:28:23.622 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
+11:28:23.647 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
+11:28:23.671 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
+11:28:23.786 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:28:23.809 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:28:23.834 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:28:23.860 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
                            */
+                        //   r.sequence = 0x0835; //DEBUG
                             packet->payload.packet.header.cmd = 0x01;
-                            packet->payload.packet.msg.p0x01_13.main/*[0]*/ = 0x05;
-                            // packet->payload.packet.msg.p0x01_13.main[1] = 0x02;
-                            packet->payload.packet.msg.p0x01_13.fp1 = 0xdb;
-                            packet->payload.packet.msg.p0x01_13.fp2 = 0x21;
-                            if (packet->payload.packet.header.source[2] == 0x1B) {packet->payload.packet.msg.p0x01_13.fp2 = 0x09;}
-                            break;}
-                        case RemoteButton::Mode2:{
-                            /* press = 4x13 release = 4x13 Increment fp2
-11:40:54.416 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 >  DATA(13)  014300022c22455ca29fa2301c    SEQ 2245 MAC 5ca29fa2301c  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2C  Acei 2 0 1 1
-11:40:54.438 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022c22455ca29fa2301c    SEQ 2245 MAC 5ca29fa2301c  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2C  Acei 2 0 1 1 
-11:40:54.463 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022c22455ca29fa2301c    SEQ 2245 MAC 5ca29fa2301c  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2C  Acei 2 0 1 1 
-11:40:54.487 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022c22455ca29fa2301c    SEQ 2245 MAC 5ca29fa2301c  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2C  Acei 2 0 1 1 
-11:40:54.686 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022d224687cc44f3411b    SEQ 2246 MAC 87cc44f3411b  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2D  Acei 2 0 1 1 
-11:40:54.710 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022d224687cc44f3411b    SEQ 2246 MAC 87cc44f3411b  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2D  Acei 2 0 1 1 
-11:40:54.734 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022d224687cc44f3411b    SEQ 2246 MAC 87cc44f3411b  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2D  Acei 2 0 1 1 
-11:40:54.759 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  014300022d224687cc44f3411b    SEQ 2246 MAC 87cc44f3411b  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 2D  Acei 2 0 1 1 
+                            packet->payload.packet.msg.p0x01_13.main/*[0]*/ = 0x00;
+                            packet->payload.packet.msg.p0x01_13.fp1 = 0x02;
+                            packet->payload.packet.msg.p0x01_13.fp2 = r.sequence & 0xFF;
+                            // if (packet->payload.packet.header.source[2] == 0x1A) {packet->payload.packet.msg.p0x01_13.fp1 = 0x80;packet->payload.packet.msg.p0x01_13.fp2 = 0xD3;packet->payload.packet.header.source[2] = 0x1B; packet->payload.packet.msg.p0x01_13.fp2 = r.sequence--;}
+                            break;
+                        }
+                            /*Format Decode OK*/
+                        case RemoteButton::Mode2: {
+                            /* Always: press = 0x01 4x13 followed by release = 0x01 4x13 Increment fp2
+2:46:44.045 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 >  DATA(13)  0143000276085a643d86021cdf    SEQ 085a MAC 643d86021cdf  Org 1 Acei 43 Main 0 fp1 2 fp2 76  Acei 2 0 1 1  Type All
+12:46:44.068 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000276085a643d86021cdf    SEQ 085a MAC 643d86021cdf  Org 1 Acei 43 Main 0 fp1 2 fp2 76  Acei 2 0 1 1  Type All 
+12:46:44.092 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000276085a643d86021cdf    SEQ 085a MAC 643d86021cdf  Org 1 Acei 43 Main 0 fp1 2 fp2 76  Acei 2 0 1 1  Type All 
+12:46:44.117 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000276085a643d86021cdf    SEQ 085a MAC 643d86021cdf  Org 1 Acei 43 Main 0 fp1 2 fp2 76  Acei 2 0 1 1  Type All 
+12:46:44.392 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All 
+12:46:44.414 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All 
+12:46:44.437 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All 
+12:46:44.463 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All
                            */
+                        //   r.sequence = 0x085A; //DEBUG
                             packet->payload.packet.header.cmd = 0x01;
                             packet->payload.packet.msg.p0x01_13.main/*[0]*/ = 0x00;
                             // packet->payload.packet.msg.p0x01_13.main[1] = 0x02;
                             packet->payload.packet.msg.p0x01_13.fp1 = 0x02;
-                            packet->payload.packet.msg.p0x01_13.fp2 = 0x2C;
-                            if (packet->payload.packet.header.source[2] == 0x1B) {packet->payload.packet.msg.p0x01_13.fp2 = 0x2D;}
+                            packet->payload.packet.msg.p0x01_13.fp2 =  r.sequence & 0xFF;
+                            // if (packet->payload.packet.header.source[2] == 0x1A) {packet->payload.packet.header.source[2] = 0x1B; packet->payload.packet.msg.p0x01_13.fp2++; r.sequence += 1;} // DEBUG r.sequence;}
                             break;
+                    }
+                    /*Light or up/down*/
+                    case RemoteButton::Mode3:{
+                        // r.sequence = 0x2262; // DEBUG
+/* 0x00 4x16 + 0x00 4x14 + 0x00 4x16
+11:26:26.903 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 >  DATA(16)  0143000080d300002262bcff22b0d713      SEQ 2262 MAC bcff22b0d713  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1
+11:26:26.927 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080d300002262bcff22b0d713      SEQ 2262 MAC bcff22b0d713  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:26:26.952 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080d300002262bcff22b0d713      SEQ 2262 MAC bcff22b0d713  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:26:26.976 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080d300002262bcff22b0d713      SEQ 2262 MAC bcff22b0d713  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+11:26:27.005 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143000000002262d92e2bb45c29  SEQ 2262 MAC d92e2bb45c29  Type All  Org 1 Acei 43 Main 0 fp1 0 fp2 0  Acei 2 0 1 1 
+11:26:27.030 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143000000002262d92e2bb45c29  SEQ 2262 MAC d92e2bb45c29  Type All  Org 1 Acei 43 Main 0 fp1 0 fp2 0  Acei 2 0 1 1 
+11:26:27.054 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143000000002262d92e2bb45c29  SEQ 2262 MAC d92e2bb45c29  Type All  Org 1 Acei 43 Main 0 fp1 0 fp2 0  Acei 2 0 1 1 
+11:26:27.101 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143000000002262d92e2bb45c29  SEQ 2262 MAC d92e2bb45c29  Type All  Org 1 Acei 43 Main 0 fp1 0 fp2 0  Acei 2 0 1 1 
+11:26:27.129 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080c80000226359c4c4837a4f      SEQ 2263 MAC 59c4c4837a4f  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 C8  Acei 2 0 1 1 
+11:26:27.156 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080c80000226359c4c4837a4f      SEQ 2263 MAC 59c4c4837a4f  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 C8  Acei 2 0 1 1 
+11:26:27.179 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080c80000226359c4c4837a4f      SEQ 2263 MAC 59c4c4837a4f  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 C8  Acei 2 0 1 1 
+11:26:27.206 > (24) 1W S 1 E 1  FROM B60D1A TO 0001BF CMD 00 <  DATA(16)  0143000080c80000226359c4c4837a4f      SEQ 2263 MAC 59c4c4837a4f  Type Light  Org 1 Acei 43 Main 0 fp1 80 fp2 C8  Acei 2 0 1 1 
+*/
+                        break;
+                    }
+                    case RemoteButton::Mode4: {
+/* 0x00 4x16  MAIN D200 FP 20 FP2 CC DATA A200 or MAIN D200 FP 20 FP2 CD DATA 2E00 Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db0009000003233d56ca3c456f2d        SEQ 233d MAC 56ca3c456f2d  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All
+12:23:03.287 > (24) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 >  DATA(16)  0143d20020cca20023131c374605527b      SEQ 2313 MAC 1c374605527b  Org 1 Acei 43 Main D200 fp1 20 fp2 CC Data A200 Acei 2 0 1 1  Type All
+12:23:03.311 > (24) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(16)  0143d20020cca20023131c374605527b      SEQ 2313 MAC 1c374605527b  Org 1 Acei 43 Main D200 fp1 20 fp2 CC Data A200 Acei 2 0 1 1  Type All
+12:23:03.337 > (24) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(16)  0143d20020cca20023131c374605527b      SEQ 2313 MAC 1c374605527b  Org 1 Acei 43 Main D200 fp1 20 fp2 CC Data A200 Acei 2 0 1 1  Type All
+12:23:03.361 > (24) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(16)  0143d20020cca20023131c374605527b      SEQ 2313 MAC 1c374605527b  Org 1 Acei 43 Main D200 fp1 20 fp2 CC Data A200 Acei 2 0 1 1  Type All                            r.sequence = 0x2311; //DEBUG
+*/
+                        // r.sequence = 0x2313; // DEBUG
+
+                            packet->payload.packet.header.cmd = 0x00;
+                            packet->payload.packet.msg.p0x00_16.main[0] = 0xd2;
+                            packet->payload.packet.msg.p0x00_16.main[1] = 0x00;
+                            packet->payload.packet.msg.p0x00_16.fp1 = 0x20;
+                            packet->payload.packet.msg.p0x00_16.fp2 = 0xCC; 
+                            packet->payload.packet.msg.p0x00_16.data[0] = 0xA2; 
+                            packet->payload.packet.msg.p0x00_16.data[1] = 0x00; 
+                            //  if (packet->payload.packet.header.source[2] == 0x1B) {
+                            //     packet->payload.packet.header.source[2] = 0x1A; packet->payload.packet.msg.p0x00_16.fp2 = 0xCD; //r.sequence++;
+                            // }
+
+                        break;
                     }
                         default: // If reaching default here, then cmd is not recognized, then return
                             return;
@@ -397,17 +441,32 @@ namespace IOHC {
                     // frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7);
                     // + toAdd);
 
-                    if (r.type[0] == 0 && cmd == RemoteButton::Mode1 ||  cmd == RemoteButton::Mode2) {
+                    if (r.type[0] == 0 && (cmd == RemoteButton::Mode1 ||  cmd == RemoteButton::Mode2)) {
                         //                        // packet->payload.packet.header.cmd = 0x01;
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x01_13) ;
                         //                        // _sequence -= 1; // Use same sequence as light
                         packet->payload.packet.msg.p0x01_13.sequence[0] = r.sequence >> 8;
                         packet->payload.packet.msg.p0x01_13.sequence[1] = r.sequence & 0x00ff;
-                        uint8_t toAdd = 0;
-                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 6);
+                        uint8_t toAdd = 5 + 1; // OK
+                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + toAdd);
                         iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x01_13.sequence, r.key, frame);
                         for (uint8_t i = 0; i < 6; i++) {
                             packet->payload.packet.msg.p0x01_13.hmac[i] = hmac[i];
+                        }
+                    }
+
+                    else if (r.type[0] == 0 && (cmd == RemoteButton::Mode4 )) {
+                        
+                        //                        // packet->payload.packet.header.cmd = 0x01;
+                        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_16) ;
+                        //                        // _sequence -= 1; // Use same sequence as light
+                        packet->payload.packet.msg.p0x00_16.sequence[0] = r.sequence >> 8;
+                        packet->payload.packet.msg.p0x00_16.sequence[1] = r.sequence & 0x00ff;
+                        uint8_t toAdd = 8 + 1;                        
+                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + toAdd);
+                        iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00_16.sequence, r.key, frame);
+                        for (uint8_t i = 0; i < 6; i++) {
+                            packet->payload.packet.msg.p0x00_16.hmac[i] = hmac[i];
                         }
                     }
                     else {
@@ -415,8 +474,8 @@ namespace IOHC {
                         //     // Sequence
                         packet->payload.packet.msg.p0x00_14.sequence[0] = r.sequence >> 8;
                         packet->payload.packet.msg.p0x00_14.sequence[1] = r.sequence & 0x00ff;
-                        uint8_t toAdd = 2;
-                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 7 + toAdd);
+                        uint8_t toAdd =  6 + 1; //OK
+                        frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + toAdd);
                         iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x00_14.sequence, r.key, frame);
                         for (uint8_t i = 0; i < 6; i++) {
                             packet->payload.packet.msg.p0x00_14.hmac[i] = hmac[i];
