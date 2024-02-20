@@ -2,7 +2,7 @@
 
 #include <sx1276Regs-Fsk.h>
 //#include <board-config.h>
-// #include <SPI.h>
+#include <SPI.h>
 
 #if defined(ESP8266)
 
