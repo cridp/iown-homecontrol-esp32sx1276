@@ -283,7 +283,7 @@ namespace Radio {
         return writeBytes(regAddr, &data, 1, check);
     }
 
-    bool writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check) {
+    auto writeBytes(uint8_t regAddr, uint8_t* in, uint8_t len, bool check) -> bool {
         SPI_beginTransaction();
         SPI.write(regAddr | SPI_Write);      // Send Address with Write flag
         for (uint8_t idx=0; idx < len; ++idx)
@@ -328,7 +328,7 @@ namespace Radio {
         switch (param) {
             case Carrier::Frequency:
                 /*uint32_t FRF = (newFreq * (uint32_t(1) << RADIOLIB_SX127X_DIV_EXPONENT)) / RADIOLIB_SX127X_CRYSTAL_FREQ;*/
-                tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
+                tmpVal = static_cast<uint32_t>((static_cast<float_t>(value) / FXOSC) * (1 << 19));
                 out[0] = (tmpVal & 0x00ff0000) >> 16;
                 out[1] = (tmpVal & 0x0000ff00) >> 8;
                 out[2] = (tmpVal & 0x000000ff); // If Radio is active writing LSB triggers frequency change
@@ -340,7 +340,7 @@ namespace Radio {
                 writeByte(REG_AFCBW, bw.Mant | bw.Exp);
                 break;
             case Carrier::Deviation:
-                tmpVal = (uint32_t)(((float_t)value/FXOSC)*(1<<19));
+                tmpVal = static_cast<uint32_t>((static_cast<float_t>(value) / FXOSC) * (1 << 19));
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
                 writeBytes(REG_FDEVMSB, out, 2);

@@ -28,7 +28,7 @@ namespace IOHC {
 
     bool iohcSystemTable::addObject(iohcObject *obj) {
         changed = true;
-        std::string s0 = bytesToHexString((uint8_t *)obj->getNode(), 3);
+        std::string s0 = bytesToHexString(reinterpret_cast<uint8_t *>(obj->getNode()), 3);
         bool inserted = _objects.insert_or_assign(s0, obj).second;
         save();
         return inserted;

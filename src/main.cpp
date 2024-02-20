@@ -701,7 +701,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             printf("\n");
         break;
         }
-        case 0X3D: break;
+        case 0X3D:
         case 0X05: break;
         default:
             printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);

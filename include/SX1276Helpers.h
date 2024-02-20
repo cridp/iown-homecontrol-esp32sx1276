@@ -2,7 +2,7 @@
 
 #include <sx1276Regs-Fsk.h>
 //#include <board-config.h>
-#include <SPI.h>
+// #include <SPI.h>
 
 #if defined(ESP8266)
 
@@ -58,25 +58,25 @@ namespace Radio {
         uint8_t     Exp;
     };
 
-    void initHardware(void);
+    void initHardware();
     void initRegisters(uint8_t maxPayloadLength);
     void calibrate();
-    void setStandby(void);
-    void setTx(void);
-    void setRx(void);
-    void clearBuffer(void);
-    void clearFlags(void);
-    bool preambleDetected(void);
-    bool syncedAddress(void);
-    bool dataAvail(void);
-    bool crcOk(void);
+    void setStandby();
+    void setTx();
+    void setRx();
+    void clearBuffer();
+    void clearFlags();
+    bool preambleDetected();
+    bool syncedAddress();
+    bool dataAvail();
+    bool crcOk();
     uint8_t readByte(uint8_t regAddr);
     void readBytes(uint8_t regAddr, uint8_t *out, uint8_t len);
     bool writeByte(uint8_t regAddr, uint8_t data, bool check = NULL);
     bool writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check = NULL);
-    bool inStdbyOrSleep(void);
+    bool inStdbyOrSleep();
     bool setParams();
     bool setCarrier(Carrier param, uint32_t value);
     regBandWidth bwRegs(uint8_t bandwidth);
-    void dump(void);
+    void dump();
 }

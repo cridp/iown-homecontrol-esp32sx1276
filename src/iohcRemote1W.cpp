@@ -340,25 +340,20 @@ namespace IOHC {
                         case RemoteButton::Mode1:{
                             /* fast = 4x13 Increment fp2 - slow = 0x01 4x13 followed 0x00 4x14 Main 0xD2
                             Every 9 : 10:31:38.367 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000323e7ceefedf9ce81        SEQ 23e7 MAC ceefedf9ce81  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
-10:31:38.241 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 >  DATA(13)  01430002e323e602821fca8d16    SEQ 23e6 MAC 02821fca8d16  Org 1 Acei 43 Main 0 fp1 2 fp2 E3  Acei 2 0 1 1  Type All
-10:31:38.264 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002e323e602821fca8d16    SEQ 23e6 MAC 02821fca8d16  Org 1 Acei 43 Main 0 fp1 2 fp2 E3  Acei 2 0 1 1  Type All 
-10:31:38.288 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002e323e602821fca8d16    SEQ 23e6 MAC 02821fca8d16  Org 1 Acei 43 Main 0 fp1 2 fp2 E3  Acei 2 0 1 1  Type All 
-10:31:38.311 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430002e323e602821fca8d16    SEQ 23e6 MAC 02821fca8d16  Org 1 Acei 43 Main 0 fp1 2 fp2 E3  Acei 2 0 1 1  Type All 
-10:31:38.367 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000323e7ceefedf9ce81        SEQ 23e7 MAC ceefedf9ce81  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
-10:31:38.394 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000323e7ceefedf9ce81        SEQ 23e7 MAC ceefedf9ce81  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
-10:31:38.418 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000323e7ceefedf9ce81        SEQ 23e7 MAC ceefedf9ce81  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
-10:31:38.443 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000323e7ceefedf9ce81        SEQ 23e7 MAC ceefedf9ce81  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
-
-11:28:23.599 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 >  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1
-11:28:23.622 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
-11:28:23.647 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
-11:28:23.671 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  014300024c0835fadafbf323f4    SEQ 0835 MAC fadafbf323f4  Type All  Org 1 Acei 43 Main 0 fp1 2 fp2 4C  Acei 2 0 1 1 
-11:28:23.786 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
-11:28:23.809 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
-11:28:23.834 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
-11:28:23.860 > (24) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 00 <  DATA(16)  0143000080d300000836edf8e52e0be6      SEQ 0836 MAC edf8e52e0be6  Type All  Org 1 Acei 43 Main 0 fp1 80 fp2 D3  Acei 2 0 1 1 
+16:59:58.148 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 >  DATA(13)  01430500112416406780a53021    SEQ 2416 MAC 406780a53021  Org 1 Acei 43 Main 5 fp1 0 fp2 11  Acei 2 0 1 1  Type All
+16:59:58.188 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500112416406780a53021    SEQ 2416 MAC 406780a53021  Org 1 Acei 43 Main 5 fp1 0 fp2 11  Acei 2 0 1 1  Type All 
+16:59:58.212 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500112416406780a53021    SEQ 2416 MAC 406780a53021  Org 1 Acei 43 Main 5 fp1 0 fp2 11  Acei 2 0 1 1  Type All 
+16:59:58.238 > (21) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 01 <  DATA(13)  01430500112416406780a53021    SEQ 2416 MAC 406780a53021  Org 1 Acei 43 Main 5 fp1 0 fp2 11  Acei 2 0 1 1  Type All 
+16:59:58.267 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000024179f18402aa33d  SEQ 2417 MAC 9f18402aa33d  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1  Type All 
+16:59:58.292 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000024179f18402aa33d  SEQ 2417 MAC 9f18402aa33d  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1  Type All 
+16:59:58.318 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000024179f18402aa33d  SEQ 2417 MAC 9f18402aa33d  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1  Type All 
+16:59:58.342 > (22) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 00 <  DATA(14)  0143d200000024179f18402aa33d  SEQ 2417 MAC 9f18402aa33d  Org 1 Acei 43 Main D200 fp1 0 fp2 0  Acei 2 0 1 1  Type All 
+16:59:58.398 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000324182ea14f27d208        SEQ 2418 MAC 2ea14f27d208  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
+16:59:58.422 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000324182ea14f27d208        SEQ 2418 MAC 2ea14f27d208  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
+16:59:58.448 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000324182ea14f27d208        SEQ 2418 MAC 2ea14f27d208  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
+16:59:58.472 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db000900000324182ea14f27d208        SEQ 2418 MAC 2ea14f27d208  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
                            */
-                        //   r.sequence = 0x0835; //DEBUG
+                            //   r.sequence = 0x0835; //DEBUG
                             packet->payload.packet.header.cmd = 0x01;
                             packet->payload.packet.msg.p0x01_13.main = 0x00;
                             packet->payload.packet.msg.p0x01_13.fp1 = 0x02;
@@ -366,7 +361,7 @@ namespace IOHC {
                             // if (packet->payload.packet.header.source[2] == 0x1A) {packet->payload.packet.msg.p0x01_13.fp1 = 0x80;packet->payload.packet.msg.p0x01_13.fp2 = 0xD3;packet->payload.packet.header.source[2] = 0x1B; packet->payload.packet.msg.p0x01_13.fp2 = r.sequence--;}
                             break;
                         }
-                            /*Format Decode OK*/
+                        
                         case RemoteButton::Mode2: {
                             /* Always: press = 0x01 4x13 followed by release = 0x01 4x13 Increment fp2
 2:46:44.045 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 >  DATA(13)  0143000276085a643d86021cdf    SEQ 085a MAC 643d86021cdf  Org 1 Acei 43 Main 0 fp1 2 fp2 76  Acei 2 0 1 1  Type All
@@ -378,7 +373,7 @@ namespace IOHC {
 12:46:44.437 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All 
 12:46:44.463 > (21) 1W S 1 E 1  FROM B60D1B TO 00003F CMD 01 <  DATA(13)  0143000277085b9c9dd8d480dd    SEQ 085b MAC 9c9dd8d480dd  Org 1 Acei 43 Main 0 fp1 2 fp2 77  Acei 2 0 1 1  Type All
                            */
-                        //   r.sequence = 0x085A; //DEBUG
+                            //   r.sequence = 0x085A; //DEBUG
                             packet->payload.packet.header.cmd = 0x01;
                             packet->payload.packet.msg.p0x01_13.main/*[0]*/ = 0x00;
                             // packet->payload.packet.msg.p0x01_13.main[1] = 0x02;
@@ -424,8 +419,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 10:12:18.402 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db0009000003 23dc49fa35972c4b        SEQ 23dc MAC 49fa35972c4b  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
 10:12:18.427 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  DATA(15)  02db0009000003 23dc49fa35972c4b        SEQ 23dc MAC 49fa35972c4b  Org 2 Acei DB Main 9 fp1 0 fp2 0  Acei 6 3 1 1  Type All 
 */
-                        // r.sequence = 0x2313; // DEBUG
-
+                            // r.sequence = 0x2313; // DEBUG
                             packet->payload.packet.header.cmd = 0x00;
                             packet->payload.packet.msg.p0x00_16.main[0] = 0xd2;
                             packet->payload.packet.msg.p0x00_16.main[1] = 0x00;

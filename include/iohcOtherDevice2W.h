@@ -57,7 +57,7 @@ namespace IOHC {
             bool save() override;
             void scanDump() override{}
 
-            void init(iohcPacket *packet, size_t typn);
+            static void init(iohcPacket *packet, size_t typn);
 
         private:
             iohcOtherDevice2W();
