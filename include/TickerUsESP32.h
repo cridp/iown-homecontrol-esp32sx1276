@@ -1,6 +1,9 @@
-#pragma once
+// #pragma once
 
 /* This is the code of this library https://github.com/espressif/arduino-esp32/blob/master/libraries/Ticker/src/Ticker.h */
+#ifndef TICKERUSESP32_H
+#define TICKERUSESP32_H
+
 extern "C" {
     #include "freertos/FreeRTOS.h"
     #include "freertos/task.h"
@@ -85,7 +88,7 @@ namespace TimersUS {
     // }
 
     // void once_ms(uint32_t milliseconds, callback_t callback) {
-    //     _attach_ms(milliseconds, false, reinterpret_cast<callback_with_arg_t>(callback), 0);	
+    //     _attach_ms(milliseconds, false, reinterpret_cast<callback_with_arg_t>(callback), 0);
     // }
 
     // template<typename TArg>
@@ -109,7 +112,7 @@ namespace TimersUS {
         uint32_t _iterationCount = 0;
         uint32_t _maxIterations = UINT32_MAX;  // Par défaut, pas de limite d'itérations
 
-    protected:	
+    protected:
     void _attach_ms(uint32_t milliseconds, bool repeat, callback_with_arg_t callback, uint32_t arg);
     // Added delayed task
     void _delay_ms(uint32_t milliseconds, bool repeat, callback_with_arg_t callback, uint32_t arg);
@@ -127,3 +130,4 @@ namespace TimersUS {
     };
 }
 
+#endif // TICKERUSESP32_H

@@ -55,14 +55,14 @@ namespace Radio {
         pinMode(RADIO_RESET, INPUT);    // Connected to Reset; floating for POR
 
         // Check the availability of the Radio
-        do {
-            delayMicroseconds(1);
+        while (!digitalRead(RADIO_RESET)) {
     #if defined(ESP8266)
             wdt_reset();
     #elif defined(HELTEC)
             esp_task_wdt_reset();        
     #endif
-        } while (!digitalRead(RADIO_RESET));
+            delayMicroseconds(1);
+        }
         delayMicroseconds(BOARD_READY_AFTER_POR);
         printf("\nRadio Chip is ready\n");
 

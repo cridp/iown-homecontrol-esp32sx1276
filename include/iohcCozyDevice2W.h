@@ -6,7 +6,6 @@
 #include <iohcRadio.h>
 #include <iohcDevice.h>
 #include <vector>
-#include <numeric>
 
 #define COZY_2W_FILE  "/Cozy2W.json"
 

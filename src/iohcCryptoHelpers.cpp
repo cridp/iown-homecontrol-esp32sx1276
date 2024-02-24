@@ -163,7 +163,7 @@ namespace iohcCrypto {
         #endif
 
         uint8_t btransfer[16];
-        uint8_t captured[16] = {0};
+        uint8_t captured[16] = {};
 
         hexStringToBytes(transfer_key, btransfer);
 

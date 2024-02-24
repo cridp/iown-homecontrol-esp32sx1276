@@ -1,4 +1,6 @@
-#pragma once
+// #pragma once
+#ifndef FILESYSTEMHELPERS_H
+#define FILESYSTEMHELPERS_H
 
 #include <Arduino.h>
 #include <string>
@@ -12,3 +14,4 @@
 void listFS();
 void cat(const char *fname);
 void rm(const char *fname);
+#endif // FILESYSTEMHELPERS_H

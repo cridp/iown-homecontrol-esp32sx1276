@@ -659,7 +659,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             packets2send.back()->buffer_length = toSend.size() + 9;
             packets2send.back()->frequency = CHANNEL2;
             packets2send.back()->repeatTime = 25;
-            IOHC::packetStamp/*packets2send[0]->stamp*/ = esp_timer_get_time(); //
+            IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 1; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
 
@@ -693,7 +693,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
         case 0x39: {
             if (keyCap[0] == 0) break;
             uint8_t hmac[16];
-            std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2); // = {0x39, 0x00}; // 
+            std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2); // frame = {0x39, 0x00}; // 
             iohcCrypto::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
             printf("MAC: ");
             for (uint8_t idx = 0; idx < 6; idx++)

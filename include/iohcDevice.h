@@ -5,8 +5,8 @@
 #include <iohcPacket.h>
 #include <iohcRadio.h>
 
-#include <ArduinoJson.h>
-#include <LittleFS.h>
+// #include <ArduinoJson.h>
+// #include <LittleFS.h>
 
 namespace IOHC {
     /* Base classe for all devices type */

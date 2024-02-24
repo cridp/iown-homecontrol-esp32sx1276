@@ -113,7 +113,7 @@ inline void onMqttConnect(bool sessionPresent) {
   mqttClient.subscribe("iown/associate", 0); 
   mqttClient.subscribe("iown/heatState", 0); 
 
-  mqttClient.publish("iown/Frame", 0, false, "{\"cmd\": \"powerOn\", \"_data\": \"Gateway\"}", 38);
+  mqttClient.publish("iown/Frame", 0, false, R"({"cmd": "powerOn", "_data": "Gateway"})", 38);
   // Serial.println("Publishing at QoS 0");
   // uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
   // Serial.print("Publishing at QoS 1, packetId: ");
@@ -165,17 +165,14 @@ namespace Cmd {
   }
 
   inline bool addHandler(char *cmd, char *description, void (*handler)(Tokens*)) {
-    void *alloc = nullptr;
-
     for (uint8_t idx=0; idx<MAXCMDS; ++idx) {
-      if (_cmdHandler[idx] != nullptr)
-        ; // Skip already allocated cmd handler
+      if (_cmdHandler[idx] != nullptr) {} // Skip already allocated cmd handler
       else {
-        alloc = malloc(sizeof(struct _cmdEntry));
+        void* alloc = malloc(sizeof(struct _cmdEntry));
         if (!alloc)
           return false;
 
-        _cmdHandler[idx] = (_cmdEntry *)alloc;
+        _cmdHandler[idx] = static_cast<_cmdEntry *>(alloc);
         memset(alloc, 0, sizeof(struct _cmdEntry));
         strncpy(_cmdHandler[idx]->cmd, cmd, strlen(cmd)<sizeof(_cmdHandler[idx]->cmd)?strlen(cmd):sizeof(_cmdHandler[idx]->cmd) - 1);
         strncpy(_cmdHandler[idx]->description, description, strlen(cmd)<sizeof(_cmdHandler[idx]->description)?strlen(description):sizeof(_cmdHandler[idx]->description) - 1);
@@ -209,12 +206,10 @@ namespace Cmd {
   }
 
   inline void cmdFuncHandler() {
-
-    char *_cmd;
     constexpr char delim = ' ';
     Tokens segments; 
 
-    _cmd = cmdReceived(true);
+    char* _cmd = cmdReceived(true);
     if (!_cmd) return;
     if (!strlen(_cmd)) return;
 

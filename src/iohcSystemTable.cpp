@@ -7,12 +7,11 @@
 namespace IOHC {
     iohcSystemTable *iohcSystemTable::_iohcSystemTable = nullptr;
 
-    iohcSystemTable::iohcSystemTable() { load(); }
+    iohcSystemTable::iohcSystemTable() { this->load(); }
 
     iohcSystemTable *iohcSystemTable::getInstance() {
         if (!_iohcSystemTable)
             _iohcSystemTable = new iohcSystemTable();
-
         return _iohcSystemTable;
     }
 
@@ -21,23 +20,22 @@ namespace IOHC {
         std::string s0 = bytesToHexString(node, 3);
         auto *tmp = new iohcObject (node, backbone, actuator, manufacturer, flags);
         bool inserted = _objects.insert_or_assign(s0, tmp).second;
-        //bool inserted = 0;
-        save();
-        return(inserted);
+        this->save();
+        return inserted;
     }
 
     bool iohcSystemTable::addObject(iohcObject *obj) {
         changed = true;
         std::string s0 = bytesToHexString(reinterpret_cast<uint8_t *>(obj->getNode()), 3);
         bool inserted = _objects.insert_or_assign(s0, obj).second;
-        save();
+        this->save();
         return inserted;
     }
 
     bool iohcSystemTable::addObject(std::string node_id, std::string serialized)  {
         auto *tmp = new iohcObject (std::move(serialized));
         bool inserted = _objects.insert_or_assign(node_id, tmp).second;
-        save();
+        this->save();
         return inserted;
     }
 
@@ -94,7 +92,7 @@ namespace IOHC {
 
         for (auto [fst, snd] : _objects)  {
             JsonObject jobj = doc.createNestedObject(fst);
-            jobj["values"]=snd->serialize();
+            jobj["values"] = snd->serialize();
         }
         serializeJson(doc, f);
         f.close();

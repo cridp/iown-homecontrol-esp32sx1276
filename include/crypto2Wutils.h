@@ -1,3 +1,5 @@
+#ifndef CRYPTO2WUTILS_H
+#define CRYPTO2WUTILS_H
 #include <Aes.h>
 
 /* Crypto Part */
@@ -63,7 +65,7 @@ inline void constructInitialValue(/*uint8_t*/std::vector<uint8_t>  /***/frame_da
 //        }
 //        initial_value[10] = sequence_number[0];
 //        initial_value[11] = sequence_number[1];
-//    } else 
+//    } else
 //    if (challenge != NULL) {
         for (int k = 10; k < 16; k++) {
             initial_value[k] = challenge[k - 10];
@@ -75,7 +77,7 @@ inline void constructInitialValue(/*uint8_t*/std::vector<uint8_t>  /***/frame_da
     #define Nk 4        // The number of 32 bit words in a key.
     #define Nr 10       // The number of rounds in AES Cipher.
 // The lookup-tables are marked const so they can be placed in read-only storage instead of RAM
-// The numbers below can be computed dynamically trading ROM for RAM - 
+// The numbers below can be computed dynamically trading ROM for RAM -
 // This can be useful in (embedded) bootloader applications, where ROM is often limited.
 static const uint8_t sbox[256] = {
   //0     1    2      3     4    5     6     7      8    9     A      B    C     D     E     F
@@ -95,17 +97,17 @@ static const uint8_t sbox[256] = {
   0x70, 0x3e, 0xb5, 0x66, 0x48, 0x03, 0xf6, 0x0e, 0x61, 0x35, 0x57, 0xb9, 0x86, 0xc1, 0x1d, 0x9e,
   0xe1, 0xf8, 0x98, 0x11, 0x69, 0xd9, 0x8e, 0x94, 0x9b, 0x1e, 0x87, 0xe9, 0xce, 0x55, 0x28, 0xdf,
   0x8c, 0xa1, 0x89, 0x0d, 0xbf, 0xe6, 0x42, 0x68, 0x41, 0x99, 0x2d, 0x0f, 0xb0, 0x54, 0xbb, 0x16 };
-// The round constant word array, Rcon[i], contains the values given by 
+// The round constant word array, Rcon[i], contains the values given by
 // x to the power (i-1) being powers of x (x is denoted as {02}) in the field GF(2^8)
 static const uint8_t Rcon[11] = { 0x8d, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36 };
 
 #define getSBoxValue(num) (sbox[(num)])
 
-// This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states. 
+// This function produces Nb(Nr+1) round keys. The round keys are used in each round to decrypt the states.
 static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key) {
   unsigned i, j, k;
   uint8_t tempa[4]; // Used for the column/row operations
-  
+
   // The first round key is the key itself.
   for (i = 0; i < Nk; ++i) {
     RoundKey[(i * 4) + 0] = Key[(i * 4) + 0];
@@ -140,7 +142,7 @@ static void KeyExpansion(uint8_t* RoundKey, const uint8_t* Key) {
         tempa[3] = u8tmp;
       }
 
-      // SubWord() is a function that takes a four-byte input word and 
+      // SubWord() is a function that takes a four-byte input word and
       // applies the S-box to each of the four bytes to produce an output word.
 
       // Function Subword()
@@ -195,14 +197,14 @@ static void SubBytes(state_t* state) {
 static void ShiftRows(state_t* state){
   uint8_t temp;
 
-  // Rotate first row 1 columns to left  
+  // Rotate first row 1 columns to left
   temp           = (*state)[0][1];
   (*state)[0][1] = (*state)[1][1];
   (*state)[1][1] = (*state)[2][1];
   (*state)[2][1] = (*state)[3][1];
   (*state)[3][1] = temp;
 
-  // Rotate second row 2 columns to left  
+  // Rotate second row 2 columns to left
   temp           = (*state)[0][2];
   (*state)[0][2] = (*state)[2][2];
   (*state)[2][2] = temp;
@@ -227,7 +229,7 @@ static uint8_t xtime(uint8_t x) {
 static void MixColumns(state_t* state) {
   uint8_t i;
   uint8_t Tmp, Tm, t;
-  for (i = 0; i < 4; ++i) {  
+  for (i = 0; i < 4; ++i) {
     t   = (*state)[i][0];
     Tmp = (*state)[i][0] ^ (*state)[i][1] ^ (*state)[i][2] ^ (*state)[i][3] ;
     Tm  = (*state)[i][0] ^ (*state)[i][1] ; Tm = xtime(Tm);  (*state)[i][0] ^= Tm ^ Tmp ;
@@ -265,3 +267,4 @@ inline void AES_ECB_encrypt(const AES_ctx* ctx, uint8_t* buf) {
   // The next function call encrypts the PlainText with the Key using AES algorithm.
   Cipher((state_t*)buf, ctx->RoundKey);
 }
+#endif // CRYPTO2WUTILS_H

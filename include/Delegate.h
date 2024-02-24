@@ -12,7 +12,9 @@
  *  @brief      Delegates are event handlers
  *  @{
  */
-#pragma once
+// #pragma once
+#ifndef DELEGATE_H
+#define DELEGATE_H
 
 #include <functional>
 using namespace std::placeholders;
@@ -42,3 +44,4 @@ public:
 };
 
 /** @} */
+#endif // DELEGATE_H

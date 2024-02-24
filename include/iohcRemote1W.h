@@ -1,7 +1,7 @@
 #ifndef IOHC_1W_DEVICE_H
 #define IOHC_1W_DEVICE_H
 
-#include <vector> 
+#include <vector>
 #include <iohcDevice.h>
 
 #define IOHC_1W_REMOTE  "/1W.json"
@@ -26,40 +26,41 @@ namespace IOHC {
     };
 
     class iohcRemote1W : public iohcDevice {
-        public:
-            static iohcRemote1W *getInstance();
-            ~iohcRemote1W() override = default;
+    public:
+        static iohcRemote1W* getInstance();
 
-            void cmd(RemoteButton cmd);
-            bool load() override;
-            bool save() override;
-            void scanDump() override{}
+        ~iohcRemote1W() override = default;
 
-            static void init(iohcPacket *packet, uint16_t/*size_t*/ typn);
+        void cmd(RemoteButton cmd);
 
-        private:
-            iohcRemote1W();
-            static iohcRemote1W *_iohcRemote1W;
+        bool load() override;
 
-        protected:
-            // address _node{};
-            // uint16_t _sequence{};
-            // uint8_t _key[16]{};
-            // uint16_t _type{};
-            // uint8_t _manufacturer{};
+        bool save() override;
+
+        void scanDump() override {
+        }
+
+        static void init(iohcPacket* packet, uint16_t/*size_t*/ typn);
+
+    private:
+        iohcRemote1W();
+
+        static iohcRemote1W* _iohcRemote1W;
+
+    protected:
         struct remote {
             address node{};
             uint16_t sequence{};
             uint8_t key[16]{};
             std::vector<uint8_t> type{};
             uint8_t manufacturer{};
+            std::string description;
         };
+
         std::vector<remote> remotes;
 
-//            IOHC::iohcPacket *packets2send[25]{};
-            // std::array<iohcPacket*, 25> packets2send{};
-            std::vector<iohcPacket*> packets2send{};
-//            IOHC::iohcRadio *_radioInstance;
+        std::vector<iohcPacket *> packets2send{};
+        //            IOHC::iohcRadio *_radioInstance;
     };
 }
 #endif

@@ -1,4 +1,6 @@
-#pragma once
+// #pragma once
+#ifndef SX1276HELPERS_H
+#define SX1276HELPERS_H
 
 #include <sx1276Regs-Fsk.h>
 //#include <board-config.h>
@@ -80,3 +82,4 @@ namespace Radio {
     regBandWidth bwRegs(uint8_t bandwidth);
     void dump();
 }
+#endif // SX1276HELPERS_H

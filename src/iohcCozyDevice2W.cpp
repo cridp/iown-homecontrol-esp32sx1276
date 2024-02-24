@@ -2,6 +2,7 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <iohcCryptoHelpers.h>
+#include <numeric>
 
 namespace IOHC {
     iohcCozyDevice2W* iohcCozyDevice2W::_iohcCozyDevice2W = nullptr;

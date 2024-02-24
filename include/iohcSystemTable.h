@@ -17,20 +17,19 @@ namespace IOHC {
     class iohcSystemTable {
         public:
             using Objects = std::map<std::string, iohcObject *>;
-//            using Objects2W = std::map<std::string, iohc2WObject *>;
 
             static iohcSystemTable *getInstance();
             virtual ~iohcSystemTable() = default;
-            bool addObject(IOHC::iohcPacket *iohc);
+            
             bool addObject(address node, address backbone, uint8_t actuator[2], uint8_t manufacturer, uint8_t flags);
-            bool addObject(IOHC::iohcObject *obj);
+            bool addObject(iohcObject *obj);
             bool addObject(std::string key, std::string serialized);
-//            bool add2WObject(std::string key, std::string serialized);
+
             bool empty();
             uint8_t size();
             void clear();
-            inline iohcSystemTable::Objects::iterator begin();
-            inline iohcSystemTable::Objects::iterator end();
+            inline Objects::iterator begin();
+            inline Objects::iterator end();
             bool save(bool force = false);
             void dump1W();
             void dump2W();

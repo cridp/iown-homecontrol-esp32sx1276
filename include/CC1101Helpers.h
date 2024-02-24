@@ -1,6 +1,8 @@
-#pragma once
+// #pragma once
+#ifndef CC1101HELPERS_H
+#define CC1101HELPERS_H
 
-#include <cc1101Regs-Fsk.h>
+#include "cc1101Regs-Fsk.h"
 #include <board-config.h>
 #include <SPI.h>
 
@@ -15,7 +17,7 @@
 #define MSBFIRST 1
 
 #define KHz     *1000
-#define MHz     KHz *1000
+#define MHz     (KHz *1000)
 #define FXOSC   26000000
 //#define LOWER   525000000
 //#define HIGHER  779000000
@@ -50,7 +52,7 @@ namespace Radio
         LoRa
     };
 
-    typedef struct  
+    typedef struct
     {
         uint32_t    carrierFrequency;
         uint8_t     rfOpMode;
@@ -95,7 +97,7 @@ namespace Radio
 
     //void spiTransfer(uint8_t* out, size_t len, uint8_t* in) override;
     void spiTransfer(uint8_t* out, size_t len, uint8_t* in);
-  
+
     int16_t SPIgetRegValue(uint8_t reg, uint8_t msb = 7, uint8_t lsb = 0);
     int16_t SPIsetRegValue(uint8_t reg, uint8_t value, uint8_t msb = 7, uint8_t lsb = 0, uint8_t checkInterval = 2, uint8_t checkMask = 0xFF);
     void SPIsendCommand(uint8_t cmd);
@@ -115,3 +117,4 @@ namespace Radio
     void setSyncWord(uint8_t syncH, uint8_t syncL);
     void setPktLenght(uint8_t len);
 }
+#endif // CC1101HELPERS_H

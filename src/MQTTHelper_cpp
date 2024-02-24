@@ -59,7 +59,7 @@ void /*mqttHelper::*/messageReceived(String &topic, String &payload) {
     // or push to a queue and handle it in the loop after calling `client.loop()`.
 }
 
-void /*mqttHelper::*/Connect(void) {
+void /*mqttHelper::*/Connect() {
     WiFi.mode(WIFI_STA);
     WiFi.begin(WIFI_SSID, WIFI_PASSWD);
     byte mac[6];

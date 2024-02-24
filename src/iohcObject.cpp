@@ -4,6 +4,7 @@
 
 namespace IOHC {
     iohcObject::iohcObject() = default;
+    iohcObject::~iohcObject() = default;
 
     iohcObject::iohcObject(const address node, const address backbone, const uint8_t actuator[2], uint8_t manufacturer, uint8_t flags) {
         for (uint8_t i=0; i<3; i++) {
@@ -17,24 +18,13 @@ namespace IOHC {
         object.io_manufacturer = manufacturer;
     }
 
-//    iohcObject::iohcObject(IOHC::iohcPacket *iohc) { }
-
     iohcObject::iohcObject(std::string serialized) {
         uint8_t eval[sizeof(object)];
 
         hexStringToBytes(std::move(serialized), eval);
         memcpy(object.node, eval, sizeof(object));
     }
-
-    // iohcObject::iohc2WObject(std::string serialized) {
-    //     uint8_t eval[sizeof(iohc2WObject_t /*iohcObject_t*/)];
-
-    //     hexStringToBytes(serialized, eval);
-    //     memcpy(iohc2WDevice.node, eval, sizeof(iohc2WObject_t/*iohcObject_t*/));
-    // }
     
-    iohcObject::~iohcObject() = default;
-
     address* iohcObject::getNode() {
         return reinterpret_cast<address*>(object.node); // ((address *)object.node);
     }

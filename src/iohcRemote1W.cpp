@@ -524,7 +524,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
                 break;
             }
         }
-        save(); // Save sequence number
+        this->save(); // Save sequence number
     }
 
     bool iohcRemote1W::load() {
@@ -538,7 +538,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(1024);
+        DynamicJsonDocument doc(1280);
 
         DeserializationError error = deserializeJson(doc, f); // buf.get());
 
@@ -582,6 +582,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
             // _manufacturer = jobj["manufacturer_id"].as<uint8_t>();
             r.manufacturer = jobj["manufacturer_id"].as<uint8_t>();
+            r.description = jobj["description"].as<std::string>();
             remotes.push_back(r);
         }
 
@@ -620,6 +621,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
             // jobj["manufacturer_id"] = _manufacturer;
             jobj["manufacturer_id"] = r.manufacturer;
+            jobj["description"] = r.description;
         }
         serializeJson(doc, f);
         f.close();
