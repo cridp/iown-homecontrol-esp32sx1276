@@ -593,7 +593,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(1024);
+        DynamicJsonDocument doc(1280);
         for (const auto&r: remotes) {
             // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
@@ -609,15 +609,14 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
             
             JsonArray jarr = jobj.createNestedArray("type");
+            // copyArray(r.type.data(), jarr);
             // for (uint16_t i : _type)
-        for (uint8_t i : r.type) {
+            for (uint8_t i : r.type) {
                 // if (i)
-                jarr.add(i);
+                bool added = jarr.add(i);
                 // else
                 // break;
                 }
-                
- //           jobj["type"] = r.type;
 
             // jobj["manufacturer_id"] = _manufacturer;
             jobj["manufacturer_id"] = r.manufacturer;

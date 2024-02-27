@@ -28,17 +28,12 @@ namespace IOHC {
     class iohcRemote1W : public iohcDevice {
     public:
         static iohcRemote1W* getInstance();
-
         ~iohcRemote1W() override = default;
 
         void cmd(RemoteButton cmd);
-
         bool load() override;
-
         bool save() override;
-
-        void scanDump() override {
-        }
+        void scanDump() override { }
 
         static void init(iohcPacket* packet, uint16_t/*size_t*/ typn);
 

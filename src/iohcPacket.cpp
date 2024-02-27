@@ -4,7 +4,6 @@
 
 namespace IOHC {
     void IRAM_ATTR iohcPacket::decode(bool verbosity) {
-        //        printf("%lu %lu +%lu\n", packetStamp, relStamp, packetStamp - relStamp);
 
         if (packetStamp - relStamp > 500000L) {
             printf("\n");
@@ -41,7 +40,11 @@ namespace IOHC {
                this->payload.packet.header.target[0], this->payload.packet.header.target[1],
                this->payload.packet.header.target[2],
                this->payload.packet.header.cmd);
-        //        printf(" +%03.3f F%03.3f, %03.1fdBm %f %f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0, this->rssi, this->lna, this->afc);
+        
+        // if (verbosity) printf(" +%03.3f F%03.3f, %03.1fdBm %f %f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0, this->rssi, this->lna, this->afc);
+        // if (verbosity) printf(" +%03.3f F%03.3f, %03.1fdBm %f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0, this->rssi, this->afc);
+        if (verbosity) printf(" +%03.3f\t%03.1fdBm\t", static_cast<float>(packetStamp - relStamp)/1000.0,  this->rssi);
+        
         printf(" %s ", _dir);
 
         uint8_t dataLen = this->buffer_length - 9;
@@ -68,9 +71,52 @@ namespace IOHC {
                            bitrow_to_hex_string(this->payload.packet.msg.p0x2e.hmac, 6).c_str());
                     break;
                 }
-                case 0x28: {
+                case 0x20: {
+                    if (dataLen == 13) {
+                        printf("\tSEQ %s MAC %s ",
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_13.sequence, 2).c_str(),
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_13.hmac, 6).c_str());
+                        auto main = static_cast<unsigned>((this->payload.packet.msg.p0x20_13.main[0] << 8) | this->payload.packet.msg.p0x20_13.main[1]);
+                        printf(" Manuf %X Acei %X Main %X Counter %X fp1 %X ", this->payload.packet.msg.p0x20_13.origin,
+                               this->payload.packet.msg.p0x20_13.acei.asByte, main,
+                               this->payload.packet.msg.p0x20_13.fp1
+                               );
+
+                        // auto acei = this->payload.packet.msg.p0x20_13.acei;
+                        // printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
+                    }
+                    if (dataLen == 15) {
+                        printf("\tSEQ %s MAC %s ",
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.sequence, 2).c_str(),
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.hmac, 6).c_str());
+                        auto main = static_cast<unsigned>(  (this->payload.packet.msg.p0x20_15.main[0] << 8) | this->payload.packet.msg.p0x20_15.main[1]);
+                        printf(" Manuf %X Acei %X Main %X Counter %X fp1 %X fp2 %X fp3 %X ", this->payload.packet.msg.p0x20_15.origin,
+                               this->payload.packet.msg.p0x20_15.acei.asByte, main,
+                               this->payload.packet.msg.p0x20_15.fp1,
+                               this->payload.packet.msg.p0x20_15.fp2,
+                               this->payload.packet.msg.p0x20_15.fp3);
+
+                        // auto acei = this->payload.packet.msg.p0x20_15.acei;
+                        // printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
+                    }
+                                        if (dataLen == 16) {
+                        printf("\tSEQ %s MAC %s ",
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_16.sequence, 2).c_str(),
+                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_16.hmac, 6).c_str());
+                        auto main = static_cast<unsigned>((this->payload.packet.msg.p0x20_16.main[0] << 8) | this->payload.packet.msg.p0x20_16.main[1]);
+                        auto data = static_cast<unsigned>((this->payload.packet.msg.p0x20_16.data[0] << 8) | this->payload.packet.msg.p0x20_16.data[1]);
+                        printf(" Manu %X Acei %X Main %4X fp1 %X fp2 %X Data %4X", this->payload.packet.msg.p0x20_16.origin,
+                               this->payload.packet.msg.p0x20_16.acei.asByte, main,
+                               this->payload.packet.msg.p0x20_16.fp1,
+                               this->payload.packet.msg.p0x20_16.fp2, data);
+
+                        // auto acei = this->payload.packet.msg.p0x20_16.acei;
+                        // printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
+                    }
+
+                    break;
                 }
-                case 0x20:
+                case 0x28:
                 case 0x01:
                 case 0x00: {
                     // auto main = static_cast<unsigned>((this->payload.packet.msg.p0x00.main[0] << 8) | this->payload.packet.msg.p0x00.main[1]);
@@ -120,20 +166,6 @@ namespace IOHC {
                                this->payload.packet.msg.p0x00_16.fp2, data);
 
                         auto acei = this->payload.packet.msg.p0x00_16.acei;
-                        printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
-                    }
-                    if (dataLen == 15) {
-                        printf("\tSEQ %s MAC %s ",
-                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.sequence, 2).c_str(),
-                               bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.hmac, 6).c_str());
-                        auto main = static_cast<unsigned>(  (this->payload.packet.msg.p0x20_15.main[0] << 8) | this->payload.packet.msg.p0x20_15.main[
-                                1]);
-                        printf(" Org %X Acei %X Main %X fp1 %X fp2 %X ", this->payload.packet.msg.p0x20_15.origin,
-                               this->payload.packet.msg.p0x20_15.acei.asByte, main,
-                               this->payload.packet.msg.p0x20_15.fp1,
-                               this->payload.packet.msg.p0x20_15.fp2);
-
-                        auto acei = this->payload.packet.msg.p0x20_15.acei;
                         printf(" Acei %u %u %u %u ", acei.asStruct.level, acei.asStruct.service, acei.asStruct.extended, acei.asStruct.isvalid);
                     }
                     break;

@@ -394,7 +394,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             std::vector<uint8_t> toSend = {};
-//            packets2send[0] = new IOHC::iohcPacket;
+
             packets2send.push_back(new IOHC::iohcPacket);
             packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
             // Header len if protocol version is 8 else 10 ;)
@@ -509,7 +509,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         case 0x3C: {
             // Answer only to our gateway, not to others devices
             if (cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) { // (true) { //
-                packets2send.clear();
+                packets2send_tmp.clear();
                
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 

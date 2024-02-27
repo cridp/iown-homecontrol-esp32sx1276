@@ -147,7 +147,7 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
 
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G2); //_G1); // 
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // _G2); //_G1); // 
 
         // Enables Preamble Detect, 2 bytes
         writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);

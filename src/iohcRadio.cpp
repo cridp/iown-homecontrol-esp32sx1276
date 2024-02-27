@@ -72,8 +72,9 @@ namespace IOHC {
                 return;
             }
             else {
+                _g_payload_millis = esp_timer_get_time();
                 // if in RX mode?
-                radio->receive(false);
+                radio->receive(true); //false);
                 radio->tickCounter = 0;
                 radio->preCounter = 0;
                 return;
@@ -171,8 +172,9 @@ namespace IOHC {
 
         // Serial.printf("Size %u Counter %u", radio->packets2send.size(), radio->txCounter );
 
-        /*radio->iohc->*/packetStamp = esp_timer_get_time(); //millis();
-        radio->iohc->decode();
+        packetStamp = esp_timer_get_time(); 
+        radio->iohc->decode(true);
+
         IOHC::lastSendCmd = radio->iohc->payload.packet.header.cmd;
 
         Radio::setTx();
@@ -219,7 +221,7 @@ namespace IOHC {
         iohc = new iohcPacket;
         iohc->buffer_length = 0;
         iohc->frequency = scan_freqs[currentFreqIdx];
-        /*iohc->*/packetStamp = _g_payload_millis;
+        packetStamp = _g_payload_millis;
 #if defined(SX1276)
         if (stats) {
             iohc->rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
@@ -312,7 +314,7 @@ namespace IOHC {
 
         //        Radio::clearFlags();
         if (rxCB && !frmErr) rxCB(iohc);
-        iohc->decode();
+        iohc->decode(stats);
         //        delete iohc; //free(iohc);
 
         digitalWrite(RX_LED, false); //digitalRead(RX_LED)^1);
@@ -331,8 +333,8 @@ namespace IOHC {
     void IRAM_ATTR iohcRadio::i_payload() {
 #if defined(SX1276)
         _g_payload = digitalRead(RADIO_PACKET_AVAIL);
-        if (_g_payload)
-            _g_payload_millis = esp_timer_get_time(); // millis();
+        // if (_g_payload)
+        //     _g_payload_millis = esp_timer_get_time();
 #endif
     }
 }

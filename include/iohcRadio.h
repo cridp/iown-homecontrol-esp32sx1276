@@ -20,9 +20,9 @@
     #include <TickerUsESP32.h>
 #endif
 
-#define SM_GRANULARITY_US               100ULL  // Ticker function frequency in uS (100 min)
+#define SM_GRANULARITY_US               104ULL  // Ticker function frequency in uS (100 minimum) 4 x 26µs = 104
 #define SM_GRANULARITY_MS               1       // Ticker function frequency in uS
-#define SM_PREAMBLE_RECOVERY_TIMEOUT_US 12500   // SM_GRANULARITY_US * PREAMBLE_LSB //12500   // Maximum duration in uS of Preamble before reset of receiver
+#define SM_PREAMBLE_RECOVERY_TIMEOUT_US 130 // 12500   // SM_GRANULARITY_US * PREAMBLE_LSB //12500   // Maximum duration in uS of Preamble before reset of receiver
 #define DEFAULT_SCAN_INTERVAL_US        13520   // Default uS between frequency changes
 
 /*
