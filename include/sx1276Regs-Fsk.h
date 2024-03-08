@@ -28,8 +28,12 @@
  * SX1276 Internal registers Address
  * ============================================================================
  */
+//*FIFO data input/output
 #define REG_FIFO                                    0x00
 // Common settings
+//0 -> FSK/OOK Mode 
+//1 -> LoRaTM Mode 
+//This bit can be modified only in Sleep mode. A write operation on other device modes is ignored.
 #define REG_OPMODE                                  0x01
 #define REG_BITRATEMSB                              0x02
 #define REG_BITRATELSB                              0x03
@@ -72,6 +76,7 @@
 // Packet handler settings
 #define REG_PREAMBLEMSB                             0x25
 #define REG_PREAMBLELSB                             0x26
+// Size of the Sync word: (SyncSize + 1) bytes, (SyncSize) bytes if ioHomeOn=1
 #define REG_SYNCCONFIG                              0x27
 #define REG_SYNCVALUE1                              0x28
 #define REG_SYNCVALUE2                              0x29
@@ -810,6 +815,9 @@
 #define RF_PACKETCONFIG1_CRC_OFF                    0x00
 
 #define RF_PACKETCONFIG1_CRCAUTOCLEAR_MASK          0xF7
+// Defines the behavior of the packet handler when CRC check fails: 
+// 0 -> Clear FIFO and restart new packet reception. No PayloadReady interrupt issued.
+// 1 -> Do not clear FIFO. PayloadReady interrupt issued.
 #define RF_PACKETCONFIG1_CRCAUTOCLEAR_ON            0x00  // Default
 #define RF_PACKETCONFIG1_CRCAUTOCLEAR_OFF           0x08
 
@@ -1000,38 +1008,24 @@
  * RegIrqFlags1
  */
 #define RF_IRQFLAGS1_MODEREADY                      0x80
-
 #define RF_IRQFLAGS1_RXREADY                        0x40
-
 #define RF_IRQFLAGS1_TXREADY                        0x20
-
 #define RF_IRQFLAGS1_PLLLOCK                        0x10
-
 #define RF_IRQFLAGS1_RSSI                           0x08
-
 #define RF_IRQFLAGS1_TIMEOUT                        0x04
-
 #define RF_IRQFLAGS1_PREAMBLEDETECT                 0x02
-
 #define RF_IRQFLAGS1_SYNCADDRESSMATCH               0x01
 
 /*!
  * RegIrqFlags2
  */
 #define RF_IRQFLAGS2_FIFOFULL                       0x80
-
 #define RF_IRQFLAGS2_FIFOEMPTY                      0x40 // 0100 0000
-
 #define RF_IRQFLAGS2_FIFOLEVEL                      0x20
-
 #define RF_IRQFLAGS2_FIFOOVERRUN                    0x10
-
 #define RF_IRQFLAGS2_PACKETSENT                     0x08
-
 #define RF_IRQFLAGS2_PAYLOADREADY                   0x04
-
 #define RF_IRQFLAGS2_CRCOK                          0x02
-
 #define RF_IRQFLAGS2_LOWBAT                         0x01
 
 /*!
@@ -1077,6 +1071,7 @@
 #define RF_DIOMAPPING2_DIO5_11                      0x30
 
 #define RF_DIOMAPPING2_MAP_MASK                     0xFE
+// 1 -> PreambleDetect interrupt
 #define RF_DIOMAPPING2_MAP_PREAMBLEDETECT           0x01
 #define RF_DIOMAPPING2_MAP_RSSI                     0x00  // Default
 

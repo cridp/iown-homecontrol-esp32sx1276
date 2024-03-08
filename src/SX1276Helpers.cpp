@@ -4,44 +4,44 @@
 #include <board-config.h>
 
 #if defined(SX1276)
-    #include <map>
-    #if defined(ESP8266)
+#include <map>
+#if defined(ESP8266)
         #include <TickerUs.h>
-    #elif defined(HELTEC)  	
-        #include <TickerUsESP32.h>
-        #include <esp_task_wdt.h>
-    #endif
+#elif defined(HELTEC)
+#include <TickerUsESP32.h>
+#include <esp_task_wdt.h>
+#endif
 
 namespace Radio {
     SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
-//    WorkingParams _params;
+    //    WorkingParams _params;
 
-/*
-    uint8_t bufferIndex = 0;
+    /*
+        uint8_t bufferIndex = 0;
 
 
-    uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
-    uint8_t next_freq = 0;
-    uint8_t scanCounter = 0;
-*/
+        uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
+        uint8_t next_freq = 0;
+        uint8_t scanCounter = 0;
+    */
 
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
     {
-        {25, {0x01, 0x04}},  // 25KHz
+        {25, {0x01, 0x04}}, // 25KHz
         {50, {0x01, 0x03}},
         {100, {0x01, 0x02}},
         {125, {0x00, 0x02}},
         {200, {0x01, 0x01}},
-        {250, {0x00, 0x01}}  // 250KHz
+        {250, {0x00, 0x01}} // 250KHz
     };
 
-    void SPI_beginTransaction() {
+    void IRAM_ATTR SPI_beginTransaction() {
         SPI.beginTransaction(Radio::SpiSettings);
         digitalWrite(RADIO_NSS, LOW);
     }
 
-    void SPI_endTransaction() {
+    void IRAM_ATTR SPI_endTransaction() {
         digitalWrite(RADIO_NSS, HIGH);
         SPI.endTransaction();
     }
@@ -49,29 +49,29 @@ namespace Radio {
     void initHardware() {
         printf("\nSPI Init");
         // SPI pins configuration
-    #if defined(ESP8266)
+#if defined(ESP8266)
         SPI.pins(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
-    #endif
-        pinMode(RADIO_RESET, INPUT);    // Connected to Reset; floating for POR
+#endif
+        pinMode(RADIO_RESET, INPUT); // Connected to Reset; floating for POR
 
         // Check the availability of the Radio
         while (!digitalRead(RADIO_RESET)) {
-    #if defined(ESP8266)
+#if defined(ESP8266)
             wdt_reset();
-    #elif defined(HELTEC)
-            esp_task_wdt_reset();        
-    #endif
+#elif defined(HELTEC)
+            esp_task_wdt_reset();
+#endif
             delayMicroseconds(1);
         }
         delayMicroseconds(BOARD_READY_AFTER_POR);
         printf("\nRadio Chip is ready\n");
 
         // Initialize SPI bus
-    #if defined(ESP8266)
+#if defined(ESP8266)
         SPI.begin();
-    #elif defined(HELTEC)
+#elif defined(HELTEC)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
-    #endif
+#endif
         // Disable SPI device
         // Disable device NRESET pin
         pinMode(RADIO_NSS, OUTPUT);
@@ -82,7 +82,7 @@ namespace Radio {
 
         SPI.beginTransaction(Radio::SpiSettings);
         SPI.endTransaction();
-        writeByte(REG_OPMODE, RF_OPMODE_STANDBY);       // Put Radio in Standby mode
+        writeByte(REG_OPMODE, RF_OPMODE_STANDBY); // Put Radio in Standby mode
 
         pinMode(SCAN_LED, OUTPUT);
         digitalWrite(SCAN_LED, 1);
@@ -92,18 +92,24 @@ namespace Radio {
         // Firstly put radio in StandBy mode as some parameters cannot be changed differently
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
 
-        // ---------------- Common Register init section ---------------- 
+        // ---------------- Common Register init section ----------------
         // Switch-off clockout
         writeByte(REG_OSC, RF_OSC_CLKOUT_OFF); // This only give power saveing maybe we can use it as ticker µs
 
         // Variable packet lenght, generates working CRC !!!
-        // Packet mode, IoHomeOn, IoHomePowerFrame to be added (0x10) to avoid rx to newly detect the preamble during tx radio shutdown 
-        writeByte(REG_PACKETCONFIG1, RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON | RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);   // Is IoHomePowerFrame useful ?
+        // Packet mode, IoHomeOn, IoHomePowerFrame to be added (0x10) to avoid rx to newly detect the preamble during tx radio shutdown
+        writeByte(
+            REG_PACKETCONFIG1,
+            RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON |
+            RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF |
+            RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
+        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
+        // Is IoHomePowerFrame useful ?
 
         // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
-        writeByte(REG_SYNCCONFIG, 0x91); //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
-//TODOVERIFY 0x92 
+        writeByte(REG_SYNCCONFIG, 0x51); // 0x91); // TODOVERIFY 0x92
+        //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
+        
         // Set Sync word to 0xff33 both for rx and tx
         writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
         writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
@@ -113,32 +119,35 @@ namespace Radio {
         // Mapping of pins DIO4 and DIO5
         // DIO4: PreambleDetect  DIO5: Data
         writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
-//        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
-        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT); // Preamble on DIO4
+        //        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
+        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
+        // Preamble on DIO4
 
         // Enable Fast Hoping (frequency change)
-        writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON); // Not needed all the time
+        // Not using that, as it avoid a lot of answers
+        if (MAX_FREQS != 1)
+            writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON); // Not needed all the time
 
-        // ---------------- TX Register init section ---------------- 
+        // ---------------- TX Register init section ----------------
         // PA boost maximum power
         // writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         // writeByte(REG_OCP, RF_OCP_TRIM_240_MA); // 0x37); //200mA
         // writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
 
         // PA Ramp: No Shaping, Ramp up/down 15us
-        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US);//_0015_US); //_0031_US); // 
+        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US); //_0015_US); //_0031_US); //
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
         writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
         // FIFO Threshold - currently useless
         writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
 
-        // ---------------- RX Register init section ---------------- 
+        // ---------------- RX Register init section ----------------
         // Set lenght checking if passed as parameter
-        writeByte(REG_PAYLOADLENGTH, 0xff); // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
+        writeByte(REG_PAYLOADLENGTH, 0xff);
+        // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
         // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_256); // _32);
-
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_128); // _32); //_256); //
 
         // Activates Timeout interrupt on Preamble
         writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
@@ -147,16 +156,17 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
 
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // _G2); //_G1); // 
+//        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // 0xC3) ; // Need AGC_OFF so dont use
 
         // Enables Preamble Detect, 2 bytes
-        writeByte(REG_PREAMBLEDETECT, RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
+        writeByte(
+            REG_PREAMBLEDETECT,
+            RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
     }
 
     void calibrate() {
-
         // Save context
-        uint8_t regPaConfigInitVal = readByte( REG_PACONFIG );
+        uint8_t regPaConfigInitVal = readByte(REG_PACONFIG);
 
         // Cut the PA just in case, RFO output, power = -1 dBm
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_RFO);
@@ -165,136 +175,170 @@ namespace Radio {
         // Start image and RSSI calibration
         writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
-        while ( (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING ) {}
+        while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) { }
         // Set a Frequency in HF band
         Radio::setCarrier(Radio::Carrier::Frequency, 868000000);
         // Start image and RSSI calibration
         writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
-        while ( (readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING ) {}
-        
+        while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) {
+        }
+
         // Restore context
-        writeByte( REG_PACONFIG, regPaConfigInitVal );
+        writeByte(REG_PACONFIG, regPaConfigInitVal);
 
         // PA boost maximum power
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
-        writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
+        writeByte(REG_PADAC,0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
+    
+    
     }
 
-/*!
- * Performs the Rx chain calibration for LF and HF bands
- * \remark Must be called just after the reset so all registers are at their
- *         default values
- */
-// void RxChainCalibration( void ) {
-//     uint8_t regPaConfigInitVal;
-//     uint32_t initialFreq;
+    /*!
+     * Performs the Rx chain calibration for LF and HF bands
+     * \remark Must be called just after the reset so all registers are at their
+     *         default values
+     */
+    // void RxChainCalibration( void ) {
+    //     uint8_t regPaConfigInitVal;
+    //     uint32_t initialFreq;
 
-//     // Save context
-//     regPaConfigInitVal = readByte( REG_PACONFIG );
-//     initialFreq = ( double )( ( ( uint32_t )readByte( REG_FRFMSB ) << 16 ) |
-//                               ( ( uint32_t )readByte( REG_FRFMID ) << 8 ) |
-//                               ( ( uint32_t )readByte( REG_FRFLSB ) ) ) * ( double )FREQ_STEP;
+    //     // Save context
+    //     regPaConfigInitVal = readByte( REG_PACONFIG );
+    //     initialFreq = ( double )( ( ( uint32_t )readByte( REG_FRFMSB ) << 16 ) |
+    //                               ( ( uint32_t )readByte( REG_FRFMID ) << 8 ) |
+    //                               ( ( uint32_t )readByte( REG_FRFLSB ) ) ) * ( double )FREQ_STEP;
 
-//     // Cut the PA just in case, RFO output, power = -1 dBm
-//     writeByte( REG_PACONFIG, 0x00 );
+    //     // Cut the PA just in case, RFO output, power = -1 dBm
+    //     writeByte( REG_PACONFIG, 0x00 );
 
-//     // Launch Rx chain calibration for LF band
-//     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
-//     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
-//     {
-//     }
+    //     // Launch Rx chain calibration for LF band
+    //     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
+    //     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
+    //     {
+    //     }
 
-//     // Sets a Frequency in HF band
-//     SetChannel( 868000000 );
+    //     // Sets a Frequency in HF band
+    //     SetChannel( 868000000 );
 
-//     // Launch Rx chain calibration for HF band 
-//     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
-//     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
-//     {
-//     }
+    //     // Launch Rx chain calibration for HF band
+    //     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
+    //     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
+    //     {
+    //     }
 
-//     // Restore context
-//     writeByte( REG_PACONFIG, regPaConfigInitVal );
-//     SetChannel( initialFreq );
-// }
-    void setStandby() {
+    //     // Restore context
+    //     writeByte( REG_PACONFIG, regPaConfigInitVal );
+    //     SetChannel( initialFreq );
+    // }
+    void IRAM_ATTR setStandby() {
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
     }
 
-    void setTx() {   // Uncommon and incompatible settings
+    void IRAM_ATTR setTx() {
+        // Uncommon and incompatible settings
         // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER); //RF_OPMODE_SYNTHESIZER_TX); // 
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
+        //RF_OPMODE_SYNTHESIZER_TX); //
         TxReady;
     }
 
-    void setRx() {   // Uncommon and incompatible settings
+    void IRAM_ATTR setRx() {
+        // Uncommon and incompatible settings
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER); //RF_OPMODE_SYNTHESIZER_RX); // 
-        RxReady;
-/*
-        // Start Sequencer
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-        writeByte(REG_SEQCONFIG1, readByte(REG_SEQCONFIG1 | RF_SEQCONFIG1_SEQUENCER_START));
-*/
+        //RF_OPMODE_SYNTHESIZER_RX); //
+        RxReady;
+        /*
+                // Start Sequencer
+                writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+                writeByte(REG_SEQCONFIG1, readByte(REG_SEQCONFIG1 | RF_SEQCONFIG1_SEQUENCER_START));
+        */
     }
 
-   // Clears FIFO at startup to avoid dirty reads
+
+    void readBurst(uint8_t regAddr, uint8_t* buffer, uint8_t size) {
+        for (uint8_t i = 0; i < size; ++i) {
+            buffer[i] = readByte(regAddr + i);
+        }
+    } // Clears FIFO at startup to avoid dirty reads
+    // void clearBuffer() {
+    //     for (uint8_t idx=0; idx <= 64; ++idx)
+    //         readByte(REG_FIFO);
+    // }
     void clearBuffer() {
-        for (uint8_t idx=0; idx <= 64; ++idx)
-            readByte(REG_FIFO);
+        // Taille du buffer FIFO du SX1276
+        const uint8_t bufferSize = 64;
+
+        // Lire le buffer par paquets de 32 octets
+        for (uint8_t i = 0; i < bufferSize; i += 32) {
+            uint8_t buffer[32]; // Tableau temporaire pour stocker les octets lus
+            readBytes/*Burst*/(REG_FIFO, buffer, sizeof(buffer)); // Lire 32 octets à la fois
+        }
     }
 
-    void clearFlags() {
-        uint8_t out[2] = {0xff, 0xff};
-        writeBytes(REG_IRQFLAGS1, out, 2);
+    //     void clearFlags() {
+    //         uint8_t out[2] = {0xff, 0xff};
+    //         writeBytes(REG_IRQFLAGS1, out, 2);
+    //     }
+    // void clearFlags_A() {
+    //   uint8_t flags = readByte(REG_IRQFLAGS1);
+    //   flags &= ~0xFF; // Efface tous les drapeaux
+    //   writeByte(REG_IRQFLAGS1, flags);
+    // }
+    void IRAM_ATTR clearFlags() {
+        uint16_t flags = readWord(REG_IRQFLAGS1);
+        flags &= ~0xFFFF; // Efface tous les drapeaux
+        writeWord(REG_IRQFLAGS1, flags);
     }
 
-    bool preambleDetected() {
+    bool IRAM_ATTR preambleDetected() {
         return readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT;
     }
 
-    bool syncedAddress() {
+    bool IRAM_ATTR syncedAddress() {
         return readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_SYNCADDRESSMATCH;
     }
 
-    bool dataAvail() {
-        return (readByte(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFOEMPTY)?false:true;
+    bool IRAM_ATTR dataAvail() {
+        return (readByte(REG_IRQFLAGS2) & RF_IRQFLAGS2_FIFOEMPTY) == 0; //?false:true;
     }
 
-    uint8_t readByte(uint8_t regAddr) {
+    uint8_t IRAM_ATTR readByte(uint8_t regAddr) {
         uint8_t getByte;
         readBytes(regAddr, &getByte, 1);
 
         return (getByte);
     }
 
-    void readBytes(uint8_t regAddr, uint8_t *out, uint8_t len) {
+    void IRAM_ATTR readBytes(uint8_t regAddr, uint8_t* out, uint8_t len) {
         SPI_beginTransaction();
-        SPI.transfer(regAddr);                  // Send Address
-        for (uint8_t idx=0; idx < len; ++idx)
-            out[idx] = SPI.transfer(regAddr);   // Get data
+        SPI.transfer(regAddr); // Send Address
+        for (uint8_t idx = 0; idx < len; ++idx) {
+            out[idx] = SPI.transfer(regAddr); // Get data
+        }
         SPI_endTransaction();
     }
 
-    bool writeByte(uint8_t regAddr, uint8_t data, bool check) {
+    bool IRAM_ATTR writeByte(uint8_t regAddr, uint8_t data, bool check) {
         return writeBytes(regAddr, &data, 1, check);
     }
 
-    auto writeBytes(uint8_t regAddr, uint8_t* in, uint8_t len, bool check) -> bool {
+    auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t* in, uint8_t len, bool check) -> bool {
         SPI_beginTransaction();
-        SPI.write(regAddr | SPI_Write);      // Send Address with Write flag
-        for (uint8_t idx=0; idx < len; ++idx)
-            SPI.write(in[idx]);              // Send data
+        SPI.write(regAddr | SPI_Write); // Send Address with Write flag
+        for (uint8_t idx = 0; idx < len; ++idx) {
+            SPI.write(in[idx]); // Send data
+        }
         SPI_endTransaction();
 
         if (check) {
             SPI_beginTransaction();
-            SPI.transfer(regAddr);                  // Send Address
-            for (uint8_t idx=0; idx < len; ++idx) {
-                uint8_t getByte = SPI.transfer(regAddr);    // Get data
+            SPI.transfer(regAddr); // Send Address
+            for (uint8_t idx = 0; idx < len; ++idx) {
+                uint8_t getByte = SPI.transfer(regAddr); // Get data
                 if (in[idx] != getByte) {
                     SPI_endTransaction();
                     return false;
@@ -306,7 +350,18 @@ namespace Radio {
         return true;
     }
 
-    bool inStdbyOrSleep() {
+    uint16_t IRAM_ATTR readWord(uint8_t regAddr) {
+        uint8_t lowByte = readByte(regAddr);
+        uint8_t highByte = readByte(regAddr + 1);
+        return (highByte << 8) | lowByte;
+    }
+
+    void IRAM_ATTR writeWord(uint8_t regAddr, uint16_t value) {
+        writeByte(regAddr, value >> 8);
+        writeByte(regAddr + 1, value & 0xFF);
+    }
+
+    bool IRAM_ATTR inStdbyOrSleep() {
         uint8_t data = readByte(REG_OPMODE);
         data &= ~RF_OPMODE_MASK;
         if ((data == RF_OPMODE_SLEEP) || (data == RF_OPMODE_STANDBY))
@@ -315,12 +370,12 @@ namespace Radio {
         return false;
     }
 
-    bool setCarrier(Carrier param, uint32_t value) {
+    bool IRAM_ATTR setCarrier(Carrier param, uint32_t value) {
         uint32_t tmpVal;
         uint8_t out[4];
         regBandWidth bw{};
 
-//  Change of Frequency can be done while the radio is working thanks to Freq Hopping
+        //  Change of Frequency can be done while the radio is working thanks to Freq Hopping
         if (!inStdbyOrSleep())
             if (param != Carrier::Frequency)
                 return false;
@@ -344,7 +399,7 @@ namespace Radio {
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
                 writeBytes(REG_FDEVMSB, out, 2);
-//                writeByte(REG_BITRATEFRAC, 5); // Little more precision
+            //                writeByte(REG_BITRATEFRAC, 5); // Little more precision
                 break;
             case Carrier::Modulation:
                 switch (value) {
@@ -366,7 +421,7 @@ namespace Radio {
                 }
                 break;
             case Carrier::Bitrate:
-                tmpVal = FXOSC/value;
+                tmpVal = FXOSC / value;
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
                 writeBytes(REG_BITRATEMSB, out, 2);
@@ -377,7 +432,7 @@ namespace Radio {
     }
 
     regBandWidth bwRegs(uint8_t bandwidth) {
-        for (auto & it : __bw)
+        for (auto&it: __bw)
             if (it.first == bandwidth)
                 return it.second;
 
@@ -389,7 +444,8 @@ namespace Radio {
 
         Serial.printf("#Type\tRegister Name\tAddress[Hex]\tValue[Hex]\n");
         do {
-            Serial.printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx)); idx += 1;
+            Serial.printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx));
+            idx += 1;
             // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
             // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
             // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;

@@ -77,7 +77,7 @@ namespace IOHC {
                                bitrow_to_hex_string(this->payload.packet.msg.p0x20_13.sequence, 2).c_str(),
                                bitrow_to_hex_string(this->payload.packet.msg.p0x20_13.hmac, 6).c_str());
                         auto main = static_cast<unsigned>((this->payload.packet.msg.p0x20_13.main[0] << 8) | this->payload.packet.msg.p0x20_13.main[1]);
-                        printf(" Manuf %X Acei %X Main %X Counter %X fp1 %X ", this->payload.packet.msg.p0x20_13.origin,
+                        printf(" Manuf %X Acei %X Main %X fp1 %X ", this->payload.packet.msg.p0x20_13.origin,
                                this->payload.packet.msg.p0x20_13.acei.asByte, main,
                                this->payload.packet.msg.p0x20_13.fp1
                                );
@@ -90,7 +90,7 @@ namespace IOHC {
                                bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.sequence, 2).c_str(),
                                bitrow_to_hex_string(this->payload.packet.msg.p0x20_15.hmac, 6).c_str());
                         auto main = static_cast<unsigned>(  (this->payload.packet.msg.p0x20_15.main[0] << 8) | this->payload.packet.msg.p0x20_15.main[1]);
-                        printf(" Manuf %X Acei %X Main %X Counter %X fp1 %X fp2 %X fp3 %X ", this->payload.packet.msg.p0x20_15.origin,
+                        printf(" Manuf %X Acei %X Main %X fp1 %X fp2 %X fp3 %X ", this->payload.packet.msg.p0x20_15.origin,
                                this->payload.packet.msg.p0x20_15.acei.asByte, main,
                                this->payload.packet.msg.p0x20_15.fp1,
                                this->payload.packet.msg.p0x20_15.fp2,

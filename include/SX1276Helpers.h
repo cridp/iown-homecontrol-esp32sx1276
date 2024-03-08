@@ -81,5 +81,8 @@ namespace Radio {
     bool setCarrier(Carrier param, uint32_t value);
     regBandWidth bwRegs(uint8_t bandwidth);
     void dump();
+
+    uint16_t readWord(uint8_t regAddr);
+    void writeWord(uint8_t regAddr, uint16_t value);
 }
 #endif // SX1276HELPERS_H

@@ -39,7 +39,8 @@ namespace IOHC {
         return _iohcRadio;
     }
 
-    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
+    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs,
+                          IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
         this->scanTimeUs = scanTimeUs ? scanTimeUs : DEFAULT_SCAN_INTERVAL_US;
@@ -48,7 +49,8 @@ namespace IOHC {
 
         Radio::clearBuffer();
         Radio::clearFlags();
-        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]); // 868950000); // We always start at freq[0] the 1W/2W channel
+        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]);
+        // 868950000); // We always start at freq[0] the 1W/2W channel
         // Radio::calibrate();
         Radio::setRx();
     }
@@ -62,29 +64,32 @@ namespace IOHC {
             // If Int of PayLoad
             if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
                 // if TX ready?
-                // radio->sent(radio->iohc);
+                radio->sent(radio->iohc);
                 Radio::clearFlags();
                 if (!txMode) {
                     Radio::setRx();
                     f_lock = false;
                 }
-                radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending
+                // radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending
                 return;
             }
-            else {
-                _g_payload_millis = esp_timer_get_time();
-                // if in RX mode?
-                radio->receive(true); //false);
-                radio->tickCounter = 0;
-                radio->preCounter = 0;
-                return;
-            }
+            //            else {
+//            if (radio->preCounter > 0) printf("Ticks %d Preamble %d", radio->tickCounter, radio->preCounter);
+            // _g_payload_millis = esp_timer_get_time();
+            // if in RX mode?
+            radio->receive(false);
+            Radio::clearFlags();
+            radio->tickCounter = 0;
+            radio->preCounter = 0;
+            return;
+            //            }
         }
 
         if (_g_preamble) {
             radio->tickCounter = 0;
             radio->preCounter += 1;
-            if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
+
+//            if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
             // In case of Sync received resets the preamble duration
             if ((radio->preCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) {
                 // Avoid hanging on a too long preamble detect
@@ -125,18 +130,17 @@ namespace IOHC {
 #endif
     }
 
-        void iohcRadio::send(std::vector<iohcPacket*>& iohcTx) {
+    void iohcRadio::send(std::vector<iohcPacket *>&iohcTx) {
+        if (txMode) return;
 
-               if (txMode)  return;
+        packets2send = iohcTx; //std::move(iohcTx); //
+        iohcTx.clear();
 
-                packets2send = iohcTx; //std::move(iohcTx); //
-                iohcTx.clear();
+        txCounter = 0;
+        Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
+    }
 
-                txCounter = 0;
-                Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
-            }
-
-    void iohcRadio::packetSender(iohcRadio* radio) {
+    void IRAM_ATTR iohcRadio::packetSender(iohcRadio* radio) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
         f_lock = true; // Stop frequency hopping
@@ -152,12 +156,14 @@ namespace IOHC {
         else
             radio->iohc = radio->packets2send[radio->txCounter];
 
-//        if (radio->iohc->frequency != 0) {
+        //        if (radio->iohc->frequency != 0) {
         if (radio->iohc->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
             Serial.printf("ChangedFreq !\n");
-            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);}
-        else {
-            radio->iohc->frequency = radio->scan_freqs[radio->currentFreqIdx];}
+            Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
+        }
+        // else {
+        //     radio->iohc->frequency = radio->scan_freqs[radio->currentFreqIdx];
+        // }
 
         Radio::setStandby();
         Radio::clearFlags();
@@ -172,8 +178,8 @@ namespace IOHC {
 
         // Serial.printf("Size %u Counter %u", radio->packets2send.size(), radio->txCounter );
 
-        packetStamp = esp_timer_get_time(); 
-        radio->iohc->decode(true);
+        packetStamp = esp_timer_get_time();
+        radio->iohc->decode(false);
 
         IOHC::lastSendCmd = radio->iohc->payload.packet.header.cmd;
 
@@ -197,11 +203,11 @@ namespace IOHC {
                     radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->repeatTime, packetSender, radio);
                 }
             }
-            else { 
+            else {
                 // In any case, after last packet sent, unlock the radio
-                txMode = false; 
+                txMode = false;
                 radio->packets2send.clear();
-                }
+            }
         }
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
@@ -217,10 +223,12 @@ namespace IOHC {
     //    static uint8_t RF96lnaMap[] = { 0, 0, 6, 12, 24, 36, 48, 48 };
     bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-        bool frmErr = false;
+        // bool frmErr = false;
         iohc = new iohcPacket;
         iohc->buffer_length = 0;
         iohc->frequency = scan_freqs[currentFreqIdx];
+
+        _g_payload_millis = esp_timer_get_time();
         packetStamp = _g_payload_millis;
 #if defined(SX1276)
         if (stats) {
@@ -249,7 +257,8 @@ namespace IOHC {
 #endif
 
 #if defined(SX1276)
-        while (!Radio::dataAvail()) ;
+        
+        // while (!Radio::dataAvail()) { }
         while (Radio::dataAvail()) {
             iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
         }
@@ -312,8 +321,8 @@ namespace IOHC {
 
 #endif
 
-        //        Radio::clearFlags();
-        if (rxCB && !frmErr) rxCB(iohc);
+        // Radio::clearFlags();
+        if (rxCB /*&& !frmErr*/) rxCB(iohc);
         iohc->decode(stats);
         //        delete iohc; //free(iohc);
 
@@ -327,7 +336,7 @@ namespace IOHC {
 #elif defined(CC1101)
         __g_preamble = true;
 #endif
-        f_lock = _g_preamble;
+        f_lock = _g_preamble;      
     }
 
     void IRAM_ATTR iohcRadio::i_payload() {

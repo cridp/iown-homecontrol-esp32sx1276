@@ -73,7 +73,7 @@ namespace IOHC {
                             std::string discovery = "d430477706ba11ad31"; //28"; //"2b578ebc37334d6e2f50a4dfa9";
                             packets2send.back()/*[j]*/->buffer_length = hexStringToBytes(discovery, packets2send.back()/*[j]*/->payload.buffer);
                             init(packets2send.back()/*[j]*//*->payload.buffer[4]*/, bec);
-                            bec += 0x3F;
+                            bec += 0x01;
                             // packets2send.back()/*[j]*/->repeatTime = 225;
 //                            packets2send.back()/*[j]*/->decode(); // Not for the cozydevice -> change and adapt for KLR 2W
                             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);

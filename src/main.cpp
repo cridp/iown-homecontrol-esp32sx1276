@@ -85,7 +85,7 @@ IOHC::iohcOtherDevice2W* otherDevice2W;
 uint32_t frequencies[] = FREQS2SCAN;
 
 bool publishMsg(IOHC::iohcPacket* iohc);
-bool msgRcvd(IOHC::iohcPacket* iohc);
+bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc);
 bool msgArchive(IOHC::iohcPacket* iohc);
 
 //void discovery(void);
@@ -343,7 +343,7 @@ void loop() {
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
     // iohc->decode(verbosity);
 
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument doc(1280);
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {

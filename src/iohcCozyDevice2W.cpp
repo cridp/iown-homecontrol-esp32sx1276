@@ -280,7 +280,7 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
                 packets2send.back()->buffer_length = toSend.size() + 9;
-                packets2send.back()->delayed = 250;
+                packets2send.back()->delayed = 150;
 
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -380,7 +380,7 @@ namespace IOHC {
                     memcpy(packets2send[i]->payload.buffer + 9, toSend.data(), toSend.size());
 
                     packets2send[i]->buffer_length = toSend.size() + 9;
-                    packets2send[i]->delayed = 950;
+                    packets2send[i]->delayed = 50;
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back() = nullptr;
@@ -453,7 +453,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     memcpy(packets2send.back()->payload.buffer + 9, toSend, 12);
 
                     packets2send.back()->buffer_length = sizeof(toSend) + 9;
-                    packets2send.back()->delayed = 950;
+                    packets2send.back()->delayed = 50;
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back() = nullptr;
@@ -498,7 +498,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     memcpy(packets2send.back()->payload.buffer + 9, toSend, sizeof(toSend));
 
                     packets2send.back()->buffer_length = sizeof(toSend) + 9;
-                    packets2send.back()->delayed = 450;
+                    packets2send.back()->delayed = 150;
 
 
                 }
