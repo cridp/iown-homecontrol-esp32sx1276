@@ -14,10 +14,15 @@ extern "C" {
 	#include "freertos/FreeRTOS.h"
 	#include "freertos/timers.h"
 }
+
+#define MQTT
+
 #include <WiFi.h>
 #include <esp_wifi.h>
-#include <AsyncMqttClient.h>
-#include <ArduinoJson.h>
+#if defined(MQTT)
+  #include <AsyncMqttClient.h>
+  #include <ArduinoJson.h>
+#endif
 
 #include <utils.h>
 
@@ -30,11 +35,31 @@ extern "C" {
   #define MAXCMDS 50
 #endif
 
+inline TimerHandle_t wifiReconnectTimer;
 inline WiFiClient wifiClient;                 // Create an ESP32 WiFiClient class to connect to the MQTT server
+
+using Tokens = std::vector<std::string>;
+
+  inline void tokenize(std::string const &str, const char delim, Tokens &out) {
+      // construct a stream from the string 
+      std::stringstream ss(str); 
+
+      std::string s; 
+      while (std::getline(ss, s, delim)) { 
+          out.push_back(s); 
+      } 
+  }
+  inline struct _cmdEntry {
+      char cmd[15];
+      char description[61];
+      void (*handler)(Tokens*);
+  } *_cmdHandler[MAXCMDS];
+
+  inline uint8_t lastEntry = 0;
+
+#if defined(MQTT)
 inline AsyncMqttClient mqttClient;
 inline TimerHandle_t mqttReconnectTimer;
-inline TimerHandle_t wifiReconnectTimer;
-//TimerHandle_t kbdReconnectTimer;
 
 inline  void connectToMqtt() {
     Serial.println("Connecting to MQTT...");
@@ -52,6 +77,96 @@ inline  void connectToMqtt() {
     // //    esp_mqtt_client_start(client);
     mqttClient.connect();
   }
+inline void onMqttConnect(bool sessionPresent) {
+  Serial.println("Connected to MQTT.");
+  mqttClient.subscribe("iown/powerOn", 0);
+  mqttClient.subscribe("iown/setPresence", 0);
+  mqttClient.subscribe("iown/setWindow", 0);
+  mqttClient.subscribe("iown/setTemp", 0);
+  /*    0c61 0100 00 Mode AUTO 
+        0c61 0100 01 Mode MANUEL
+        0c61 0100 02 Mode PROG
+        0c61 0100 04 Mode OFF*/
+  mqttClient.subscribe("iown/setMode", 0);
+  mqttClient.subscribe("iown/midnight", 0); 
+  mqttClient.subscribe("iown/associate", 0); 
+  mqttClient.subscribe("iown/heatState", 0); 
+
+  mqttClient.publish("iown/Frame", 0, false, R"({"cmd": "powerOn", "_data": "Gateway"})", 38);
+  // Serial.println("Publishing at QoS 0");
+  // uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
+  // Serial.print("Publishing at QoS 1, packetId: ");
+  // Serial.println(packetIdPub1);
+  // uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
+  // Serial.print("Publishing at QoS 2, packetId: ");
+  // Serial.println(packetIdPub2);
+}
+  inline void mqttFuncHandler(const char *_cmd) {
+
+//    char *_cmd;
+    constexpr char delim = ' ';
+    Tokens segments; 
+
+    // _cmd = cmdReceived(true);
+    // if (!_cmd) return;
+    // if (!strlen(_cmd)) return;
+
+    tokenize(_cmd + 5, delim, segments);
+    // if (strcmp((char *)"help", segments[0].c_str()) == 0) {
+    //   Serial.printf("\nRegistered commands:\n");
+    //   for (uint8_t idx=0; idx<=lastEntry; ++idx) {
+    //     if (_cmdHandler[idx] == nullptr) continue;
+    //     Serial.printf("- %s\t%s\n", _cmdHandler[idx]->cmd, _cmdHandler[idx]->description);
+    //   }
+    //   Serial.printf("- %s\t%s\n\n", (char*)"help", (char*)"This command");
+    //   Serial.printf("\n");
+    //   return;
+    // }
+    Serial.printf("Search for %s\t", segments[0].c_str());
+    for (uint8_t idx=0; idx<=lastEntry; ++idx) {
+      if (_cmdHandler[idx] == nullptr) continue;
+//      if (strcmp(_cmdHandler[idx]->cmd, segments[0].c_str()) == 0) {
+        if (segments[0].find(_cmdHandler[idx]->cmd) != std::string::npos) {
+
+        Serial.printf(" %s %s (%s)\n", _cmdHandler[idx]->cmd, segments[1].c_str()!=nullptr?segments[1].c_str():"No param", _cmdHandler[idx]->description);
+        _cmdHandler[idx]->handler(&segments);
+        return;
+      }
+    }
+    Serial.printf("*> MQTT Unknown %s <*\n", segments[0].c_str());
+  }
+
+  inline std::vector<uint8_t> mqttData;
+
+  inline void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
+    if (topic[0] == '\0') return;
+
+    StaticJsonDocument<200> doc;
+
+	  payload[len] = '\0';
+
+    Serial.printf("Received MQTT %s %s %d\n", topic, payload, len);
+
+    if (deserializeJson(doc, payload) != DeserializationError::Ok) {
+      Serial.println(F("Failed to parse JSON"));
+      return;
+    }
+
+    const char *data = doc["_data"];
+
+    // Calcul de la taille du tampon nécessaire
+    size_t bufferSize = strlen(topic) + len + 7; // +5 word "MQTT " +2 pour l'espace et le caractère nul de fin de chaîne
+    // Allouer le tampon
+    char message[bufferSize];
+    if (len == 0) {snprintf(message, sizeof(message), "MQTT %s", topic); }
+    // Utiliser snprintf pour éviter les dépassements de tampon
+    else snprintf(message, sizeof(message), "MQTT %s %s", topic, data);
+      
+    mqttFuncHandler(message);
+  }
+
+#endif
+
   inline void connectToWifi() {
     Serial.println("Connecting to Wi-Fi...");
     WiFiClass::mode(WIFI_STA);
@@ -86,41 +201,20 @@ inline void WiFiEvent(WiFiEvent_t event) {
         //byte mac[6];
         Serial.printf(WiFi.macAddress().c_str());
         Serial.printf(" IP address: %s ", WiFi.localIP().toString());
-        
-        connectToMqtt();
+        #if defined(MQTT)
+          connectToMqtt();
+        #endif
+        printf("\n");
         break;
     case SYSTEM_EVENT_STA_DISCONNECTED:
         Serial.println("WiFi lost connection");
-        xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+        #if defined(MQTT)
+          xTimerStop(mqttReconnectTimer, 0); // ensure we don't reconnect to MQTT while reconnecting to Wi-Fi
+        #endif
         xTimerStart(wifiReconnectTimer, 0);
         break;
     default: {}
     }
-}
-
-inline void onMqttConnect(bool sessionPresent) {
-  Serial.println("Connected to MQTT.");
-  mqttClient.subscribe("iown/powerOn", 0);
-  mqttClient.subscribe("iown/setPresence", 0);
-  mqttClient.subscribe("iown/setWindow", 0);
-  mqttClient.subscribe("iown/setTemp", 0);
-  /*    0c61 0100 00 Mode AUTO 
-        0c61 0100 01 Mode MANUEL
-        0c61 0100 02 Mode PROG
-        0c61 0100 04 Mode OFF*/
-  mqttClient.subscribe("iown/setMode", 0);
-  mqttClient.subscribe("iown/midnight", 0); 
-  mqttClient.subscribe("iown/associate", 0); 
-  mqttClient.subscribe("iown/heatState", 0); 
-
-  mqttClient.publish("iown/Frame", 0, false, R"({"cmd": "powerOn", "_data": "Gateway"})", 38);
-  // Serial.println("Publishing at QoS 0");
-  // uint16_t packetIdPub1 = mqttClient.publish("test/lol", 1, true, "test 2");
-  // Serial.print("Publishing at QoS 1, packetId: ");
-  // Serial.println(packetIdPub1);
-  // uint16_t packetIdPub2 = mqttClient.publish("test/lol", 2, true, "test 3");
-  // Serial.print("Publishing at QoS 2, packetId: ");
-  // Serial.println(packetIdPub2);
 }
 
 #if defined(DEBUG)
@@ -132,7 +226,7 @@ inline void onMqttConnect(bool sessionPresent) {
   #define LOG(func, ...) ;
 #endif
 
-using Tokens = std::vector<std::string>;
+// using Tokens = std::vector<std::string>;
 namespace Cmd {
   inline char _rxbuffer[256];
   inline uint8_t _len = 0;
@@ -147,22 +241,23 @@ namespace Cmd {
       //Ticker kbd_tick2;
 #endif
 
-  inline struct _cmdEntry {
-      char cmd[15];
-      char description[61];
-      void (*handler)(Tokens*);
-  } *_cmdHandler[MAXCMDS];
-  inline uint8_t lastEntry = 0;
+  // inline struct _cmdEntry {
+  //     char cmd[15];
+  //     char description[61];
+  //     void (*handler)(Tokens*);
+  // } *_cmdHandler[MAXCMDS];
 
-  inline void tokenize(std::string const &str, const char delim, Tokens &out) {
-      // construct a stream from the string 
-      std::stringstream ss(str); 
+  // inline uint8_t lastEntry = 0;
 
-      std::string s; 
-      while (std::getline(ss, s, delim)) { 
-          out.push_back(s); 
-      } 
-  }
+  // inline void tokenize(std::string const &str, const char delim, Tokens &out) {
+  //     // construct a stream from the string 
+  //     std::stringstream ss(str); 
+
+  //     std::string s; 
+  //     while (std::getline(ss, s, delim)) { 
+  //         out.push_back(s); 
+  //     } 
+  // }
 
   inline bool addHandler(char *cmd, char *description, void (*handler)(Tokens*)) {
     for (uint8_t idx=0; idx<MAXCMDS; ++idx) {
@@ -233,79 +328,18 @@ namespace Cmd {
     }
     Serial.printf("*> Unknown <*\n");
   }
-  inline void mqttFuncHandler(const char *_cmd) {
-
-//    char *_cmd;
-    constexpr char delim = ' ';
-    Tokens segments; 
-
-    // _cmd = cmdReceived(true);
-    // if (!_cmd) return;
-    // if (!strlen(_cmd)) return;
-
-    tokenize(_cmd + 5, delim, segments);
-    // if (strcmp((char *)"help", segments[0].c_str()) == 0) {
-    //   Serial.printf("\nRegistered commands:\n");
-    //   for (uint8_t idx=0; idx<=lastEntry; ++idx) {
-    //     if (_cmdHandler[idx] == nullptr) continue;
-    //     Serial.printf("- %s\t%s\n", _cmdHandler[idx]->cmd, _cmdHandler[idx]->description);
-    //   }
-    //   Serial.printf("- %s\t%s\n\n", (char*)"help", (char*)"This command");
-    //   Serial.printf("\n");
-    //   return;
-    // }
-    Serial.printf("Search for %s\t", segments[0].c_str());
-    for (uint8_t idx=0; idx<=lastEntry; ++idx) {
-      if (_cmdHandler[idx] == nullptr) continue;
-//      if (strcmp(_cmdHandler[idx]->cmd, segments[0].c_str()) == 0) {
-        if (segments[0].find(_cmdHandler[idx]->cmd) != std::string::npos) {
-
-        Serial.printf(" %s %s (%s)\n", _cmdHandler[idx]->cmd, segments[1].c_str()!=nullptr?segments[1].c_str():"No param", _cmdHandler[idx]->description);
-        _cmdHandler[idx]->handler(&segments);
-        return;
-      }
-    }
-    Serial.printf("*> MQTT Unknown %s <*\n", segments[0].c_str());
-  }
-
-  inline std::vector<uint8_t> mqttData;
-
-  inline void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
-    if (topic[0] == '\0') return;
-
-    StaticJsonDocument<200> doc;
-
-	  payload[len] = '\0';
-
-    Serial.printf("Received MQTT %s %s %d\n", topic, payload, len);
-
-    if (deserializeJson(doc, payload) != DeserializationError::Ok) {
-      Serial.println(F("Failed to parse JSON"));
-      return;
-    }
-
-    const char *data = doc["_data"];
-
-    // Calcul de la taille du tampon nécessaire
-    size_t bufferSize = strlen(topic) + len + 7; // +5 word "MQTT " +2 pour l'espace et le caractère nul de fin de chaîne
-    // Allouer le tampon
-    char message[bufferSize];
-    if (len == 0) {snprintf(message, sizeof(message), "MQTT %s", topic); }
-    // Utiliser snprintf pour éviter les dépassements de tampon
-    else snprintf(message, sizeof(message), "MQTT %s %s", topic, data);
-      
-    mqttFuncHandler(message);
-  }
   
   inline void init() {
+    #if defined(MQTT)
     mqttClient.setClientId("iown");
     mqttClient.setCredentials("user", "passwd");
     mqttClient.setServer(MQTT_SERVER, 1883);
     mqttClient.onConnect(onMqttConnect);
     mqttClient.onMessage(onMqttMessage);
+    mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, nullptr, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
+    #endif
 
     wifiReconnectTimer = xTimerCreate("wifiTimer", pdMS_TO_TICKS(2000), pdFALSE, nullptr, reinterpret_cast<TimerCallbackFunction_t>(connectToWifi));
-    mqttReconnectTimer = xTimerCreate("mqttTimer", pdMS_TO_TICKS(2000), pdFALSE, nullptr, reinterpret_cast<TimerCallbackFunction_t>(connectToMqtt));
 
     WiFi.onEvent(WiFiEvent);
     connectToWifi();

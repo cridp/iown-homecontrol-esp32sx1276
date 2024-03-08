@@ -724,7 +724,9 @@ bool publishMsg(IOHC::iohcPacket* iohc) {
     doc["_data"] = bytesToHexString(iohc->payload.buffer + 9, iohc->buffer_length - 9);
     std::string message;
     size_t messageSize = serializeJson(doc, message);
-    mqttClient.publish("iown/Frame", 1, false, message.c_str(), messageSize);
+    #if defined(MQTT)
+        mqttClient.publish("iown/Frame", 1, false, message.c_str(), messageSize);
+    #endif
     // }
     return false;
 }
