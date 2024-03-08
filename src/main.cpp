@@ -716,7 +716,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
 /*TODO Merge with decode here (radio.cpp line 168)*/
 bool publishMsg(IOHC::iohcPacket* iohc) {
     //                if(iohc->payload.packet.header.cmd == 0x20 || iohc->payload.packet.header.cmd == 0x00) {
-    DynamicJsonDocument doc(256);
+    DynamicJsonDocument doc(512);
     doc["type"] = "Cozy";
     doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
     doc["to"] = bytesToHexString(iohc->payload.packet.header.source, 3);

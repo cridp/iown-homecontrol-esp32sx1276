@@ -125,7 +125,6 @@ inline void onMqttConnect(bool sessionPresent) {
     Serial.printf("Search for %s\t", segments[0].c_str());
     for (uint8_t idx=0; idx<=lastEntry; ++idx) {
       if (_cmdHandler[idx] == nullptr) continue;
-//      if (strcmp(_cmdHandler[idx]->cmd, segments[0].c_str()) == 0) {
         if (segments[0].find(_cmdHandler[idx]->cmd) != std::string::npos) {
 
         Serial.printf(" %s %s (%s)\n", _cmdHandler[idx]->cmd, segments[1].c_str()!=nullptr?segments[1].c_str():"No param", _cmdHandler[idx]->description);
@@ -228,7 +227,7 @@ inline void WiFiEvent(WiFiEvent_t event) {
 
 // using Tokens = std::vector<std::string>;
 namespace Cmd {
-  inline char _rxbuffer[256];
+  inline char _rxbuffer[512];
   inline uint8_t _len = 0;
   inline uint8_t _avail = 0;
 //  bool receivingSerial = false;
