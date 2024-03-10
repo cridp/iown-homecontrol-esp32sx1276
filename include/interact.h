@@ -186,7 +186,8 @@ inline void onMqttConnect(bool sessionPresent) {
     // TODO put the wifi task in core 1 as tickerUS cant be changed of core
     // constexpr wifi_init_config_t tweak = {.wifi_task_core_id = 0, }; // For fun
     // ESP_ERROR_CHECK(esp_wifi_init(&tweak));
-    // This do the job avoiding crash with MQTT
+
+    // esp_wifi_scan_stop do the job avoiding crash with MQTT
     ESP_ERROR_CHECK(esp_wifi_scan_stop()); 
     // WiFi.printDiag(Serial);
     WiFi.begin(WIFI_SSID, WIFI_PASSWD);
@@ -236,27 +237,8 @@ namespace Cmd {
       Timers::TickerUs kbd_tick;
 #elif defined(HELTEC)
       inline TimersUS::TickerUsESP32 kbd_tick;
-//      TickerUsESP32 kbd_tick;
-      //Ticker kbd_tick2;
 #endif
 
-  // inline struct _cmdEntry {
-  //     char cmd[15];
-  //     char description[61];
-  //     void (*handler)(Tokens*);
-  // } *_cmdHandler[MAXCMDS];
-
-  // inline uint8_t lastEntry = 0;
-
-  // inline void tokenize(std::string const &str, const char delim, Tokens &out) {
-  //     // construct a stream from the string 
-  //     std::stringstream ss(str); 
-
-  //     std::string s; 
-  //     while (std::getline(ss, s, delim)) { 
-  //         out.push_back(s); 
-  //     } 
-  // }
 
   inline bool addHandler(char *cmd, char *description, void (*handler)(Tokens*)) {
     for (uint8_t idx=0; idx<MAXCMDS; ++idx) {
@@ -344,9 +326,7 @@ namespace Cmd {
     connectToWifi();
 
     kbd_tick.attach_ms(500, cmdFuncHandler);
-//    kbdReconnectTimer = xTimerCreate("kbdTimer", pdMS_TO_TICKS(500), pdTRUE, (void*)0, reinterpret_cast<TimerCallbackFunction_t>(cmdFuncHandler));
-//    xTimerStart(kbdReconnectTimer, 0);
-    
+
     esp_timer_dump(stdout);
   }  
 }

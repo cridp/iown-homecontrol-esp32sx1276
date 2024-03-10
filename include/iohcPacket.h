@@ -3,7 +3,6 @@
 
 #include <cstring>
 #include <vector>
-#include <bitset>
 
 #include <board-config.h>
 
@@ -179,8 +178,6 @@ union CtrlByte2Union {
     typedef struct { 
         uint8_t memorizedCmd;
         std::vector<uint8_t> memorizedData;
-    //    uint8_t* data;
-    //    u_int8_t size;
     } Memorize;
  
     inline unsigned long packetStamp = 0L;
@@ -188,7 +185,7 @@ union CtrlByte2Union {
     inline size_t lastSendCmd = 0xFF;
     /*
     Class implementing the IOHC packet received/sent, including some additional members useful to track/control Radio parameters and timings
-*/
+    */
     class iohcPacket {
         public:
             iohcPacket()  = default;
@@ -202,20 +199,15 @@ union CtrlByte2Union {
             bool lock = false;
             unsigned long delayed = 0;
 
-        double/*int32_t*/ afc{};    // AFC freq correction applied
+        double afc{};    // AFC freq correction applied
         uint8_t snr{};    // in dB
-        float/*uint8_t*/ rssi{};   // -RSSI*2 of last packet received
+        float rssi{};   // -RSSI*2 of last packet received
         uint8_t lna{};    // LNA attenuation in dB
 
-//            inline static unsigned long stamp = 0L;
-//            inline static unsigned long relStamp = 0L;
-            
             void decode(bool verbosity = false);
 
         protected:
             uint8_t source_originator[3] = {0};
-
-        private:
 
     };
 }

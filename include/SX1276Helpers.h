@@ -1,10 +1,7 @@
-// #pragma once
 #ifndef SX1276HELPERS_H
 #define SX1276HELPERS_H
 
 #include <sx1276Regs-Fsk.h>
-//#include <board-config.h>
-#include <SPI.h>
 
 #if defined(ESP8266)
 
@@ -24,8 +21,8 @@
 #define SPI_Write   0x80
 #define SPI_Read    0x00
 
-#define TxReady  {/*do {}*/ while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_TXREADY));}   // Check for TxReady flag
-#define RxReady  {/*do {}*/ while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PLLLOCK));}   // Check for PllLock flag; do not use with sequencer
+#define TxReady  {while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_TXREADY));}   // Check for TxReady flag
+#define RxReady  {while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PLLLOCK));}   // Check for PllLock flag; do not use with sequencer
 
 #define RF_PACKETCONFIG2_IOHOME_POWERFRAME  0x10    // Missing from SX1276 FSK modem registers and bits definitions
 

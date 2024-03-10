@@ -49,8 +49,8 @@ namespace IOHC {
 
         Radio::clearBuffer();
         Radio::clearFlags();
-        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]);
-        // 868950000); // We always start at freq[0] the 1W/2W channel
+        /* We always start at freq[0] the 1W/2W channel*/
+        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]); //868950000);
         // Radio::calibrate();
         Radio::setRx();
     }
@@ -73,16 +73,12 @@ namespace IOHC {
                 // radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending
                 return;
             }
-            //            else {
-//            if (radio->preCounter > 0) printf("Ticks %d Preamble %d", radio->tickCounter, radio->preCounter);
-            // _g_payload_millis = esp_timer_get_time();
             // if in RX mode?
             radio->receive(false);
             Radio::clearFlags();
             radio->tickCounter = 0;
             radio->preCounter = 0;
             return;
-            //            }
         }
 
         if (_g_preamble) {
@@ -102,7 +98,6 @@ namespace IOHC {
 
         if (++radio->tickCounter * SM_GRANULARITY_US < radio->scanTimeUs) return;
 
-        //        digitalWrite(SCAN_LED, false);
         radio->tickCounter = 0;
 
         if (radio->num_freqs == 1) return;
@@ -112,7 +107,6 @@ namespace IOHC {
             radio->currentFreqIdx = 0;
 
         Radio::setCarrier(Radio::Carrier::Frequency, radio->scan_freqs[radio->currentFreqIdx]);
-        //        digitalWrite(SCAN_LED, true);
 
 #elif defined(CC1101)
         if (__g_preamble){
@@ -142,15 +136,14 @@ namespace IOHC {
 
     void IRAM_ATTR iohcRadio::packetSender(iohcRadio* radio) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-
-        f_lock = true; // Stop frequency hopping
+        // Stop frequency hopping
+        f_lock = true;
         txMode = true; // Avoid Radio put in Rx mode at next packet sent/received
-        //        Serial.printf("Using Delayed Packet %u !\n", radio->txCounter);
+        // Using Delayed Packet radio->txCounter)
         if (radio->packets2send[radio->txCounter] == nullptr) {
-            //            Serial.printf("Plus de Delayed Packet !\n");
+            // Plus de Delayed Packet
             if (radio->delayed != nullptr)
-                //               Serial.printf("Use Saved Delayed Packet !\n");
-                //           f_lock = false; txMode = false; return;
+                // Use Saved Delayed Packet
                 radio->iohc = radio->delayed;
         }
         else
@@ -170,13 +163,10 @@ namespace IOHC {
 
 #if defined(SX1276)
         Radio::writeBytes(REG_FIFO, radio->iohc->payload.buffer, radio->iohc->buffer_length);
-        // Is valid for both SX1276 & CC1101?
 
 #elif defined(CC1101)
         Radio::sendFrame(radio->iohc->payload.buffer, radio->iohc->buffer_length); // Prepare (encode, add crc, and so no) the packet for CC1101
 #endif
-
-        // Serial.printf("Size %u Counter %u", radio->packets2send.size(), radio->txCounter );
 
         packetStamp = esp_timer_get_time();
         radio->iohc->decode(false);
@@ -257,8 +247,7 @@ namespace IOHC {
 #endif
 
 #if defined(SX1276)
-        
-        // while (!Radio::dataAvail()) { }
+
         while (Radio::dataAvail()) {
             iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
         }
@@ -322,11 +311,10 @@ namespace IOHC {
 #endif
 
         // Radio::clearFlags();
-        if (rxCB /*&& !frmErr*/) rxCB(iohc);
+        if (rxCB ) rxCB(iohc);
         iohc->decode(stats);
-        //        delete iohc; //free(iohc);
 
-        digitalWrite(RX_LED, false); //digitalRead(RX_LED)^1);
+        digitalWrite(RX_LED, false);
         return true;
     }
 
@@ -342,8 +330,6 @@ namespace IOHC {
     void IRAM_ATTR iohcRadio::i_payload() {
 #if defined(SX1276)
         _g_payload = digitalRead(RADIO_PACKET_AVAIL);
-        // if (_g_payload)
-        //     _g_payload_millis = esp_timer_get_time();
 #endif
     }
 }

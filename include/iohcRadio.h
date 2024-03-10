@@ -40,43 +40,14 @@ namespace IOHC {
             void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, IohcPacketDelegate rxCallback, IohcPacketDelegate txCallback);
             void send(std::vector<iohcPacket*>&iohcTx);
 
-            // void send(std::array<iohcPacket*, 25>& iohcTx);
-            // template <size_t N> //Just for the fun, waiting to use a vector for all
-            // void send(std::array<iohcPacket*, N>& iohcTx) {
-            //     uint8_t idx = 0;
-            
-            //     if (txMode)  return;
-            //     do {
-            //         packets2send[idx] = iohcTx[idx];
-            //     } while (iohcTx[idx++]);
-            //              // for (auto packet : iohcTx) {
-            //              //     if (!packet) break;
-            //              //     packets2send[idx++] = packet;
-            //              // }
-            //     txCounter = 0;
-            //     Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
-            // }
-
-        // void send(std::vector<iohcPacket*>& iohcTx) {
-        //         // uint8_t idx = 0;
-        //         if (txMode)  return;
-
-        //         packets2send = iohcTx; //std::move(iohcTx); //
-        //         iohcTx.clear();
-
-        //         txCounter = 0;
-        //         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
-        //     }
-
         private:
             iohcRadio();
-            bool /*IRAM_ATTR*/ receive(bool stats);
-            bool /*IRAM_ATTR*/ sent(iohcPacket *packet);
+            bool receive(bool stats);
+            bool sent(iohcPacket *packet);
 
             static iohcRadio *_iohcRadio;
             volatile static bool _g_preamble;
             volatile static bool _g_payload;
-//            volatile static bool __g_timeout;
             static uint8_t _flags[2];
             volatile static unsigned long _g_payload_millis;
             
@@ -101,16 +72,12 @@ namespace IOHC {
         #elif defined(HELTEC)
             TimersUS::TickerUsESP32 TickTimer;
             TimersUS::TickerUsESP32 Sender;
-//            TickerUsESP32 TickTimer;
-//            TickerUsESP32 Sender;
-            //Timers::TickerUsESP32 FreqScanner;    
         #endif
             iohcPacket *iohc{};
             iohcPacket *delayed{};
             
             IohcPacketDelegate rxCB = nullptr;
             IohcPacketDelegate txCB = nullptr;
-//            std::array<iohcPacket*, 25> packets2send{};
             std::vector<iohcPacket*> packets2send{};
         protected:
             static void IRAM_ATTR i_preamble();
@@ -125,5 +92,4 @@ namespace IOHC {
     };
 }
 
-//#include <iohcRadio.tpp>
 #endif

@@ -1,9 +1,6 @@
-// #pragma once
-
 #ifndef IOHC_UTILS_H
 #define IOHC_UTILS_H
 
-//#include <string.h>
 #include <unordered_map>
 /* Various Part*/
 #include <iostream>

@@ -6,12 +6,7 @@
 
 extern "C" {
     #include "freertos/FreeRTOS.h"
-    #include "freertos/task.h"
     #include "esp_timer.h"
-//    #include "driver/gptimer.h"
-    // #include <stdio.h>
-    //     // #include "freertos/semphr.h"
-    // #include "driver/timer.h"
 }
 
 void system_timer_reinit();
@@ -43,16 +38,6 @@ namespace TimersUS {
     void attach_us(uint64_t microseconds, callback_t callback) {
         _attach_us(microseconds, true, reinterpret_cast<callback_with_arg_t>(callback), 0);
     }
-    //test with timer.h
-    // void test_us(uint32_t microseconds, timer_isr_t/*callback_with_arg_t*/ callback) {
-    //     _test_us(microseconds, true, reinterpret_cast<timer_isr_t/*callback_with_arg_t*/>(callback), 0);
-    // }
-    // template<typename TArg>
-    // void test_us(uint32_t microseconds, void (*callback)(TArg), TArg arg) {
-    //     static_assert(sizeof(TArg) <= sizeof(uint32_t), "test_us() callback argument size must be <= 4 bytes");
-    //     uint32_t arg32 = (uint32_t)arg;
-    //     _test_us(microseconds, true, reinterpret_cast<timer_isr_t/*callback_with_arg_t*/>(callback), arg32);
-    // }
     template<typename TArg>
     void attach(uint32_t seconds, void (*callback)(TArg), TArg arg) {
         static_assert(sizeof(TArg) <= sizeof(uint32_t), "attach() callback argument size must be <= 4 bytes");
@@ -83,29 +68,7 @@ namespace TimersUS {
         _attach_us(microseconds, true, reinterpret_cast<callback_with_arg_t>(callback), arg32);
     }
 
-    // void once(float seconds, callback_t callback) {
-    //     _attach_ms(seconds * 1000, false, reinterpret_cast<callback_with_arg_t>(callback), 0);
-    // }
-
-    // void once_ms(uint32_t milliseconds, callback_t callback) {
-    //     _attach_ms(milliseconds, false, reinterpret_cast<callback_with_arg_t>(callback), 0);
-    // }
-
-    // template<typename TArg>
-    // void once(float seconds, void (*callback)(TArg), TArg arg) {
-    //     static_assert(sizeof(TArg) <= sizeof(uint32_t), "attach() callback argument size must be <= 4 bytes");
-    //     uint32_t arg32 = (uint32_t)(arg);
-    //     _attach_ms(seconds * 1000, false, reinterpret_cast<callback_with_arg_t>(callback), arg32);
-    // }
-
-    // template<typename TArg>
-    // void once_ms(uint32_t milliseconds, void (*callback)(TArg), TArg arg) {
-    //     static_assert(sizeof(TArg) <= sizeof(uint32_t), "attach_ms() callback argument size must be <= 4 bytes");
-    //     uint32_t arg32 = (uint32_t)(arg);
-    //     _attach_ms(milliseconds, false, reinterpret_cast<callback_with_arg_t>(callback), arg32);
-    // }
-
-    void detach();
+        void detach();
     bool active();
 
     private:
@@ -119,14 +82,8 @@ namespace TimersUS {
     // Added as uS
     void _attach_us(uint64_t microseconds, bool repeat, callback_with_arg_t callback, uint32_t arg);
 
-    // Using timer.h
-//    void _test_us(int32_t microseconds, bool repeat, timer_isr_t/*callback_with_arg_t*/ callback, uint32_t arg);
-
-    protected:
     esp_timer_handle_t _timer;
     esp_timer_handle_t _timer_delayed{};
-//    gpt_timer_handle_t _gpttimer;
-//    static SemaphoreHandle_t s_timer_sem;
     };
 }
 

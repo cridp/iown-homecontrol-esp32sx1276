@@ -10,6 +10,8 @@
 #elif defined(HELTEC)
 #include <TickerUsESP32.h>
 #include <esp_task_wdt.h>
+#include <SPI.h>
+
 #endif
 
 namespace Radio {

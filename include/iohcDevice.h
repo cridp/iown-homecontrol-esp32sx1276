@@ -5,9 +5,6 @@
 #include <iohcPacket.h>
 #include <iohcRadio.h>
 
-// #include <ArduinoJson.h>
-// #include <LittleFS.h>
-
 namespace IOHC {
     /* Base classe for all devices type */
     class iohcDevice {
@@ -16,13 +13,11 @@ namespace IOHC {
             virtual ~iohcDevice() = default;
             virtual bool isFake(address, address);
             virtual bool isHome(address, address);
-            // void cmd(DeviceButton cmd, const char* data);
 
             bool verbosity{};
 
             virtual bool load() = 0;
             virtual bool save() = 0;
-            // Memorize memorizeSend;
 
             virtual void scanDump() = 0;
 
@@ -48,21 +43,10 @@ namespace IOHC {
                 RECEIVED_ERROR_0xFE             = 0xfe,         SEND_ERROR_0xFE             = 0xfe,
             };
 
-        private:
-            // iohcCozyDevice2W();
-            // static iohcCozyDevice2W *_iohcCozyDevice2W;
-
         protected:
-            // address _node;
-            // uint16_t _sequence;
-            // uint8_t _key[16];
-            // std::vector<uint16_t> _type;
-            // uint8_t _manufacturer;
             bool Fake = false;
             bool Home = false;
 
-//            iohcPacket *packets2send[25]{};
-            // std::array<iohcPacket*, 25> packets2send{};
             std::vector<iohcPacket*> packets2send{};
             iohcRadio *_radioInstance{};
     };
