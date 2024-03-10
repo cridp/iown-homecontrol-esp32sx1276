@@ -15,5 +15,6 @@
     "7FCCCB": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "1580", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT MRY"},
     "1D80AF": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "0C50", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT MRY"},
     "B489BE": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "1C00", "type": [0,0], "manufacturer_id": 2, "description":""},
-    "B66EAC": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "0B30", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"}
+    "B66EAC": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "0B30", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"},
+    "5D2671": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "1400", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"}
 }    
