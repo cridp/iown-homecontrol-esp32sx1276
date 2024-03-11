@@ -5,7 +5,7 @@ Use 2 interrupts for:
   - PAYLOAD
 
 Use a 100 µs timer to check state of interrupts (iohcRadio::tickerCounter)
-    go to RX
+
     - if PAYLOAD and RX -> decode the frame (opt)
     - if PAYLOAD and TX_READY -> send the frame, decode it (opt)
     
