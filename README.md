@@ -1,5 +1,8 @@
+
+Modify Pins in board_config.h according your board
+
 ### platformio[^1] :
-_Just one time when a JSON in data folder is modified:_
+_At first time or when a JSON in data folder is modified:_
   1. build filesystem image
   2. upload filesystem image
      

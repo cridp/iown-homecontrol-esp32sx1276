@@ -355,7 +355,7 @@ namespace IOHC {
                             //   r.sequence = 0x0835; //DEBUG
                             packet->payload.packet.header.cmd = 0x01;
                             packet->payload.packet.msg.p0x01_13.main = 0x00;
-                            packet->payload.packet.msg.p0x01_13.fp1 = 0x02;
+                            packet->payload.packet.msg.p0x01_13.fp1 = 0x01; // Observed // 0x02; //IZYMO
                             packet->payload.packet.msg.p0x01_13.fp2 = r.sequence & 0xFF;
                             // if (packet->payload.packet.header.source[2] == 0x1A) {packet->payload.packet.msg.p0x01_13.fp1 = 0x80;packet->payload.packet.msg.p0x01_13.fp2 = 0xD3;packet->payload.packet.header.source[2] = 0x1B; packet->payload.packet.msg.p0x01_13.fp2 = r.sequence--;}
                             break;

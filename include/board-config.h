@@ -1,32 +1,25 @@
 #ifndef IOHC_BOARD_H
 #define IOHC_BOARD_H
 
-#define SX1276
 #undef CC1101
-#define HELTEC
+#define SX1276
 #undef ESP8266
-
-/*
- * Defines the time required for the TCXO to wakeup [ms].
- */
-
-#define BOARD_TCXO_WAKEUP_TIME                      0
-#define BOARD_READY_AFTER_POR						10000
+#define HELTEC
 
 /*
  * Board MCU pins definitions - NodeMCUv2
  */
-// OK Heltec
-#define RADIO_SCLK_PIN  5  
-#define RADIO_MISO_PIN 19 
-#define RADIO_MOSI_PIN 27 
-#define RADIO_CS_PIN   18 
-#define RADIO_DIO0_PIN 26 
-#define RADIO_RST_PIN  14
-#define RADIO_DIO1_PIN 35 
-#define RADIO_DIO2_PIN 34
-#define RADIO_BUSY_PIN 32
-#define BOARD_LED_PIN  25
+// OK Heltec Wifi ESP32 Lora v2.1
+#define RADIO_SCLK_PIN       5
+#define RADIO_MISO_PIN      19
+#define RADIO_MOSI_PIN      27
+#define RADIO_CS_PIN        18
+#define RADIO_DIO0_PIN      26
+#define RADIO_RST_PIN       14
+#define RADIO_DIO1_PIN      35
+#define RADIO_DIO2_PIN      34
+#define RADIO_BUSY_PIN      32
+#define BOARD_LED_PIN       25
 
 #if defined(ESP8266)
 #define RADIO_RESET                                 4   // NodeMCU D2
@@ -74,6 +67,13 @@
 #endif
 
 #define SPI_CLK_FRQ                                 10000000
+
+/*
+ * Defines the time required for the TCXO to wakeup [ms].
+ */
+
+#define BOARD_TCXO_WAKEUP_TIME                      0
+#define BOARD_READY_AFTER_POR						10000
 
 #define PREAMBLE_MSB                                0x00
 #define PREAMBLE_LSB        64//                        52  // 0x34: 12ms to have receiver up and running (52 0x55 bytes - 13,54mS)
