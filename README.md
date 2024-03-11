@@ -10,7 +10,7 @@ Use a 100 µs timer to check state of interrupts (iohcRadio::tickerCounter)
     - if PAYLOAD and TX_READY -> send the frame, decode it [^3]
     
 Modify Pins in board_config.h according your board
-
+### 1W ? Not my cup of tea, but implemented 20 real devices to play with.
 ### 2W howTo
 
 ### platformio[^2] :
