@@ -60,10 +60,10 @@ namespace IOHC {
 #if defined(SX1276)
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
 
-        if (_g_payload) {
             // If Int of PayLoad
-            if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
+        if (_g_payload) {
                 // if TX ready?
+            if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
                 radio->sent(radio->iohc);
                 Radio::clearFlags();
                 if (!txMode) {
