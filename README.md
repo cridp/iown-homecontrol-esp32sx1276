@@ -3,6 +3,7 @@
 Use 2 interrupts for:
   - PREAMBLE
   - PAYLOAD
+
 Use a 100 µs timer to check state of interrupts (iohcRadio::tickerCounter)
     go to RX
     - if PAYLOAD and RX -> decode the frame (opt)
