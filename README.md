@@ -19,5 +19,5 @@ _At first time or when a JSON in data folder is modified:_
 _After any other changes:_  
   - upload and monitor
 
-[^1]: I use SX1276. If CC1101 it use the old code (Not checked/garanted)
-[^2]: I use : Visual Studio Code Insider / CLion Nova
+[^1]: I use SX1276. If CC1101: Feel free to use the old code (Not checked/garanted)
+[^2]: I use Visual Studio Code Insider / CLion Nova
