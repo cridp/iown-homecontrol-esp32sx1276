@@ -1,3 +1,7 @@
+### Usage
+
+Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
+
 ### Brief explanation[^1]:
 
 Use 2 interrupts for:
@@ -6,8 +10,8 @@ Use 2 interrupts for:
 
 Use a 100 µs timer to check state of interrupts (iohcRadio::tickerCounter) This can be put in a main loop, but it's fun like that.
 
-    - if PAYLOAD and RX -> decode the frame [^3]
-    - if PAYLOAD and TX_READY -> send the frame, decode it [^3]
+  - if PAYLOAD and RX -> decode the frame [^3]
+  - if PAYLOAD and TX_READY -> send the frame, decode it [^3]
 
 Modify Pins in board_config.h according your board
 
