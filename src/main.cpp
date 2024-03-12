@@ -304,13 +304,13 @@ void setup() {
         sysTable->dump2W();
     });
     // Unnecessary just for test
-    Cmd::addHandler((char *)"discover28", (char *)"discover28", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover28, nullptr/*"00FFFB"*/);    });
-    Cmd::addHandler((char *)"discover2A", (char *)"discover2A", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover2A, nullptr/*"00FFFB"*/);    });
+    Cmd::addHandler((char *)"discover28", (char *)"discover28", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover28, nullptr);    });
+    Cmd::addHandler((char *)"discover2A", (char *)"discover2A", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::discover2A, nullptr);    });
     Cmd::addHandler((char *)"fake0", (char *)"fake0", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::fake0, nullptr);    });
     Cmd::addHandler((char *)"ack", (char *)"ack33", [](Tokens* cmd)-> void {        cozyDevice2W->cmd(IOHC::DeviceButton::ack, nullptr);    });
     Cmd::addHandler((char *)"pairMode", (char *)"pairMode", [](Tokens* cmd)-> void { pairMode = !pairMode; });
 
-    Cmd::addHandler((char *)"scanMode", (char *)"scanMode", [](Tokens* cmd)-> void {scanMode = true; cozyDevice2W->cmd(IOHC::DeviceButton::checkCmd, nullptr/*"00FFFB"*/);});
+    Cmd::addHandler((char *)"scanMode", (char *)"scanMode", [](Tokens* cmd)-> void {scanMode = true; cozyDevice2W->cmd(IOHC::DeviceButton::checkCmd, nullptr);});
     Cmd::addHandler((char *)"scanDump", (char *)"Dump Scan Results", [](Tokens* cmd)-> void {scanMode = false;  cozyDevice2W->scanDump(); });
 
     // cozyDevice2W->scanDump();
