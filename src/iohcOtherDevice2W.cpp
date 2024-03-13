@@ -19,23 +19,16 @@ namespace IOHC {
     void iohcOtherDevice2W::init(iohcPacket* packet, size_t typn) {
         packet->payload.packet.header.cmd = 0x2A; //0x28; //typn;
         // Common Flags
-        // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
-        // packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 0;
-        // packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
-        // packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
-        // packet->payload.packet.header.CtrlByte2.asStruct.Unk3 = 0;
+        
         // Broadcast Target
         u_int16_t bcast = typn;
         //            uint16_t bcast = /*(_type.at(typn)<<6)*/(typn)<<6 + 0b111111;
         packet->payload.packet.header.target[0] = 0x00;
         packet->payload.packet.header.target[1] = bcast >> 8;
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
-
-// packet->payload.packet.header.target[1] = 0xFF; //bcast >> 8;
-// packet->payload.packet.header.target[0] = 0x00; //bcast >> 8;
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 50;

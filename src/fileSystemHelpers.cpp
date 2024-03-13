@@ -31,7 +31,7 @@ void traverseDirectory(const char* dirName, uint8_t level) {
       printFileInfo(dirName, fileName.c_str(), level);
     }
   }
-#elif defined(HELTEC)
+#elif defined(ESP32)
   File root = LittleFS.open(dirName);
   File fileName;
   while (fileName = root.openNextFile()) {

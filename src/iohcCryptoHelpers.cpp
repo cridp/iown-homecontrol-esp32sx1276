@@ -1,6 +1,4 @@
 #include <iohcCryptoHelpers.h>
-//#include <Arduino.h>
-//#include <board-config.h>
 #include <crypto2Wutils.h> 
 /*
     Helper function to convert a string containing hex numbers to a bytes sequence; one byte every two characters
@@ -36,7 +34,7 @@ namespace iohcCrypto {
 #if defined(ESP8266)
     AES128 aes128;
     CTR<AES128> ctraes128;
-#elif defined(HELTEC)
+#elif defined(ESP32)
     mbedtls_aes_context aes;
 #endif
     
@@ -140,7 +138,7 @@ namespace iohcCrypto {
         #if defined(ESP8266)
             aes128.setKey(controller_key, 16);
             aes128.encryptBlock(hmac, iv.data());
-        #elif defined(HELTEC)
+        #elif defined(ESP32)
             mbedtls_aes_setkey_enc( &aes, controller_key, 128 );
            
 //        for (uint8_t a=0; a<16; a++){
@@ -158,7 +156,7 @@ namespace iohcCrypto {
     - Key in clear (or encrypted to decrypt)
 */
     void encrypt_1W_key(const uint8_t *node_address, uint8_t *key) {
-        #if defined(HELTEC)
+        #if defined(ESP32)
             mbedtls_aes_init(&aes);
         #endif
 
@@ -189,7 +187,7 @@ namespace iohcCrypto {
             ctraes128.setIV(iv.data(), 16);
             ctraes128.setCounterSize(4);
             ctraes128.encrypt(key, key, 16);
-        #elif defined(HELTEC)
+        #elif defined(ESP32)
             size_t iv_offset = 0;
             mbedtls_aes_setkey_enc( &aes, (uint8_t *)btransfer, 128 );
             mbedtls_aes_crypt_cfb128(&aes, MBEDTLS_AES_ENCRYPT, 16, &iv_offset, iv.data(), (uint8_t *)key, captured);

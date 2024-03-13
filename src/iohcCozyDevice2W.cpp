@@ -1,6 +1,6 @@
 #include <iohcCozyDevice2W.h>
 #include <LittleFS.h>
-#include <ArduinoJson.h>
+// #include <ArduinoJson.h>
 #include <iohcCryptoHelpers.h>
 #include <numeric>
 
@@ -13,16 +13,12 @@ namespace IOHC {
         if (!_iohcCozyDevice2W) {
             _iohcCozyDevice2W = new iohcCozyDevice2W();
             _iohcCozyDevice2W->load();
-            //            _iohcCozyDevice2W->init();
-            // std::vector<uint8_t> valid(256);
-            // std::iota(valid.begin(), valid.end(), 0);
             _iohcCozyDevice2W->initializeValid();
         }
         return _iohcCozyDevice2W;
     }
 
     void iohcCozyDevice2W::init(iohcPacket* packet) {
-        //            auto& packet = packets2send[0];
         // Common Flags
         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
         // 8 if protocol version is 0 else 10
@@ -66,7 +62,7 @@ namespace IOHC {
         if (!_radioInstance) {
             Serial.println("NO RADIO INSTANCE");
             _radioInstance = IOHC::iohcRadio::getInstance();
-        } // Verify !
+        } 
         IOHC::relStamp = esp_timer_get_time();
 
         switch (cmd) {
