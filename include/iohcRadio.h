@@ -1,22 +1,23 @@
 #ifndef IOHC_RADIO_H
 #define IOHC_RADIO_H
 
-#include <memory>
-#include <board-config.h>
-
 #include <map>
 #include <Delegate.h>
+#include <memory>
+
+#include <board-config.h>
 #include <iohcCryptoHelpers.h>
+#include <iohcPacket.h>
+
 #if defined(SX1276)
         #include <SX1276Helpers.h>
 #elif defined(CC1101)
         #include <CC1101Helpers.h>
 #endif
 
-#include <iohcPacket.h>
 #if defined(ESP8266)
   #include <TickerUs.h>
-#elif defined(HELTEC)  	
+#elif defined(ESP32)  	
     #include <TickerUsESP32.h>
 #endif
 
@@ -69,7 +70,7 @@ namespace IOHC {
             Timers::TickerUs TickTimer;
             Timers::TickerUs Sender;
 //            Timers::TickerUs FreqScanner;
-        #elif defined(HELTEC)
+        #elif defined(ESP32)
             TimersUS::TickerUsESP32 TickTimer;
             TimersUS::TickerUsESP32 Sender;
         #endif
@@ -80,9 +81,9 @@ namespace IOHC {
             IohcPacketDelegate txCB = nullptr;
             std::vector<iohcPacket*> packets2send{};
         protected:
-            static void IRAM_ATTR i_preamble();
-            static void IRAM_ATTR i_payload();
-            static void IRAM_ATTR tickerCounter(iohcRadio *radio);
+            static void i_preamble();
+            static void i_payload();
+            static void tickerCounter(iohcRadio *radio);
 
             static void packetSender(iohcRadio *radio);
 

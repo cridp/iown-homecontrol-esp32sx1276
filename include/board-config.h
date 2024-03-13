@@ -7,7 +7,7 @@
 #define HELTEC
 
 /*
- * Board MCU pins definitions - NodeMCUv2
+ * Board pins definitions
  */
 // OK Heltec Wifi ESP32 Lora v2.1
 #define RADIO_SCLK_PIN       5
@@ -20,6 +20,9 @@
 #define RADIO_DIO2_PIN      34
 #define RADIO_BUSY_PIN      32
 #define BOARD_LED_PIN       25
+
+// OK LilyGo Wifi ESP32 Lora v2.1.6
+
 
 #if defined(ESP8266)
 #define RADIO_RESET                                 4   // NodeMCU D2

@@ -10,7 +10,5 @@ namespace IOHC {
                 this->Home = false;
                 return this->Home;
             }
-            // bool iohcDevice::load(){return false;}
-            // bool iohcDevice::save(){return false;};
 
 }

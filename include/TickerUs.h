@@ -1,5 +1,3 @@
-#pragma once
-
 #include <functional>
 #include <Schedule.h>
 #include <ets_sys.h>

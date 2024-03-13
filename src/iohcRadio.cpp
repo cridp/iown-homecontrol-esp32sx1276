@@ -1,4 +1,5 @@
-#include <Arduino.h>
+// #include <Arduino.h>
+#include <esp32-hal-gpio.h>
 #include <iohcRadio.h>
 #include <utility>
 
@@ -151,7 +152,7 @@ namespace IOHC {
 
         //        if (radio->iohc->frequency != 0) {
         if (radio->iohc->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
-            Serial.printf("ChangedFreq !\n");
+            printf("ChangedFreq !\n");
             Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
         }
         // else {

@@ -259,8 +259,7 @@ namespace IOHC {
                 packets2send.back()->delayed = 50;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
-                _radioInstance->send(packets2send); // Verify !
+                _radioInstance->send(packets2send); 
                 break;
             }
             case DeviceButton::midnight: {
@@ -285,9 +284,8 @@ namespace IOHC {
                 packets2send.back()->buffer_length = toSend.size() + 9;
                 //packet2send[0]->payload.packet.header.framelength +1;
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
-                _radioInstance->send(packets2send); // Verify !
-                //                packets2send.fill(nullptr);
+                _radioInstance->send(packets2send); 
+                
                 break;
             }
             case DeviceButton::custom: {
@@ -380,7 +378,6 @@ namespace IOHC {
                 //            hexStringToBytes(dat, broadcast);
                 size_t i = 0;
                 for (i = 0; i < 10; i++) {
-                    //                    packets2send[k] = new iohcPacket;
                     packets2send.push_back(new iohcPacket);
                     init(packets2send[i]);
                     packets2send[i]->payload.packet.header.cmd = 0x28;
@@ -447,9 +444,9 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     packets2send.back()->delayed = 250; // Give enough time for the answer
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
-                _radioInstance->send(packets2send); // Verify !
-                //                packets2send.fill(nullptr);
+                
+                _radioInstance->send(packets2send); 
+                
                 break;
             }
             case DeviceButton::fake0: {
@@ -457,7 +454,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 // 09:54:36.226 > (14) 2W S 1 E 0  FROM 0842E3 TO 14E00E CMD 00, F868.950 s+0.000   >  DATA(06)  03 e7 00 00 00 00
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 /*std::vector<uint8_t>*/
-                uint8_t toSend[] = {0x03, 0xe7, 0x32, 0x00, 0x00, 0x00}; //{0x03, 0x00, 0x00}; //  Not good for Cmd 0x01 Answfer FE 0x10
+                uint8_t toSend[] = {0x03, 0xe7, 0x32, 0x00, 0x00, 0x00}; //{0x03, 0x00, 0x00}; //  Not good for Cmd 0x01 Answer FE 0x10
 
                 uint8_t gateway[3] = {0xba, 0x11, 0xad}; //{0x08, 0x42, 0xe3};
                 uint8_t from[3] = {0x08, 0x42, 0xe3}; //data->at(1).c_str(); //
@@ -489,15 +486,13 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     memcpy(packets2send.back()->payload.buffer + 9, toSend, sizeof(toSend));
 
                     packets2send.back()->buffer_length = sizeof(toSend) + 9;
-                    packets2send.back()->delayed = 250; // Give enough time for the answer
+                    packets2send.back()->delayed = 300; // Give enough time for the answer
 
 
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
                 _radioInstance->send(packets2send);
-                //                packets2send.fill(nullptr);
-                //                packets2send[1] = nullptr;
+                
                 break;
             }
             case DeviceButton::ack: {
@@ -505,27 +500,24 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 std::vector<uint8_t> toSend = {};
 
-                //                    packets2send[k] = new iohcPacket;
                 packets2send.push_back(new iohcPacket);
-                init(packets2send.back()/*[0]*/);
-                packets2send.back()/*[0]*/->payload.packet.header.cmd = SEND_KEY_TRANSFERT_ACK_0x33;
+                init(packets2send.back());
+                packets2send.back()->payload.packet.header.cmd = SEND_KEY_TRANSFERT_ACK_0x33;
                 memorizeSend.memorizedCmd = SEND_KEY_TRANSFERT_ACK_0x33;
                 memorizeSend.memorizedData = toSend;
 
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-                packets2send.back()/*[0]*/->payload.packet.header.CtrlByte1.asByte += toSend.size();
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.source, gateway, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.packet.header.target, master_from, 3);
-                memcpy(packets2send.back()/*[0]*/->payload.buffer + 9, toSend.data(), toSend.size());
+                memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, master_from, 3);
+                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()/*[0]*/->buffer_length = toSend.size() + 9;
+                packets2send.back()->buffer_length = toSend.size() + 9;
                 //packet2send[0]->payload.packet.header.framelength +1;
 
-                //                packets2send[0]->decode(verbosity);
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
-                _radioInstance->send(packets2send); // Verify !
+                _radioInstance->send(packets2send); 
                 break;
             }
             case DeviceButton::checkCmd: {
@@ -582,8 +574,7 @@ uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                         packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                         packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
-                        // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk2 = 1;
-                        // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+                        
                         packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
                         memcpy(packets2send.back()->payload.packet.header.source, gateway/*from*//*gateway*/, 3);
@@ -602,9 +593,9 @@ uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                 }
                 Serial.printf("valid %u\n", counter);
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                // packets2send.back() = nullptr;
+                
                 _radioInstance->send(packets2send);
-                //                packets2send.fill(nullptr);
+                
                 break;
             }
             default: break;

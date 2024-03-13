@@ -1,7 +1,6 @@
 #ifndef IOHC_PACKET_H
 #define IOHC_PACKET_H
 
-#include <cstring>
 #include <vector>
 
 #include <board-config.h>

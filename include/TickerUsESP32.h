@@ -1,5 +1,3 @@
-// #pragma once
-
 /* This is the code of this library https://github.com/espressif/arduino-esp32/blob/master/libraries/Ticker/src/Ticker.h */
 #ifndef TICKERUSESP32_H
 #define TICKERUSESP32_H

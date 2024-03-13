@@ -1,3 +1,4 @@
+#include <cstring>
 #include <iohcObject.h>
 
 #include <utility>

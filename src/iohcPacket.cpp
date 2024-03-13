@@ -1,5 +1,6 @@
 #include <iohcPacket.h>
 #include <cstdio>
+#include <cstring>
 #include <esp_attr.h>
 #include <utils.h>
 
