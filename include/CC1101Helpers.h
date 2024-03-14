@@ -1,4 +1,3 @@
-// #pragma once
 #ifndef CC1101HELPERS_H
 #define CC1101HELPERS_H
 
@@ -6,10 +5,9 @@
 #include <board-config.h>
 #include <SPI.h>
 
-
 #if defined(ESP8266)
 
-#elif defined(HELTEC)
+#elif defined(ESP32)
     #include "mbedtls/aes.h"        // AES functions
 #endif
 
@@ -25,13 +23,10 @@
 #define SPI_Write   0x80
 #define SPI_Read    0x00
 
-
 #define TxReady  {do {/* Checks new Mode is ready */} while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_TXREADY));}   // Check for TxReady flag
 #define RxReady  {do {/* Checks new Mode is ready */} while (!(readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PLLLOCK));}   // Check for PllLock flag; do not use with sequencer
 
 #define RF_PACKETCONFIG2_IOHOME_POWERFRAME  0x10    // Missing from SX1276 FSK modem registers and bits definitions
-
-
 
 /*
     Helper functions to setup and manage SX1276 registry configuration, query status and SPI interaction
@@ -67,8 +62,6 @@ namespace Radio
         uint8_t     Exp;
     } regBandWidth;
 
-
-
     void initHardware(void);
     void initRegisters(uint8_t maxPayloadLength);
     void calibrate(void);
@@ -93,7 +86,6 @@ namespace Radio
     regBandWidth bwRegs(uint8_t bandwidth);
     void dump(void);
     void dump2(void);
-
 
     //void spiTransfer(uint8_t* out, size_t len, uint8_t* in) override;
     void spiTransfer(uint8_t* out, size_t len, uint8_t* in);

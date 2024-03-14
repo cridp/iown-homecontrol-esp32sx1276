@@ -1,7 +1,6 @@
 #ifndef CRYPTO_H
 #define CRYPTO_H
 
-//#include <Arduino.h>
 #include <board-config.h>
 #include <string>
 #include <vector>
@@ -11,7 +10,7 @@
     #include <Crypto.h>
     #include <AES.h>
     #include <CTR.h>
-#elif defined(HELTEC)
+#elif defined(ESP32)
     #include "mbedtls/aes.h"        // AES functions
 #endif
 

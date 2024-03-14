@@ -66,7 +66,7 @@ namespace TimersUS {
         _attach_us(microseconds, true, reinterpret_cast<callback_with_arg_t>(callback), arg32);
     }
 
-        void detach();
+    void detach();
     bool active();
 
     private:

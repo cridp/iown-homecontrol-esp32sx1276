@@ -358,7 +358,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             //_p0x2b _p_0x29;
             //std::copy(toSend.begin(), toSend.begin() + sizeof(_p_0x29), reinterpret_cast<uint8_t*>(&_p_0x29));
 
-//            packets2send[0] = new IOHC::iohcPacket;
             packets2send.push_back(new IOHC::iohcPacket);
             packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
             // Header len if protocol version is 8 else 10 ;)
@@ -381,7 +380,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
-//            packets2send[0 + 1] = nullptr;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -410,14 +408,13 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
             // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
 
-            packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()->buffer_length = toSend.size() + 9; 
             packets2send.back()->frequency = CHANNEL2;
             packets2send.back()->repeatTime = 25;
             packets2send.back()->delayed = 250;
             IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
-//            packets2send[0 + 1] = nullptr;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -460,7 +457,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             std::vector<uint8_t> toSend;
             toSend.assign(encrypted_key, encrypted_key + 16);
 
-            // packets2send[0] = new IOHC::iohcPacket;
             packets2send.push_back(new IOHC::iohcPacket);
             packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
             // Header len if protocol version is 8 else 10 ;)
@@ -478,13 +474,12 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
             // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
             // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
 
-            packets2send.back()->buffer_length = toSend.size() + 9; //packet2send[0]->payload.packet.header.framelength +1;
+            packets2send.back()->buffer_length = toSend.size() + 9; 
             packets2send.back()->frequency = CHANNEL2;
             packets2send.back()->repeatTime = 25;
             IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0; // Need to stop txMode
             packets2send.back()->lock = false; //true; // Need to received ASAP
-//            packets2send[0 + 1] = nullptr;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -531,7 +526,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
 
                 std::vector<uint8_t> IVdata = cozyDevice2W->memorizeSend.memorizedData;
                 IVdata.insert(IVdata.begin(), cozyDevice2W->memorizeSend.memorizedCmd);
-                // packets2send[0] = new IOHC::iohcPacket; //(IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
+                
                 packets2send_tmp.push_back(new IOHC::iohcPacket);
  
                 packets2send_tmp.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_CHALLENGE_ANSWER_0x3D;
@@ -564,14 +559,13 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
                 memcpy(packets2send_tmp.back()->payload.buffer + 9, initial_value, dataLen);
 
                 packets2send_tmp.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
-                //packet2send[0]->payload.packet.header.framelength +1;
+                
                 packets2send_tmp.back()->frequency = CHANNEL2;
                 packets2send_tmp.back()->repeatTime = 6;
-                IOHC::packetStamp/*packets2send[0]->stamp*/ = esp_timer_get_time(); //
+                IOHC::packetStamp = esp_timer_get_time(); //
                 packets2send_tmp.back()->repeat = 1; // Need to stop txMode
                 packets2send_tmp.back()->lock = false; //true; // Need to received ASAP
-                //                    packets2send[0+1] = nullptr;
-                //                    packets2send[0]->decode(verbosity);
+                
                 radioInstance->send(packets2send_tmp);
 
                 // Serial.print("IV used for key encryption: ");
@@ -701,6 +695,7 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             printf("\n");
         break;
         }
+        case 0x4A:
         case 0X3D:
         case 0X05: break;
         default:

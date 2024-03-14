@@ -29,7 +29,7 @@ extern "C" {
 #if defined(ESP8266)
   #include <TickerUs.h>
   #define MAXCMDS 25
-#elif defined(HELTEC) 
+#elif defined(ESP32)
 //  #include <picoMQTT.h> 	
   #include <TickerUsESP32.h>
   #define MAXCMDS 50
@@ -235,7 +235,7 @@ namespace Cmd {
 
 #if defined(ESP8266)
       Timers::TickerUs kbd_tick;
-#elif defined(HELTEC)
+#elif defined(ESP32)
       inline TimersUS::TickerUsESP32 kbd_tick;
 #endif
 

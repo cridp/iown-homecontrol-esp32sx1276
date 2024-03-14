@@ -7,7 +7,7 @@
 #include <map>
 #if defined(ESP8266)
         #include <TickerUs.h>
-#elif defined(HELTEC)
+#elif defined(ESP32)
 #include <TickerUsESP32.h>
 #include <esp_task_wdt.h>
 #include <SPI.h>
@@ -60,7 +60,7 @@ namespace Radio {
         while (!digitalRead(RADIO_RESET)) {
 #if defined(ESP8266)
             wdt_reset();
-#elif defined(HELTEC)
+#elif defined(ESP32)
             esp_task_wdt_reset();
 #endif
             delayMicroseconds(1);
@@ -71,7 +71,7 @@ namespace Radio {
         // Initialize SPI bus
 #if defined(ESP8266)
         SPI.begin();
-#elif defined(HELTEC)
+#elif defined(ESP32)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
 #endif
         // Disable SPI device
@@ -448,13 +448,6 @@ namespace Radio {
         do {
             Serial.printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx));
             idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
-            // Serial.printf("0x%2.2x\t0x%2.2x\t", idx, readByte(idx)); idx += 1;
         }
         while (idx < 0x7f);
         Serial.printf("PKT\tFalse;False;255;0;\nXTAL\t32000000\n");

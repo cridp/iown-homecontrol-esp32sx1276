@@ -3,11 +3,10 @@
 #include <CC1101Helpers.h>
 #if defined(CC1101)
 
-
 #include <map>
 #if defined(ESP8266)
     #include <TickerUs.h>
-#elif defined(HELTEC)  	
+#elif defined(ESP32)
     #include <TickerUsESP32.h>
     #include <esp_task_wdt.h>
 #endif
@@ -65,7 +64,7 @@ namespace Radio
         
     #if defined(ESP8266)
         SPI.begin();
-    #elif defined(HELTEC)
+    #elif defined(ESP32)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
     #endif
 

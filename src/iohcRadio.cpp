@@ -1,4 +1,3 @@
-// #include <Arduino.h>
 #include <esp32-hal-gpio.h>
 #include <iohcRadio.h>
 #include <utility>
