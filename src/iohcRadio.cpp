@@ -23,6 +23,7 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
         // Attach interrupts to Preamble detected and end of packet sent/received
+        /* TODO this is wrongly named and/or assigned, but work like that*/
 #if defined(SX1276)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE);
         attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE);
@@ -151,7 +152,7 @@ namespace IOHC {
 
         //        if (radio->iohc->frequency != 0) {
         if (radio->iohc->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
-            printf("ChangedFreq !\n");
+            // printf("ChangedFreq !\n");
             Radio::setCarrier(Radio::Carrier::Frequency, radio->iohc->frequency);
         }
         // else {
@@ -169,7 +170,7 @@ namespace IOHC {
 #endif
 
         packetStamp = esp_timer_get_time();
-        radio->iohc->decode(false);
+        radio->iohc->decode(true); //false);
 
         IOHC::lastSendCmd = radio->iohc->payload.packet.header.cmd;
 
@@ -312,7 +313,7 @@ namespace IOHC {
 
         // Radio::clearFlags();
         if (rxCB ) rxCB(iohc);
-        iohc->decode(stats);
+        iohc->decode(true); //stats);
 
         digitalWrite(RX_LED, false);
         return true;

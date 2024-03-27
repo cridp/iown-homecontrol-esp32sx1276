@@ -10,28 +10,28 @@
  * Board pins definitions
  */
 // OK Heltec Wifi ESP32 Lora v2.1
-#define RADIO_SCLK_PIN       5
-#define RADIO_MISO_PIN      19
-#define RADIO_MOSI_PIN      27
-#define RADIO_CS_PIN        18
-#define RADIO_DIO0_PIN      26
-#define RADIO_RST_PIN       14
-#define RADIO_DIO1_PIN      35
-#define RADIO_DIO2_PIN      34
+#define RADIO_SCLK_PIN       5 
+#define RADIO_MISO_PIN      19 
+#define RADIO_MOSI_PIN      27 
+#define RADIO_CS_PIN        18 
+#define RADIO_DIO0_PIN      26 
+#define RADIO_RST_PIN       14 
+#define RADIO_DIO1_PIN      35 
+#define RADIO_DIO2_PIN      34 
 #define RADIO_BUSY_PIN      32
-#define BOARD_LED_PIN       25
+#define BOARD_LED_PIN       25 
 
 // OK LilyGo Wifi ESP32 Lora v2.1.6
+// https://github.com/LilyGO/ESP32-Paxcounter/blob/master/src/hal/ttgov2.h 
 
 
 #if defined(ESP8266)
 #define RADIO_RESET                                 4   // NodeMCU D2
-
 #define RADIO_MOSI                                  13  // NodeMCU D7
 #define RADIO_MISO                                  12  // NodeMCU D6
 #define RADIO_SCLK                                  14  // NodeMCU D5
 #define RADIO_NSS                                   15  // NodeMCU D8
-#elif defined(HELTEC)
+#elif defined(ESP32)
     #define RADIO_MOSI             RADIO_MOSI_PIN //                 23  // Default VSPI
     #define RADIO_MISO             RADIO_MISO_PIN //                 19  // Default VSPI
     #define RADIO_SCLK             RADIO_SCLK_PIN //                 18  // Default VSPI
@@ -60,7 +60,7 @@
 #if defined(SX1276)
     #define RADIO_PACKET_AVAIL                      RADIO_DIO_0     // Packet Received / CRC ok from Radio
     #define RADIO_DATA_AVAIL                        RADIO_DIO_1     // FIFO empty from Radio
-    #define RADIO_RXTIMEOUT                         RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequancy)
+    #define RADIO_RXTIMEOUT                         RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequency)
     #define RADIO_PREAMBLE_DETECTED                 RADIO_DIO_4     // Preamble detected from Radio (used instead of FIFO empty)
 #elif defined(CC1101)
     #define RADIO_PREAMBLE_DETECTED                 RADIO_DIO_0     // Preamble detected from Radio (used instead of FIFO empty)
@@ -88,9 +88,8 @@
   #define CHANNEL2  868950000 //1W 2W
   #define CHANNEL3  869850000 //2W
 
-#define FREQS2SCAN   {CHANNEL2, CHANNEL1, CHANNEL3} 
-#define MAX_FREQS                                   1       // Number of Frequencies to scan through Fast Hopping
-//#define FREQS2SCAN                                  { CHANNEL2 } //
+#define FREQS2SCAN              {CHANNEL2, CHANNEL1, CHANNEL3} 
+#define MAX_FREQS                1       // Number of Frequencies to scan through Fast Hopping set to 1 to disable FHSS
 
 #if defined(ESP8266)
     #define SCAN_LED                                D0

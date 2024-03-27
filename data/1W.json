@@ -18,5 +18,14 @@
     "B66EAC": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "0B30", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"},
     "5D2671": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "1400", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"},
     "3299D8": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "0C00", "type": [0,0], "manufacturer_id": 2, "description":""},
-    "F87C91": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "0f50", "type": [0,0], "manufacturer_id": 2, "description":""}
+    "F87C91": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "0f50", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "F014BB": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "1b00", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "0D12D7": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "5000", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "947E45": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "5000", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "28DB36": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "2800", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "C97F3F": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "4C00", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "0FEDDF": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "5600", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "F31EB9": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "5100", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "A908B0": {"key": "B794883327810507C2A5419EEEAE54B4", "sequence": "5600", "type": [0,0], "manufacturer_id": 2, "description":""},
+    "E891EC": {"key": "2D36BD8B4D4FB1E1A1B3099B394D3A9E", "sequence": "0400", "type": [6,0], "manufacturer_id": 2, "description":"LIGHT"}
 }    

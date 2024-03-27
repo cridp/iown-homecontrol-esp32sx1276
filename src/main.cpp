@@ -695,6 +695,8 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             printf("\n");
         break;
         }
+        case 0x48:
+        case 0x49:
         case 0x4A:
         case 0X3D:
         case 0X05: break;

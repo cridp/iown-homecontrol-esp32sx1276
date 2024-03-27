@@ -10,8 +10,8 @@ namespace IOHC {
         if (packetStamp - relStamp > 500000L) {
             printf("\n");
             relStamp = packetStamp; // - this->relStamp;
-            for (uint8_t i = 0; i < 3; i++)
-                source_originator[i] = this->payload.packet.header.source[i];
+            // for (uint8_t i = 0; i < 3; i++)
+            //     source_originator[i] = this->payload.packet.header.source[i];
         }
         char _dir[3] = {};
         if (!memcmp(source_originator, this->payload.packet.header.source, 3))
@@ -45,7 +45,8 @@ namespace IOHC {
         
         // if (verbosity) printf(" +%03.3f F%03.3f, %03.1fdBm %f %f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0, this->rssi, this->lna, this->afc);
         // if (verbosity) printf(" +%03.3f F%03.3f, %03.1fdBm %f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0, this->rssi, this->afc);
-        if (verbosity) printf(" +%03.3f\t%03.1fdBm\t", static_cast<float>(packetStamp - relStamp)/1000.0,  this->rssi);
+        // if (verbosity) printf(" +%03.3f\t%03.1fdBm\t", static_cast<float>(packetStamp - relStamp)/1000.0,  this->rssi);
+        if (verbosity) printf(" +%03.3f F%03.3f\t", static_cast<float>(packetStamp - relStamp)/1000.0, static_cast<float>(this->frequency)/1000000.0);
         
         printf(" %s ", _dir);
 

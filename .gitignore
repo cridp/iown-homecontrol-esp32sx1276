@@ -1,6 +1,6 @@
 /.pio/
 /.idea/
-/test/
+/docs/
 compile_commands.json
 git_rev_macro.py
 sdkconfig.HeltecESP32
@@ -15,4 +15,4 @@ src/CMakeLists.txt
 /.vscode/
 /lib/
 /build
-include/user_config.h
+

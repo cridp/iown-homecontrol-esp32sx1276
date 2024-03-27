@@ -5,28 +5,20 @@
 
 #if defined(SX1276)
 #include <map>
+
 #if defined(ESP8266)
         #include <TickerUs.h>
 #elif defined(ESP32)
 #include <TickerUsESP32.h>
 #include <esp_task_wdt.h>
 #include <SPI.h>
+//#include <SPIeX.h>
 
 #endif
 
 namespace Radio {
-    SPISettings SpiSettings(SPI_CLOCK_DIV2, MSBFIRST, SPI_MODE0);
-    //    WorkingParams _params;
-
-    /*
-        uint8_t bufferIndex = 0;
-
-
-        uint32_t freqs[MAX_FREQS] = FREQS2SCAN;
-        uint8_t next_freq = 0;
-        uint8_t scanCounter = 0;
-    */
-
+    SPISettings SpiSettings(26000000, MSBFIRST, SPI_MODE1); //0);
+    
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
     {
@@ -66,7 +58,6 @@ namespace Radio {
             delayMicroseconds(1);
         }
         delayMicroseconds(BOARD_READY_AFTER_POR);
-        printf("\nRadio Chip is ready\n");
 
         // Initialize SPI bus
 #if defined(ESP8266)
@@ -74,6 +65,11 @@ namespace Radio {
 #elif defined(ESP32)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
 #endif
+        // SPI.setFrequency(SPI_CLK_FRQ);
+        // SPI.setDataMode(SPI_MODE0);
+        // SPI.setBitOrder(MSBFIRST);
+        SPI.setHwCs(true);
+
         // Disable SPI device
         // Disable device NRESET pin
         pinMode(RADIO_NSS, OUTPUT);
@@ -82,12 +78,14 @@ namespace Radio {
         digitalWrite(RADIO_NSS, HIGH);
         delayMicroseconds(BOARD_READY_AFTER_POR);
 
-        SPI.beginTransaction(Radio::SpiSettings);
-        SPI.endTransaction();
+        // SPI.beginTransaction(Radio::SpiSettings);
+        // SPI.endTransaction();
+
         writeByte(REG_OPMODE, RF_OPMODE_STANDBY); // Put Radio in Standby mode
 
         pinMode(SCAN_LED, OUTPUT);
         digitalWrite(SCAN_LED, 1);
+        printf("\nRadio Chip is ready\n");
     }
 
     void initRegisters(uint8_t maxPayloadLength = 0xff) {
@@ -107,7 +105,7 @@ namespace Radio {
             RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
         writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
         // Is IoHomePowerFrame useful ?
-
+RF_PACKETCONFIG2_IOHOME_MASK;
         // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
         writeByte(REG_SYNCCONFIG, 0x51); // 0x91); // TODOVERIFY 0x92
         //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
@@ -158,7 +156,7 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
 
-//        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // 0xC3) ; // Need AGC_OFF so dont use
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // Need AGC_OFF so dont use
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
@@ -243,7 +241,7 @@ namespace Radio {
         // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
-        //RF_OPMODE_SYNTHESIZER_TX); //
+        
         TxReady;
     }
 
@@ -251,7 +249,7 @@ namespace Radio {
         // Uncommon and incompatible settings
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-        //RF_OPMODE_SYNTHESIZER_RX); //
+        
         RxReady;
         /*
                 // Start Sequencer
@@ -451,8 +449,23 @@ namespace Radio {
         }
         while (idx < 0x7f);
         Serial.printf("PKT\tFalse;False;255;0;\nXTAL\t32000000\n");
+        // Serial.printf("\n");
+        dumpReal();
+    }
+    void dumpReal() {
+        uint8_t registers[0x80];
+          registers[0] = 0x00;
+          readBytes(0x01, registers + 1, 0x7F);
+        // sx127x_dump_registers(registers, device);
+        for (int idx = 0; idx < sizeof(registers); idx++) {
+            if (idx != 0) {
+                printf(",");
+            }
+        printf("0x%2.2x", registers[idx]);
+        }
+        printf("\n");
 
-        Serial.printf("\n");
+        dump_fsk_registers(registers);
     }
 }
 #endif

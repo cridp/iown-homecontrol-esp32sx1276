@@ -60,7 +60,7 @@ namespace TimersUS {
         _timerConfig.arg = reinterpret_cast<void *>(arg);
         _timerConfig.callback = callback;
         _timerConfig.dispatch_method = ESP_TIMER_TASK; //ESP_TIMER_ISR; // But ISR doesnt work with 100ULL
-        //    _timerConfig.skip_unhandled_events = true;
+        _timerConfig.skip_unhandled_events = true;
         _timerConfig.name = "TickerUsESP32";
 
         if (_timer) {

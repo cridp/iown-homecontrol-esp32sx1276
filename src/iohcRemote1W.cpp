@@ -33,7 +33,7 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
-        // packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+        packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         // Broadcast Target
         uint16_t bcast = (typn << 6) + 0b111111; // (_type.at(typn) << 6) + 0b111111;
         packet->payload.packet.header.target[0] = 0x00;
@@ -42,7 +42,7 @@ namespace IOHC {
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 40;
-        packet->repeat = 2;
+        packet->repeat = 0;
         packet->lock = false;
         // }
     }
@@ -537,7 +537,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(4096);
+        DynamicJsonDocument doc(8192);
 
         DeserializationError error = deserializeJson(doc, f); // buf.get());
 
@@ -592,7 +592,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(4096);
+        DynamicJsonDocument doc(8192);
         for (const auto&r: remotes) {
             // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
