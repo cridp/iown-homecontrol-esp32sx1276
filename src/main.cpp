@@ -103,7 +103,7 @@ void setup() {
         INIT_US;
 #endif
 
-    Serial.begin(SERIALSPEED);
+    Serial.begin(115200); //SERIALSPEED);
     //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
     pinMode(RX_LED, OUTPUT); // we are goning to blink this LED

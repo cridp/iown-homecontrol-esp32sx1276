@@ -183,6 +183,7 @@ int dump_fsk_registers(const uint8_t *regs) {
       printf("\tRxTrigger=RSSI and PreambleDetect\n");
       break;
   }
+  printf("sx127x_fsk_ook_rx_set_trigger(SX127X_RX_TRIGGER_PREAMBLE, device)");
   printf("0x0e: RegRssiConfig\n");
   printf("\tRssiOffset=%d\n", (regs[0x0e] & 0b11111000) >> 3);
   printf("\tRssiSmoothing=%d\n", (regs[0x0e] & 0b111));
@@ -216,6 +217,7 @@ int dump_fsk_registers(const uint8_t *regs) {
   }
   printf("\tPreambleDetectorSize=%d\n", ((regs[0x1f] & 0b1100000) >> 5) + 1);
   printf("\tPreambleDetectorTol=%d\n", (regs[0x1f] & 0b11111));
+  printf("sx127x_fsk_ook_rx_set_preamble_detector(true, 2, 0x0A, device)");
   printf("0x20: RegRxTimeout1\n");
   printf("\tTimeoutRxRssi=%d\n", regs[0x20]);
   printf("0x21: RegRxTimeout2\n");
@@ -278,6 +280,7 @@ int dump_fsk_registers(const uint8_t *regs) {
   } else {
     printf("\tSyncOn=Off\n");
   }
+  printf("sx127x_fsk_ook_set_preamble_type(SX127X_PREAMBLE_55, device)");
   uint8_t sync_size = (regs[0x27] & 0b111) + 1;
   printf("\tSyncSize=%d\n", sync_size);
   printf("0x28 -> 0x2F: RegSyncValue\n");
@@ -285,7 +288,7 @@ int dump_fsk_registers(const uint8_t *regs) {
   for (int i = 0; i < sync_size; i++) {
     printf("%x", regs[0x28 + i]);
   }
-  printf("\n");
+  printf("sx127x_fsk_ook_set_syncword(syncWord, %d, device)\n",sync_size);
   printf("0x30: RegPacketConfig1\n");
   if ((regs[0x30] & 0b10000000) != 0) {
     printf("\tPacketFormat=Variable\n");
@@ -306,6 +309,7 @@ int dump_fsk_registers(const uint8_t *regs) {
       printf("\tDcFree=Invalid\n");
       break;
   }
+  printf("sx127x_fsk_ook_set_packet_format(SX127X_VARIABLE, 255, device)\n");
   if ((regs[0x30] & 0b10000) != 0) {
     printf("\tCrcOn=1\n");
   } else {
@@ -335,6 +339,7 @@ int dump_fsk_registers(const uint8_t *regs) {
   } else {
     printf("\tCrcWhiteningType=CCITT CRC\n");
   }
+  printf("sx127x_fsk_ook_set_crc(SX127X_CRC_NONE, device)\n");
   printf("0x31: RegPacketConfig2\n");
   if ((regs[0x31] & 0b1000000) != 0) {
     printf("\tDataMode=Packet\n");
