@@ -2,6 +2,10 @@
 #include <LittleFS.h>
 #include <ArduinoJson.h>
 #include <iohcCryptoHelpers.h>
+#include <string>
+#include <iohcRadio.h>
+#include <vector> 
+#include <iohcDevice.h>
 
 namespace IOHC {
     iohcOtherDevice2W* iohcOtherDevice2W::_iohcOtherDevice2W = nullptr;
@@ -16,12 +20,17 @@ namespace IOHC {
         return _iohcOtherDevice2W;
     }
 
+    uint8_t fake_gateway[3] = {0xba, 0x11, 0xad};
+
     void iohcOtherDevice2W::init(iohcPacket* packet, size_t typn) {
+        packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
+
         packet->payload.packet.header.cmd = 0x2A; //0x28; //typn;
         // Common Flags
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
         packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+        packet->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
         
         // Broadcast Target
         u_int16_t bcast = typn;
@@ -36,7 +45,7 @@ namespace IOHC {
         packet->lock = false;
     }
 
-    void iohcOtherDevice2W::cmd(Other2WButton cmd/*, const char* data*/) {
+    void iohcOtherDevice2W::cmd(Other2WButton cmd, Tokens* data) {
         // Emulates device button press
         if (!_radioInstance) {
             Serial.println("NO RADIO INSTANCE");
@@ -75,6 +84,41 @@ namespace IOHC {
 //                }
                         _radioInstance->send(packets2send);
             break;
+            }
+            case Other2WButton::getName: {
+                packets2send.clear();
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+                std::vector<uint8_t> toSend = {}; // {0x0C, 0x60, 0x01, 0xFF};
+
+                // const char* dat = data->at(1).c_str();
+ 
+                int value = std::stol(data->at(1).c_str(), nullptr, 16);
+                int8_t target[3];
+                target[0] = static_cast<uint8_t>(value >> 16);
+                target[1] = static_cast<uint8_t>(value >> 8);
+                target[2] = static_cast<uint8_t>(value);
+                // uint8_t target[3] = {0x08, 0x42, 0xE3};
+                // toSend[3] = custom; 
+
+                packets2send.push_back(new iohcPacket);
+                init(packets2send.back(), 0);
+                packets2send.back()->payload.packet.header.cmd = SEND_GET_NAME_0x50;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = SEND_WRITE_PRIVATE_0x20;
+
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+
+                memcpy(packets2send.back()->payload.packet.header.source, fake_gateway, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, target, 3);
+                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+                packets2send.back()->buffer_length = toSend.size() + 9;
+                
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+                // packets2send.back()->delayed = 501;
+               _radioInstance->send(packets2send);
+                break;
             }
             //     case DeviceButton::powerOn: {
             //         digitalWrite(RX_LED, digitalRead(RX_LED)^1);

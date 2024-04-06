@@ -5,6 +5,7 @@
 #include <iohcRadio.h>
 #include <vector> 
 #include <iohcDevice.h>
+#include <interact.h>
 
 #define OTHER_2W_FILE  "/Other2W.json"
 
@@ -17,6 +18,7 @@
 namespace IOHC {
     enum class Other2WButton {
         discovery,
+        getName,
         // powerOn,
         // setTemp,
         // setMode,
@@ -52,7 +54,7 @@ namespace IOHC {
 //            uint8_t slave_to[3] = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To 
 
 //            bool isFake(address nodeSrc, address nodeDst) override;
-            void cmd(Other2WButton cmd/*, const char* data*/);
+            void cmd(Other2WButton cmd, Tokens* data);
             bool load() override;
             bool save() override;
             void scanDump() override{}

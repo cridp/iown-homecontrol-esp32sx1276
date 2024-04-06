@@ -1,4 +1,5 @@
 #include <esp32-hal-gpio.h>
+
 #include <iohcRadio.h>
 #include <utility>
 
@@ -25,12 +26,11 @@ namespace IOHC {
         // Attach interrupts to Preamble detected and end of packet sent/received
         /* TODO this is wrongly named and/or assigned, but work like that*/
 #if defined(SX1276)
-        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE);
-        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE);
+        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
+        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING); // CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
-
         TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
     }
 

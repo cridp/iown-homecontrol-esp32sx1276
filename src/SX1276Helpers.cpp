@@ -17,7 +17,7 @@
 #endif
 
 namespace Radio {
-    SPISettings SpiSettings(26000000, MSBFIRST, SPI_MODE1); //0);
+    SPISettings SpiSettings(8000000, MSBFIRST, SPI_MODE0); 
     
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
@@ -96,18 +96,19 @@ namespace Radio {
         // Switch-off clockout
         writeByte(REG_OSC, RF_OSC_CLKOUT_OFF); // This only give power saveing maybe we can use it as ticker µs
 
-        // Variable packet lenght, generates working CRC !!!
+        // Variable packet lenght, generates working CRC. 
         // Packet mode, IoHomeOn, IoHomePowerFrame to be added (0x10) to avoid rx to newly detect the preamble during tx radio shutdown
+        // Must CRCAUTOCLEAR_ON or do full clean FIFO !
         writeByte(
             REG_PACKETCONFIG1,
             RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON |
-            RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_ADDRSFILTERING_OFF |
-            RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT);
+            RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT |
+            RF_PACKETCONFIG1_ADDRSFILTERING_OFF);
         writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
         // Is IoHomePowerFrame useful ?
-RF_PACKETCONFIG2_IOHOME_MASK;
+
         // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
-        writeByte(REG_SYNCCONFIG, 0x51); // 0x91); // TODOVERIFY 0x92
+        writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_OFF | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON); //0x51); // 0x91); // TODOVERIFY 0x92
         //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
         
         // Set Sync word to 0xff33 both for rx and tx
@@ -126,7 +127,7 @@ RF_PACKETCONFIG2_IOHOME_MASK;
         // Enable Fast Hoping (frequency change)
         // Not using that, as it avoid a lot of answers
         if (MAX_FREQS != 1)
-            writeByte(REG_PLLHOP, readByte(RF_PLLHOP_FASTHOP_ON) | RF_PLLHOP_FASTHOP_ON); // Not needed all the time
+            writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON); // Not needed all the time
 
         // ---------------- TX Register init section ----------------
         // PA boost maximum power

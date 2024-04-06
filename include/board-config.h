@@ -5,7 +5,7 @@
 #define SX1276
 #undef ESP8266
 #define HELTEC
-#define LILYGO
+//#define LILYGO
 /*
  * Board pins definitions
  */
@@ -19,7 +19,7 @@
 #ifdef LILYGO
 #define RADIO_DIO1_PIN  33 //LILYGO
 #define RADIO_DIO2_PIN  32 //LILYGO
-#elif HELTEC
+#elif defined(HELTEC)
 #define RADIO_DIO1_PIN  35 //HELTEC
 #define RADIO_DIO2_PIN  34 //HELTEC
 #endif

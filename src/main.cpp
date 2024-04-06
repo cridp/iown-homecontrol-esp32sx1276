@@ -277,7 +277,8 @@ void setup() {
         Cmd::addHandler((char *)"mode3", (char *)"1W Mode3", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode3);    });
         Cmd::addHandler((char *)"mode4", (char *)"1W Mode4", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode4);    });
     // Other 2W
-    Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery);    });
+    Cmd::addHandler((char *)"discovery", (char *)"Send discovery on air", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::discovery, nullptr);    });
+    Cmd::addHandler((char *)"getName", (char *)"Name Of A Device", [](Tokens* cmd)-> void {    otherDevice2W->cmd(IOHC::Other2WButton::getName, cmd);    });
     // Utils
     Cmd::addHandler((char *)"dump", (char *)"Dump Transceiver registers", [](Tokens* cmd)-> void {
         Radio::dump();
@@ -592,24 +593,36 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             cozyDevice2W->memorizeSend.memorizedCmd = iohc->payload.packet.header.cmd;
             break;
         }
+        case 0x51: {
+            std::vector<uint8_t> nameReceived;
+            nameReceived.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 25);
+//            std::string asciiName;
+
+for (char byte : nameReceived) {
+//    asciiName += std::toupper(byte);
+    printf("%c", std::toupper(byte));
+}
+//            printf("%s\n", asciiName.c_str());
+            printf("\n");
+            break;
+        }
         case 0x04:
         case 0x0D:
         case 0x2D:
         case 0x4B:
-        case 0x51:
         case 0x55:
         case 0x57:
         case 0x59:            
             if (scanMode) { 
                 otherDevice2W->memorizeOther2W = {};
-                    printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
+                    // printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
                     cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd; 
             }
             break;
         case 0xFE: {
             if (scanMode) { 
                 otherDevice2W->memorizeOther2W = {};
-                    printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
+                    // printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
                     cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9]; 
             }
             break;
