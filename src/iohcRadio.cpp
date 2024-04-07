@@ -53,9 +53,10 @@ namespace IOHC {
 //        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
 #if defined(SX1276)
 //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
-//        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING); // CHANGE); //
-        attachInterrupt(RADIO_PACKET_AVAIL, handle_interrupt_fromisr, CHANGE); // 
-        attachInterrupt(RADIO_PREAMBLE_DETECTED, handle_interrupt_fromisr, RISING); // CHANGE); //
+//        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
+        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); // CHANGE); // 
+        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
+        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
@@ -107,7 +108,7 @@ namespace IOHC {
                     Radio::setRx();
                     f_lock = false;
                 }
-                // radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending
+                // radio->sent(radio->iohc); // Put after Workaround to permit MQTT sending. No more needed
                 return;
             }
             // if in RX mode?
