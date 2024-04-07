@@ -327,7 +327,7 @@ namespace Cmd {
 
     kbd_tick.attach_ms(500, cmdFuncHandler);
 
-    esp_timer_dump(stdout);
+    
   }  
 }
 #endif

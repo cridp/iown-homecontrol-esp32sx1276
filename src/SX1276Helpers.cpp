@@ -17,7 +17,7 @@
 #endif
 
 namespace Radio {
-    SPISettings SpiSettings(8000000, MSBFIRST, SPI_MODE0); 
+    SPISettings SpiSettings(4000000, MSBFIRST, SPI_MODE0);
     
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =

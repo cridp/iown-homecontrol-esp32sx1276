@@ -13,6 +13,30 @@ namespace IOHC {
     volatile bool iohcRadio::send_lock = false;
     volatile bool iohcRadio::txMode = false;
 
+    TaskHandle_t handle_interrupt;
+    void handle_interrupt_task(void *pvParameters) {
+        static uint32_t thread_notification;
+        const TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 2); // 218.4 );
+        while (true) {    
+            thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime/*xNoDelay*/); // Attendre la notification
+            if (thread_notification/* && (_g_payload || _g_preamble)*/) { 
+//            sx127x_handle_interrupt(device); //(sx127x *)arg); 
+            iohcRadio::tickerCounter((iohcRadio*) pvParameters);
+            }
+        } 
+    }
+
+    /* Notify the thread so it will wake up when the ISR is complete */
+    void IRAM_ATTR handle_interrupt_fromisr(/*void *arg*/) {
+        iohcRadio::_g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
+        iohcRadio::f_lock = iohcRadio::_g_preamble;
+        iohcRadio::_g_payload = digitalRead(RADIO_PACKET_AVAIL);
+        // Notify the thread so it will wake up when the ISR is complete  
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+
     iohcRadio::iohcRadio() {
         Radio::initHardware();
         Radio::calibrate();
@@ -25,13 +49,25 @@ namespace IOHC {
 
         // Attach interrupts to Preamble detected and end of packet sent/received
         /* TODO this is wrongly named and/or assigned, but work like that*/
+//        printf("Starting TickTimer Handler...\n");
+//        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
 #if defined(SX1276)
-        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
-        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING); // CHANGE); //
+//        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
+//        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING); // CHANGE); //
+        attachInterrupt(RADIO_PACKET_AVAIL, handle_interrupt_fromisr, CHANGE); // 
+        attachInterrupt(RADIO_PREAMBLE_DETECTED, handle_interrupt_fromisr, RISING); // CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
-        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
+ 
+        // start state machine
+        printf("Starting Interrupt Handler...\n");
+        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192, this /*nullptr*//*device*/, /*tskIDLE_PRIORITY*/4, &handle_interrupt, /*tskNO_AFFINITY*/xPortGetCoreID());
+        if (task_code != pdPASS) {
+            printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
+            // sx127x_destroy(device);
+            return;
+        }
     }
 
     iohcRadio* iohcRadio::getInstance() {

@@ -12,15 +12,18 @@
 #include <iohcRemote1W.h>
 #include <iohcCozyDevice2W.h>
 #include <iohcOtherDevice2W.h>
-//#include <WiFi.h>
-//#include <Arduino.h>
+
+extern "C" {
+	#include "freertos/FreeRTOS.h"
+    #include "freertos/task.h"
+}
 
 #if defined(ESP8266)
 //    #include <ESP8266WiFi.h>
 //    #include "ESPAsyncTCP.h"
 //    #include <ESP8266mDNS.h>
 //    #include <ESP8266SSDP.h>
-#elif defined(HELTEC)
+#elif defined(ESP32)
 //    #include <WiFi.h>
 //    #include "esp_wifi.h"
 //   #include "mqtt_client.h"
@@ -30,7 +33,6 @@
 //    #include <ESPmDNS.h>            // ESPAsyncWebServer & OTA
 //    #include <ESP32SSDP.h>
 #endif
-
 
 //#include <ESPAsyncWebServer.h>
 //#include <WiFiManager.h>          //https://github.com/tzapu/WiFiManager WiFi Configuration - Async branch
@@ -88,11 +90,9 @@ bool publishMsg(IOHC::iohcPacket* iohc);
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc);
 bool msgArchive(IOHC::iohcPacket* iohc);
 
-//void discovery(void);
-
 #if defined(ESP8266)
       Timers::TickerUs kbd_tick;
-#elif defined(HELTEC)
+#elif defined(ESP32)
 //      TickerUsESP32 kbd_tick;
 #endif
 
@@ -104,7 +104,6 @@ void setup() {
 #endif
 
     Serial.begin(115200); //SERIALSPEED);
-    //    LOG(printf_P, PSTR("\n\nsetup: free heap  : %d\n"), ESP.getFreeHeap());
 
     pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
     digitalWrite(RX_LED, 1);
@@ -314,31 +313,11 @@ void setup() {
     Cmd::addHandler((char *)"scanMode", (char *)"scanMode", [](Tokens* cmd)-> void {scanMode = true; cozyDevice2W->cmd(IOHC::DeviceButton::checkCmd, nullptr);});
     Cmd::addHandler((char *)"scanDump", (char *)"Dump Scan Results", [](Tokens* cmd)-> void {scanMode = false;  cozyDevice2W->scanDump(); });
 
-    // cozyDevice2W->scanDump();
+    esp_timer_dump(stdout);
 
-    Serial.printf("Startup completed. type help to see what you can do!\n");
+    printf("Startup completed. type help to see what you can do!\n");
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     //Serial.println("SPI Speed:" + String(SPI.))
-}
-
-void loop() {
-    //    wm.process();
-#if defined(ESP8266)
-        MDNS.update();
-#endif
-
-    //    return;
-    /*
-
-        if(shouldReboot){
-        Serial.println("Rebooting...");
-        delay(100);
-        ESP.restart();
-        }
-        static char temp[128];
-        sprintf(temp, "Seconds since boot: %lu", millis()/1000);
-        events.send(temp, "time"); //send event "time"
-    */
 }
 
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
@@ -792,4 +771,23 @@ void txUserBuffer(Tokens* cmd) {
     // Do not deallocate buffers as send is asynchronous
     //        free(packets2send[0]);
     //        packets2send[0] = nullptr;
+}
+void loop() {
+    //    wm.process();
+#if defined(ESP8266)
+        MDNS.update();
+#endif
+
+    //    return;
+    /*
+
+        if(shouldReboot){
+        Serial.println("Rebooting...");
+        delay(100);
+        ESP.restart();
+        }
+        static char temp[128];
+        sprintf(temp, "Seconds since boot: %lu", millis()/1000);
+        events.send(temp, "time"); //send event "time"
+    */
 }

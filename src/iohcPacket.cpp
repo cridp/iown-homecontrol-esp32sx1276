@@ -19,6 +19,8 @@ namespace IOHC {
         else
             _dir[0] = '<';
 
+if(this->payload.packet.header.CtrlByte1.asStruct.Protocol) _dir[0] = '>';
+
         printf("(%2.2u) %1xW S %s E %s ", this->payload.packet.header.CtrlByte1.asStruct.MsgLen,
                this->payload.packet.header.CtrlByte1.asStruct.Protocol ? 1 : 2,
                this->payload.packet.header.CtrlByte1.asStruct.StartFrame ? "1" : "0",

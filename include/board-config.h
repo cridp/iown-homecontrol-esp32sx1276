@@ -16,15 +16,15 @@
 #define RADIO_CS_PIN        18 
 #define RADIO_DIO0_PIN      26 
 #define RADIO_RST_PIN       14
-#ifdef LILYGO
-#define RADIO_DIO1_PIN  33 //LILYGO
-#define RADIO_DIO2_PIN  32 //LILYGO
-#elif defined(HELTEC)
-#define RADIO_DIO1_PIN  35 //HELTEC
-#define RADIO_DIO2_PIN  34 //HELTEC
-#endif
-#define RADIO_BUSY_PIN      32
 #define BOARD_LED_PIN       25 
+#ifdef LILYGO
+#define RADIO_DIO1_PIN      33 //LILYGO
+#define RADIO_DIO2_PIN      32 //LILYGO
+#elif defined(HELTEC)
+#define RADIO_DIO1_PIN      35 //HELTEC
+#define RADIO_DIO2_PIN      34 //HELTEC
+#define RADIO_BUSY_PIN      32
+#endif
 
 // OK LilyGo Wifi ESP32 Lora v2.1.6
 // https://github.com/LilyGO/ESP32-Paxcounter/blob/master/src/hal/ttgov2.h 
