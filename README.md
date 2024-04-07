@@ -16,7 +16,9 @@ Use a 100 µs timer to check state of interrupts & flags (iohcRadio::tickerCount
   - if PAYLOAD and RX -> decode the frame [^3]
   - if PAYLOAD and TX_READY -> send the frame, decode it [^3]
 
-**WIP : Using our own SPI driver**
+**WIP : Using a better SPI driver**
+
+**WIP : Learning Mode**
 
 ### platformio[^2] :
 _At first time or when a JSON in data folder is modified:_

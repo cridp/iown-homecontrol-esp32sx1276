@@ -4,7 +4,7 @@
 #undef CC1101
 #define SX1276
 #undef ESP8266
-#define HELTEC
+// #define HELTEC
 //#define LILYGO
 /*
  * Board pins definitions

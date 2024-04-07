@@ -4,16 +4,14 @@
 #include <board-config.h>
 
 #if defined(SX1276)
-#include <map>
+    #include <map>
 
 #if defined(ESP8266)
-        #include <TickerUs.h>
+    #include <TickerUs.h>
 #elif defined(ESP32)
-#include <TickerUsESP32.h>
-#include <esp_task_wdt.h>
-#include <SPI.h>
-//#include <SPIeX.h>
-
+    #include <TickerUsESP32.h>
+    #include <esp_task_wdt.h>
+    #include <SPI.h>
 #endif
 
 namespace Radio {

@@ -134,7 +134,7 @@ void setup() {
     lcfg.setAutoFormat(false);
     LittleFS.setConfig(lcfg);
 //    LittleFS.begin();
-#endif //#elif defined(HELTEC)
+#endif //#elif defined(ESP32)
     LittleFS.begin();
     //#endif
 
@@ -151,7 +151,7 @@ void setup() {
         SSDP.setName("Velux remote gateway");
     #if defined(ESP8266)
         SSDP.setSerialNumber(ESP.getChipId());
-    #elif defined(HELTEC)
+    #elif defined(ESP32)
         uint64_t macAddress = ESP.getEfuseMac();
         uint64_t macAddressTrunc = macAddress << 40;
         SSDP.setSerialNumber(macAddressTrunc >> 40);
