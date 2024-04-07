@@ -2,7 +2,8 @@
 
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
 
--> Modify Pins in board_config.h according your board
+-> M~~odify Pins in board_config.h according your board~~
+Not needed if you choose you board before build.
 
 ### Brief explanation[^1]:
 
