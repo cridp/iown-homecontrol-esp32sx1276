@@ -14,12 +14,12 @@ namespace IOHC {
     volatile bool iohcRadio::txMode = false;
 
     TaskHandle_t handle_interrupt;
-    void handle_interrupt_task(void *pvParameters) {
+    void IRAM_ATTR handle_interrupt_task(void *pvParameters) {
         static uint32_t thread_notification;
-        const TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 2); // 218.4 );
+        const TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
         while (true) {    
             thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime/*xNoDelay*/); // Attendre la notification
-            if (thread_notification/* && (_g_payload || _g_preamble)*/) { 
+            if (thread_notification && (iohcRadio::_g_payload || iohcRadio::_g_preamble)) { 
 //            sx127x_handle_interrupt(device); //(sx127x *)arg); 
             iohcRadio::tickerCounter((iohcRadio*) pvParameters);
             }
@@ -51,12 +51,12 @@ namespace IOHC {
         /* TODO this is wrongly named and/or assigned, but work like that*/
 //        printf("Starting TickTimer Handler...\n");
 //        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
 //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
 //        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
-        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, CHANGE); // RISING); //
-        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
-        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
+        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
+        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr,RISING); // CHANGE); //
+        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING);  //CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
@@ -95,7 +95,7 @@ namespace IOHC {
 
     void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio* radio) {
         // Not need to put in IRAM as we reuse task for µs instead ISR
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
 
             // If Int of PayLoad
@@ -199,7 +199,7 @@ namespace IOHC {
         Radio::setStandby();
         Radio::clearFlags();
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
         Radio::writeBytes(REG_FIFO, radio->iohc->payload.buffer, radio->iohc->buffer_length);
 
 #elif defined(CC1101)
@@ -258,7 +258,7 @@ namespace IOHC {
 
         _g_payload_millis = esp_timer_get_time();
         packetStamp = _g_payload_millis;
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
         if (stats) {
             iohc->rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
             int16_t thres = Radio::readByte(REG_RSSITHRESH);
@@ -284,7 +284,7 @@ namespace IOHC {
         uint32_t lastPop = millis();
 #endif
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
 
         while (Radio::dataAvail()) {
             iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
@@ -357,7 +357,7 @@ namespace IOHC {
     }
 
     void IRAM_ATTR iohcRadio::i_preamble() {
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
         _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
 #elif defined(CC1101)
         __g_preamble = true;
@@ -366,7 +366,7 @@ namespace IOHC {
     }
 
     void IRAM_ATTR iohcRadio::i_payload() {
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
         _g_payload = digitalRead(RADIO_PACKET_AVAIL);
 #endif
     }

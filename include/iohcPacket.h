@@ -5,7 +5,7 @@
 
 #include <board-config.h>
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
 #include <SX1276Helpers.h>
 #elif defined(CC1101)
         #include <CC1101Helpers.h>

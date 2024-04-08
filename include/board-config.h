@@ -2,9 +2,10 @@
 #define IOHC_BOARD_H
 
 #undef CC1101
-#define SX1276
+#define RADIO_SX127X
+#define Regulatory_Domain_EU_868
 #undef ESP8266
-// #define HELTEC
+//#define HELTEC
 //#define LILYGO
 /*
  * Board pins definitions
@@ -40,7 +41,7 @@
     #define RADIO_MOSI             RADIO_MOSI_PIN //                 23  // Default VSPI
     #define RADIO_MISO             RADIO_MISO_PIN //                 19  // Default VSPI
     #define RADIO_SCLK             RADIO_SCLK_PIN //                 18  // Default VSPI
-    #if defined(SX1276)
+    #if defined(RADIO_SX127X)
         #define RADIO_RESET        RADIO_RST_PIN  //                 12
         #define RADIO_NSS          RADIO_CS_PIN   //                 25
     #elif defined(CC1101)
@@ -48,7 +49,7 @@
     #endif
 #endif
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
     //#define RADIO_DIO_0                             5   // NodeMCU D1
     //#define RADIO_DIO_1                             2   // NodeMCU D4 // Not used - No wire
     //#define RADIO_DIO_2                             2   // NodeMCU D4 // Not used - No wire
@@ -62,7 +63,7 @@
     #define RADIO_DIO_2                             33
 #endif
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
     #define RADIO_PACKET_AVAIL                      RADIO_DIO_0     // Packet Received / CRC ok from Radio
     #define RADIO_DATA_AVAIL                        RADIO_DIO_1     // FIFO empty from Radio
     #define RADIO_RXTIMEOUT                         RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequency)

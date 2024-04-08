@@ -39,7 +39,7 @@ extern "C" {
 
 /*
 // Transceivers Helpers defined inside de iohcRadio header
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
     #include <SX1276Helpers.h>
 #elif defined(CC1101)
     #include <CC1101Helpers.h>
@@ -134,9 +134,9 @@ void setup() {
     lcfg.setAutoFormat(false);
     LittleFS.setConfig(lcfg);
 //    LittleFS.begin();
-#endif //#elif defined(ESP32)
+#elif defined(ESP32)
     LittleFS.begin();
-    //#endif
+#endif
 
     /*
         // Start MDNS

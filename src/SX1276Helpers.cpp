@@ -1,17 +1,19 @@
-#include <Arduino.h>                // Is this not required?
+#include <Arduino.h>
 
 #include <SX1276Helpers.h>
 #include <board-config.h>
 
-#if defined(SX1276)
+#if defined(RADIO_SX127X)
     #include <map>
 
 #if defined(ESP8266)
     #include <TickerUs.h>
 #elif defined(ESP32)
+    #define CONFIG_DISABLE_HAL_LOCKS true
     #include <TickerUsESP32.h>
     #include <esp_task_wdt.h>
     #include <SPI.h>
+    // #include <SPIeX.h>
 #endif
 
 namespace Radio {
@@ -40,6 +42,9 @@ namespace Radio {
 
     void initHardware() {
         printf("\nSPI Init");
+
+        gpio_pullup_en((gpio_num_t)RADIO_MISO);
+
         // SPI pins configuration
 #if defined(ESP8266)
         SPI.pins(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
