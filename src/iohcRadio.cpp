@@ -20,7 +20,6 @@ namespace IOHC {
         while (true) {    
             thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime/*xNoDelay*/); // Attendre la notification
             if (thread_notification && (iohcRadio::_g_payload || iohcRadio::_g_preamble)) { 
-//            sx127x_handle_interrupt(device); //(sx127x *)arg); 
             iohcRadio::tickerCounter((iohcRadio*) pvParameters);
             }
         } 
