@@ -53,9 +53,9 @@ namespace IOHC {
 #if defined(RADIO_SX127X)
 //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
 //        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
-        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
-        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr,RISING); // CHANGE); //
-        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING);  //CHANGE); //
+        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, CHANGE); //RISING); // 
+//        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
+        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, CHANGE); //RISING); // 
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
@@ -284,7 +284,7 @@ namespace IOHC {
 #endif
 
 #if defined(RADIO_SX127X)
-
+        // TODO Fast FIFO
         while (Radio::dataAvail()) {
             iohc->payload.buffer[iohc->buffer_length++] = Radio::readByte(REG_FIFO);
         }
