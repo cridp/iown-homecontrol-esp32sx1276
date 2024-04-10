@@ -321,6 +321,7 @@ void setup() {
 }
 
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
+    // iohc->decode(verbosity);
 
     DynamicJsonDocument doc(1280);
     doc["type"] = "Unk";
@@ -575,10 +576,11 @@ if(scanMode) {cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C; break;}
             std::vector<uint8_t> nameReceived;
             nameReceived.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 25);
 //            std::string asciiName;
-            for (char byte : nameReceived) {
+
+for (char byte : nameReceived) {
 //    asciiName += std::toupper(byte);
-                printf("%c", std::toupper(byte));
-            }
+    printf("%c", std::toupper(byte));
+}
 //            printf("%s\n", asciiName.c_str());
             printf("\n");
             break;

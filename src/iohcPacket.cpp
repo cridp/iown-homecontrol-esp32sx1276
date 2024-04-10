@@ -14,20 +14,20 @@ namespace IOHC {
             //     source_originator[i] = this->payload.packet.header.source[i];
         }
         char _dir[3] = {};
-        // if (!memcmp(source_originator, this->payload.packet.header.source, 3))
-        //     _dir[0] = '>';
-        // else
-        //     _dir[0] = '<';
+        if (!memcmp(source_originator, this->payload.packet.header.source, 3))
+            _dir[0] = '>';
+        else
+            _dir[0] = '<';
 
 if(this->payload.packet.header.CtrlByte1.asStruct.Protocol) _dir[0] = '>';
 else if (this->payload.packet.header.CtrlByte1.asStruct.StartFrame && !this->payload.packet.header.CtrlByte1.asStruct.EndFrame) _dir[0] = '>';
 else if (!this->payload.packet.header.CtrlByte1.asStruct.StartFrame && this->payload.packet.header.CtrlByte1.asStruct.EndFrame) _dir[0] = '<';
 else _dir[0] = ' ';
 
-        printf("(%2.2u) %dW S %d E %d ", this->payload.packet.header.CtrlByte1.asStruct.MsgLen,
+        printf("(%2.2u) %1xW S %s E %s ", this->payload.packet.header.CtrlByte1.asStruct.MsgLen,
                this->payload.packet.header.CtrlByte1.asStruct.Protocol ? 1 : 2,
-               this->payload.packet.header.CtrlByte1.asStruct.StartFrame/* ? 1 : 0*/,
-               this->payload.packet.header.CtrlByte1.asStruct.EndFrame/* ? 1 : 0*/);
+               this->payload.packet.header.CtrlByte1.asStruct.StartFrame ? "1" : "0",
+               this->payload.packet.header.CtrlByte1.asStruct.EndFrame ? "1" : "0");
 
         if (this->payload.packet.header.CtrlByte2.asStruct.LPM) printf("[LPM]");
         if (this->payload.packet.header.CtrlByte2.asStruct.Beacon) printf("[B]");
