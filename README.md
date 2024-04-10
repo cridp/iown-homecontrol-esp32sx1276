@@ -1,8 +1,8 @@
-PLEASE :
+_PLEASE_ :
 
-DO A PR AND NOT A DIRECT WRITE AS A PERMANENTLY WRITE SOME FILES
+Do a PR for MASTER / DEV BRANCH (My every day branch)
 
-OR PUSH IN YOUR OWN BRANCH TO BE ABLE TO COMPARE MODIFICATIONS
+Or PUSH in your own branch, this permit to compare all
 
 ### Usage
 
