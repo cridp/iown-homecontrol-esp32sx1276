@@ -1,3 +1,9 @@
+PLEASE :
+
+DO A PR AND NOT A DIRECT WRITE AS A PERMANENTLY WRITE SOME FILES
+
+OR PUSH IN YOUR OWN BRANCH TO BE ABLE TO COMPARE MODIFICATIONS
+
 ### Usage
 
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
