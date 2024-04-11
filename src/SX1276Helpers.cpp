@@ -160,7 +160,7 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
 
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // Need AGC_OFF so RF_LNA_GAIN_XX do nothing
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
