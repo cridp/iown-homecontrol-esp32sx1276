@@ -151,7 +151,7 @@ namespace Radio {
         writeByte(REG_PAYLOADLENGTH, 0xff);
         // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
         // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_128); // _32); //_256); //
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_8); // 8->0.512 ms // _128); // _32); //_256); //
 
         // Activates Timeout interrupt on Preamble
         writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
@@ -160,7 +160,7 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
 
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // Need AGC_OFF so dont use
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // Need AGC_OFF so RF_LNA_GAIN_XX do nothing
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
