@@ -122,15 +122,16 @@ namespace Radio {
         // DIO0: PayloadReady|PacketSent    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
         // Mapping of pins DIO4 and DIO5
         // DIO4: PreambleDetect  DIO5: Data
+        // DIO Mapping Data Packet Table 30 Page 69
         writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
         //        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
-        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10 | RF_DIOMAPPING2_MAP_PREAMBLEDETECT);
+        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10);
         // Preamble on DIO4
 
-        // Enable Fast Hoping (frequency change)
-        // Not using that, as it avoid a lot of answers
+        // Enable Fast Hoping (frequency change) // Not needed all the time
+        // Not using that, as it miss a lot of frames
         if (MAX_FREQS != 1)
-            writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON); // Not needed all the time
+            writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON); 
 
         // ---------------- TX Register init section ----------------
         // PA boost maximum power
@@ -148,26 +149,33 @@ namespace Radio {
 
         // ---------------- RX Register init section ----------------
         // Set lenght checking if passed as parameter
+        // The use of maxPayloadLength is not working. Prevents generating PayloadReady signal
         writeByte(REG_PAYLOADLENGTH, 0xff);
-        // the use of maxPayloadLength is not working. Prevents generating PayloadReady signal
         // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_128); // _32); //_256); //
-
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_8); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
         writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT);
         // 250KHz BW with AFC
         writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
 
         writeByte(REG_AFCFEI, 0x01);
-
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; // Need AGC_OFF so dont use
+        // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; 
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
             REG_PREAMBLEDETECT,
             RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
+
+        // PA boost maximum power
+        writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
+        writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
+        writeByte(REG_PADAC,0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
     }
 
+    /**
+     * 
+     */
     void calibrate() {
         // Save context
         uint8_t regPaConfigInitVal = readByte(REG_PACONFIG);
@@ -189,14 +197,7 @@ namespace Radio {
         }
 
         // Restore context
-        writeByte(REG_PACONFIG, regPaConfigInitVal);
-
-        // PA boost maximum power
-        writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
-        writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
-        writeByte(REG_PADAC,0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
-    
-    
+        writeByte(REG_PACONFIG, regPaConfigInitVal);    
     }
 
     /*!

@@ -1,8 +1,4 @@
-_PLEASE_ :
-
-Do a PR for MASTER / DEV BRANCH (My every day branch)
-
-Or PUSH in your own branch, this permit to compare all
+Pairing process NOT included, work by yourself.
 
 ### Usage
 
