@@ -1,3 +1,5 @@
+Based on the work of https://github.com/Velocet/iown-homecontrol
+
 Pairing process NOT included, work by yourself.
 
 ### Usage
