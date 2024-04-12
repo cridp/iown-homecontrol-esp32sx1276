@@ -13,13 +13,13 @@ Use 2 interrupts for:
   - PREAMBLE
   - PAYLOAD
 
-Use a 100 µs timer to check state of interrupts & flags (iohcRadio::tickerCounter)
+~~Use a 100 µs timer to check state of interrupts & flags (iohcRadio::tickerCounter)~~
 
-**WIP : Removing the 100µs TickTimer Handler and use Interrupt Handler (faster)**
+**~~WIP : Removing the 100µs TickTimer Handler and use Interrupt Handler (faster)~~**
   - if PAYLOAD and RX -> decode the frame [^3]
   - if PAYLOAD and TX_READY -> send the frame, decode it [^3]
 
-**WIP : Using a better SPI driver**
+**~~WIP : Using a better SPI driver (NOT included)~~**
 
 **WIP : Learning Mode**
 
