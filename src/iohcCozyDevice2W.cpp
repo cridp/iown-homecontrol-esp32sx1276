@@ -657,7 +657,7 @@ valid = {
         }
 
         fs::File f = LittleFS.open(COZY_2W_FILE, "r", true);
-        DynamicJsonDocument doc(256);
+        /*Dynamic*/JsonDocument doc; //(256);
         deserializeJson(doc, f);
         f.close();
 
@@ -680,10 +680,24 @@ valid = {
 
         return true;
     }
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+Migrate
+// ArduinoJson 6
+obj.createNestedArray("array");
+obj.createNestedObject("object");
 
+// ArduinoJson 7
+obj["array"].to<JsonArray>();
+obj["object"].to<JsonObject>();
+
+ */
     bool iohcCozyDevice2W::save() {
         fs::File f = LittleFS.open(COZY_2W_FILE, "a+");
-        DynamicJsonDocument doc(256);
+        /*Dynamic*/JsonDocument doc; //(256);
 
         JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
         //        jobj["key"] = bytesToHexString(_key, sizeof(_key));

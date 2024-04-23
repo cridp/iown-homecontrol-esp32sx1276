@@ -537,7 +537,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
 
         DeserializationError error = deserializeJson(doc, f); // buf.get());
 
@@ -589,10 +589,31 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+Migrate
+// ArduinoJson 6
+obj.createNestedArray("array");
+obj.createNestedObject("object");
 
+// ArduinoJson 7
+obj["array"].to<JsonArray>();
+obj["object"].to<JsonObject>();
+
+// ArduinoJson 6
+arr.createNestedArray();
+arr.createNestedObject();
+
+// ArduinoJson 7
+arr.add<JsonArray>();
+arr.add<JsonObject>();
+ */
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
         for (const auto&r: remotes) {
             // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
@@ -607,9 +628,8 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
             jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
             
-            JsonArray jarr = jobj.createNestedArray("type");
-            // copyArray(r.type.data(), jarr);
-            // for (uint16_t i : _type)
+            // JsonArray jarr = jobj.createNestedArray("type");
+            JsonArray jarr = jobj["type"].to<JsonArray>();
             for (uint8_t i : r.type) {
                 // if (i)
                 bool added = jarr.add(i);

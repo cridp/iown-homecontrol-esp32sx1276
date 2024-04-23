@@ -140,7 +140,7 @@ inline void onMqttConnect(bool sessionPresent) {
   inline void onMqttMessage(char* topic, char* payload, AsyncMqttClientMessageProperties properties, size_t len, size_t index, size_t total) {
     if (topic[0] == '\0') return;
 
-    StaticJsonDocument<200> doc;
+    /*Static*/JsonDocument/*<200>*/ doc;
 
 	  payload[len] = '\0';
 
@@ -327,7 +327,6 @@ namespace Cmd {
 
     kbd_tick.attach_ms(500, cmdFuncHandler);
 
-    
   }  
 }
 #endif
