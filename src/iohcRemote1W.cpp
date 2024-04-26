@@ -537,7 +537,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
 
         DeserializationError error = deserializeJson(doc, f); // buf.get());
 
@@ -563,18 +563,18 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             hexStringToBytes(jobj["sequence"].as<const char *>(), btmp);
             // _sequence = (btmp[0] << 8) + btmp[1];
             r.sequence = (btmp[0] << 8) + btmp[1];
-                        JsonArray jarr = jobj["type"];
-                       // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
+            JsonArray jarr = jobj["type"];
+            // Réservez de l'espace dans le vecteur pour éviter les allocations inutiles
 
-                       //_type.reserve(jarr.size());
-           r.type.reserve(jarr.size());
+            //_type.reserve(jarr.size());
+            r.type.reserve(jarr.size());
 
-                       // Iterate through the JSON  type array
-                       for (auto && i : jarr) {
-                           // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
-                           //_type.push_back(i.as<uint16_t>());
-           r.type.push_back(i.as<uint8_t>());
-                       }
+            // Iterate through the JSON  type array
+            for (auto && i : jarr) {
+            // _type.insert(_type.begin() + i, jarr[i].as<uint16_t>());
+            //_type.push_back(i.as<uint16_t>());
+            r.type.push_back(i.as<uint8_t>());
+        }
                        
             // _type = jobj["type"].as<u_int16_t>();
 //            r.type = jobj["type"].as<u_int16_t>();
@@ -585,18 +585,23 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             remotes.push_back(r);
         }
 
-        Serial.printf("Loading 1W remote  %d remotes\n", remotes.size()); // _type.size());
+        Serial.printf("Loading %d 1Wremotes\n", remotes.size()); // _type.size());
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
-
+/**
+ * @brief 
+ * 
+ * @return true 
+ * @return false 
+ */
     bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        DynamicJsonDocument doc(8192);
+        /*Dynamic*/JsonDocument doc; //(8192);
         for (const auto&r: remotes) {
-            // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
-            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
+//            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
+            JsonObject jobj = doc[bytesToHexString(r.node, sizeof(r.node))].to<JsonObject>();
             jobj["key"] = bytesToHexString(r.key, sizeof(r.key));
 
             uint8_t btmp[2];
@@ -607,9 +612,8 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
 
             jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
             
-            JsonArray jarr = jobj.createNestedArray("type");
-            // copyArray(r.type.data(), jarr);
-            // for (uint16_t i : _type)
+            // JsonArray jarr = jobj.createNestedArray("type");
+            JsonArray jarr = jobj["type"].to<JsonArray>();
             for (uint8_t i : r.type) {
                 // if (i)
                 bool added = jarr.add(i);

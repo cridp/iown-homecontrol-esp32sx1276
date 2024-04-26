@@ -323,7 +323,7 @@ void setup() {
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
     // iohc->decode(verbosity);
 
-    DynamicJsonDocument doc(1280);
+    /*Dynamic*/JsonDocument doc; //(1280);
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
@@ -687,10 +687,11 @@ for (char byte : nameReceived) {
             printf("\n");
         break;
         }
+        case 0X3D:
         case 0x48:
         case 0x49:
         case 0x4A:
-        case 0X3D:
+        case 0x50:
         case 0X05: break;
         default:
             printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);
@@ -705,7 +706,7 @@ for (char byte : nameReceived) {
 /*TODO Merge with decode here (radio.cpp line 168)*/
 bool publishMsg(IOHC::iohcPacket* iohc) {
     //                if(iohc->payload.packet.header.cmd == 0x20 || iohc->payload.packet.header.cmd == 0x00) {
-    DynamicJsonDocument doc(512);
+    /*Dynamic*/JsonDocument doc; //(1024);
     doc["type"] = "Cozy";
     doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
     doc["to"] = bytesToHexString(iohc->payload.packet.header.source, 3);
