@@ -690,8 +690,9 @@ valid = {
         fs::File f = LittleFS.open(COZY_2W_FILE, "a+");
         /*Dynamic*/JsonDocument doc; //(256);
 
-        JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
-        //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
+        // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
+        JsonObject jobj = doc[bytesToHexString(_node, sizeof(_node))].to<JsonObject>();
+     //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
         jobj["dst"] = bytesToHexString(_dst, sizeof _dst);
         //        uint8_t btmp[2];
         //        btmp[1] = _sequence & 0x00ff;
