@@ -685,15 +685,6 @@ valid = {
  * 
  * @return true 
  * @return false 
-Migrate
-// ArduinoJson 6
-obj.createNestedArray("array");
-obj.createNestedObject("object");
-
-// ArduinoJson 7
-obj["array"].to<JsonArray>();
-obj["object"].to<JsonObject>();
-
  */
     bool iohcCozyDevice2W::save() {
         fs::File f = LittleFS.open(COZY_2W_FILE, "a+");

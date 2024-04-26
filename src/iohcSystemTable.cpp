@@ -69,7 +69,7 @@ namespace IOHC {
         }
 
         fs::File f = LittleFS.open(IOHC_SYS_TABLE, "r", true);
-        DynamicJsonDocument doc(2048);
+        /*Dynamic*/JsonDocument doc; //(2048);
         deserializeJson(doc, f);
         f.close();
 
@@ -88,10 +88,12 @@ namespace IOHC {
             return false;
 
         fs::File f = LittleFS.open(IOHC_SYS_TABLE, "a+");
-        DynamicJsonDocument doc(2048);
+        /*Dynamic*/JsonDocument doc; //(2048);
 
-        for (auto [fst, snd] : _objects)  {
-            JsonObject jobj = doc.createNestedObject(fst);
+        for (auto [fst, snd] : _objects) {
+            // JsonObject jobj = doc.createNestedObject(fst);
+            JsonObject jobj = doc[fst].to<JsonObject>();
+
             jobj["values"] = snd->serialize();
         }
         serializeJson(doc, f);
