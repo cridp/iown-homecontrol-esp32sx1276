@@ -283,22 +283,14 @@ namespace IOHC {
  * 
  * @return true 
  * @return false 
-Migrate
-// ArduinoJson 6
-obj.createNestedArray("array");
-obj.createNestedObject("object");
-
-// ArduinoJson 7
-obj["array"].to<JsonArray>();
-obj["object"].to<JsonObject>();
-
  */
     bool iohcOtherDevice2W::save() {
         fs::File f = LittleFS.open(OTHER_2W_FILE, "a+");
         /*Dynamic*/JsonDocument doc; //(256);
         // It's the gateway
-        JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
-        //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
+        // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
+        JsonObject jobj = doc[bytesToHexString(_node, sizeof(_node))].to<JsonObject>();
+    //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
         jobj["dst"] = _dst;
         //        uint8_t btmp[2];
         //        btmp[1] = _sequence & 0x00ff;

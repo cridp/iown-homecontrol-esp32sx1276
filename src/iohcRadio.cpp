@@ -54,7 +54,7 @@ namespace IOHC {
 //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
 //        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
         attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
-        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr,RISING); // CHANGE); //
+//        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
         attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING);  //CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);

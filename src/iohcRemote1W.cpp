@@ -585,7 +585,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             remotes.push_back(r);
         }
 
-        Serial.printf("Loading %d 1Wremotes\n", remotes.size()); // _type.size());
+        Serial.printf("Loaded %d x 1W remotes\n", remotes.size()); // _type.size());
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
