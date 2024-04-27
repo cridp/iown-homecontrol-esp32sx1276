@@ -1,6 +1,7 @@
 #include <iohcRemote1W.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
+
 #include <iohcCryptoHelpers.h>
 
 
@@ -49,7 +50,13 @@ namespace IOHC {
 
     std::vector<uint8_t> frame;
 
-    void iohcRemote1W::cmd(RemoteButton cmd) {
+    void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
+        int value = std::stol(data->at(1).c_str(), nullptr, 16);
+        int8_t target[3];
+        target[0] = static_cast<uint8_t>(value >> 16);
+        target[1] = static_cast<uint8_t>(value >> 8);
+        target[2] = static_cast<uint8_t>(value);
+
         // Emulates remote button press
         switch (cmd) {
             case RemoteButton::Pair: {

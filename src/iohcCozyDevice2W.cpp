@@ -57,7 +57,7 @@ namespace IOHC {
     // };
 
 
-    void iohcCozyDevice2W::cmd(DeviceButton cmd, Tokens/*const char*/* data) {
+    void iohcCozyDevice2W::cmd(DeviceButton cmd, Tokens* data) {
         // Emulates device button press
         if (!_radioInstance) {
             Serial.println("NO RADIO INSTANCE");
