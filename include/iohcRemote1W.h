@@ -1,8 +1,9 @@
 #ifndef IOHC_1W_DEVICE_H
 #define IOHC_1W_DEVICE_H
 
-#include <vector>
+#include <interact.h>
 #include <iohcDevice.h>
+#include <vector>
 
 #define IOHC_1W_REMOTE  "/1W.json"
 
@@ -30,12 +31,12 @@ namespace IOHC {
         static iohcRemote1W* getInstance();
         ~iohcRemote1W() override = default;
 
-        void cmd(RemoteButton cmd);
+        void cmd(RemoteButton cmd, Tokens* data);
         bool load() override;
         bool save() override;
         void scanDump() override { }
 
-        static void init(iohcPacket* packet, uint16_t/*size_t*/ typn);
+        static void init(iohcPacket* packet, uint16_t typn);
 
     private:
         iohcRemote1W();
