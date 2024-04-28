@@ -44,6 +44,7 @@ namespace IOHC {
         static iohcRemote1W* _iohcRemote1W;
 
     protected:
+        int8_t target[3];
         struct remote {
             address node{};
             uint16_t sequence{};
@@ -54,9 +55,12 @@ namespace IOHC {
         };
 
         std::vector<remote> remotes;
+        bool compareTarget(const remote& r) {
+            return (memcmp(r.node, target, sizeof(target)) == 0);
+        }
 
         std::vector<iohcPacket *> packets2send{};
-        //            IOHC::iohcRadio *_radioInstance;
+
     };
 }
 #endif

@@ -269,7 +269,7 @@ void setup() {
     Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Stop, cmd);    });
     Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent, cmd);    });
     Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen, cmd);    });
-    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey);    });
+    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
 
         Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1, cmd);    });
         Cmd::addHandler((char *)"mode2", (char *)"1W Mode2", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode2, cmd);    });
@@ -327,7 +327,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
-            printf("Pairing Asked\n");
+            printf("2W Pairing Asked\n");
             if (!pairMode) break;
 
             packets2send.clear();
@@ -366,7 +366,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
-            printf("Actuator Ack Asked\n");
+            printf("2W Actuator Ack Asked\n");
             if (!pairMode) break;
             
             packets2send.clear();
@@ -401,7 +401,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket* iohc) {
         break;
         }
         case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
-            printf("Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
+            printf("2W Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
             if (!pairMode) break;
             
             packets2send.clear();
@@ -607,7 +607,7 @@ for (char byte : nameReceived) {
             break;
         }
          case 0x29: {
-            printf("A Device want to be paired\n");
+            printf("2W Device want to be paired\n");
             if (!pairMode) break;
 
             std::vector<uint8_t> deviceAsked;
@@ -685,7 +685,7 @@ for (char byte : nameReceived) {
             for (uint8_t idx = 0; idx < 6; idx++)
                 printf("%2.2X", hmac[idx]);
             printf("\n");
-        break;
+            break;
         }
         case 0X3D:
         case 0x48:
