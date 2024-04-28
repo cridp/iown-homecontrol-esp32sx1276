@@ -1,17 +1,17 @@
-Based on the work of https://github.com/Velocet/iown-homecontrol
+Based on the work of [Velocet/iown-homecontrol](https://github.com/Velocet/iown-homecontrol)
 
 ### **Disclaimer**  
 Tool designed for educational and testing purposes, provided "as is", without warranty of any kind. Creators and contributors are not responsible for any misuse or damage caused by this tool.
 
-### Usage
+_I generaly don't give any support, especially concerning the easy 1W part._
 
+### Usage
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
 
 -> M~~odify Pins in board_config.h according your board~~
 Not needed if you choose you board before build.
 
 ### Brief explanation[^1]:
-
 Use 2 interrupts ~~for:~~
   ~~- PREAMBLE~~
   ~~- PAYLOAD~~
