@@ -103,22 +103,22 @@ namespace IOHC {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
                     // Source (me)
                     for (size_t i = 0; i < sizeof(address); i++)
-                        packet->payload.packet.header.source[i] = r.node[i]; // _node[i];
+                        packet->payload.packet.header.source[i] = r.node[i];
 
                     //Command
                     packet->payload.packet.header.cmd = 0x2e;
                     // Data
                     packet->payload.packet.msg.p0x2e.data = 0x00;
                     // Sequence
-                    packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8; // _sequence >> 8;
-                    packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff; //_sequence & 0x00ff;
-                    r.sequence += 1; // _sequence += 1;
+                    packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
+                    packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
+                    r.sequence += 1;
                     // hmac
                     frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
                     uint8_t hmac[16];
@@ -143,11 +143,10 @@ namespace IOHC {
 
                 IOHC::relStamp = esp_timer_get_time();
                 for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-                    auto* packet = new iohcPacket; // packets2send[typn];
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    auto* packet = new iohcPacket;
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     //                    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
@@ -187,11 +186,10 @@ namespace IOHC {
 
                 IOHC::relStamp = esp_timer_get_time();
                 for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
 
@@ -222,8 +220,6 @@ namespace IOHC {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 }
                 _radioInstance->send(packets2send);
-                //                packets2send[0]->decode(); //  KLI 1W
-                //printf("\n");
                 break;
             }
             case RemoteButton::testKey: {
@@ -340,11 +336,10 @@ namespace IOHC {
                 IOHC::relStamp = esp_timer_get_time();
                 // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
                 for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]); // typn);
+                    IOHC::iohcRemote1W::init(packet, r.type[0]);
                     // Packet length
                     // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     // Source (me)
@@ -528,7 +523,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
                     }
                     else {
                         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00_14) ;
-                        //     // Sequence
+                        // Sequence
                         packet->payload.packet.msg.p0x00_14.sequence[0] = r.sequence >> 8;
                         packet->payload.packet.msg.p0x00_14.sequence[1] = r.sequence & 0x00ff;
                         uint8_t toAdd =  6 + 1; //OK
