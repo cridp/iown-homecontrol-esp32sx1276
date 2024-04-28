@@ -51,7 +51,20 @@ namespace IOHC {
     std::vector<uint8_t> frame;
 
     void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
+        std::string description = data->at(1).c_str();
 
+        auto it = std::find_if( remotes.begin(), remotes.end(),  [&] ( const remote &r  ) {
+                 return description == r.description;
+              } );
+
+        remote& r = *it;
+        bool found = true;
+        if (it == remotes.end()) {
+            printf("ERROR %s NOT IN JSON", description.c_str());
+            found = false;
+            // return;
+        }
+/*
         int value = 0;
         try {
             value = std::strtol(data->at(1).c_str(), nullptr, 16);
@@ -65,6 +78,7 @@ namespace IOHC {
             printf("ERROR: Unexpected exception during conversion (%s).", e.what());
             // return;
         }
+*/
 /*
         auto it = std::find_if(remotes.begin(), remotes.end(), [&](const remote& r) {
             // Create a temporary object (assuming you have a way to construct it)
@@ -76,6 +90,7 @@ namespace IOHC {
             printf("ERROR %p NOT IN JSON", target);
             return; }
 */
+/*
         // remote address
         address remoteAddress = {static_cast<uint8_t>(value >> 16),
                                  static_cast<uint8_t>(value >> 8),
@@ -90,7 +105,7 @@ namespace IOHC {
         }
         if (foundRemote != nullptr)
             printf( "Remote found : %s\n", foundRemote->description.c_str());
-
+*/
         // Emulates remote button press
         switch (cmd) {
             case RemoteButton::Pair: {
@@ -98,9 +113,10 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
+//                for (auto&r: remotes) {
+                if (!found) break;
 
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -132,7 +148,7 @@ namespace IOHC {
                     packets2send.push_back(packet);
                     // if (typn) packet->payload.packet.header.CtrlByte2.asStruct.LPM = 0; //TODO only first is LPM
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -142,8 +158,10 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+//                for (auto&r: remotes) {
+                if (!found) break;
+
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -174,7 +192,7 @@ namespace IOHC {
 
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
                 //printf("\n");
                 break;
@@ -185,7 +203,9 @@ namespace IOHC {
                 packets2send.clear();
 
                 IOHC::relStamp = esp_timer_get_time();
-                for (auto&r: remotes) {
+//                for (auto&r: remotes) {
+                if (!found) break;
+
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
@@ -218,7 +238,7 @@ namespace IOHC {
 
                     packets2send.push_back(packet);
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                }
+//                }
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -335,7 +355,9 @@ namespace IOHC {
 
                 IOHC::relStamp = esp_timer_get_time();
                 // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
-                for (auto&r: remotes) {
+//                for (auto&r: remotes) {
+                if (!found) break;
+
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
@@ -557,7 +579,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
                 }
                 _radioInstance->send(packets2send);
                 break;
-            }
+//            }
         }
         this->save(); // Save sequence number
     }
@@ -637,7 +659,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         for (const auto&r: remotes) {
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
 //            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
-            JsonObject jobj = doc[bytesToHexString(r.node, sizeof(r.node))].to<JsonObject>();
+            auto jobj = doc[bytesToHexString(r.node, sizeof(r.node))].to<JsonObject>();
             jobj["key"] = bytesToHexString(r.key, sizeof(r.key));
 
             uint8_t btmp[2];
@@ -649,7 +671,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
             jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
             
             // JsonArray jarr = jobj.createNestedArray("type");
-            JsonArray jarr = jobj["type"].to<JsonArray>();
+            auto jarr = jobj["type"].to<JsonArray>();
             for (uint8_t i : r.type) {
                 // if (i)
                 bool added = jarr.add(i);

@@ -55,9 +55,6 @@ namespace IOHC {
         };
 
         std::vector<remote> remotes;
-        bool compareTarget(const remote& r) {
-            return (memcmp(r.node, target, sizeof(target)) == 0);
-        }
 
         std::vector<iohcPacket *> packets2send{};
 
