@@ -51,28 +51,21 @@ namespace IOHC {
     std::vector<uint8_t> frame;
 
     void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
-        // if (data == nullptr) {
-        //     printf("ERROR, USE A VALID 1W ADDRESS");
-        //     return; 
-        //     }
+
         int value = 0;
         try {
             value = std::strtol(data->at(1).c_str(), nullptr, 16);
         } catch (const std::invalid_argument& e) {
             printf("ERROR: Invalid 1W address format (std::invalid_argument): %s\n", data->at(1).c_str());
-            return;
+            // return;
         } catch (const std::out_of_range& e) {
             printf("ERROR: USE A VALID 1W ADDRESS");
             //return;
         } catch (const std::exception& e) {
             printf("ERROR: Unexpected exception during conversion (%s).", e.what());
-            return;
+            // return;
         }
-/*        // int8_t target[3];
-        target[0] = static_cast<uint8_t>(value >> 16);
-        target[1] = static_cast<uint8_t>(value >> 8);
-        target[2] = static_cast<uint8_t>(value);
-
+/*
         auto it = std::find_if(remotes.begin(), remotes.end(), [&](const remote& r) {
             // Create a temporary object (assuming you have a way to construct it)
             iohcRemote1W tempRemote;
@@ -83,27 +76,20 @@ namespace IOHC {
             printf("ERROR %p NOT IN JSON", target);
             return; }
 */
-        // Convertir target en un objet address
+        // remote address
         address remoteAddress = {static_cast<uint8_t>(value >> 16),
                                  static_cast<uint8_t>(value >> 8),
                                  static_cast<uint8_t>(value)};
 
         const remote* foundRemote = nullptr;
-        // Parcourir le vecteur remotes pour trouver une correspondance
         for (const auto& oneRemote : remotes) {
             if (memcmp(oneRemote.node, remoteAddress, sizeof(address)) == 0) {
-                // Correspondance trouvée
-                // Faites quelque chose avec remote
-                // Par exemple, imprimez la description
-                // printf( "Description de la télécommande trouvée : %s\n", oneRemote.description.c_str());
-                // Enregistrer la référence à remote
                 foundRemote = &oneRemote;
-                break;  // Sortir de la boucle une fois la correspondance trouvée
+                break;
             }
         }
         if (foundRemote != nullptr)
-        // Par exemple, imprimez la description
-            printf( "Description de la télécommande trouvée : %s\n", foundRemote->description.c_str());
+            printf( "Remote found : %s\n", foundRemote->description.c_str());
 
         // Emulates remote button press
         switch (cmd) {
@@ -113,7 +99,7 @@ namespace IOHC {
 
                 IOHC::relStamp = esp_timer_get_time();
                 for (auto&r: remotes) {
-                    //                for (size_t typn = 0; typn < _type.size(); typn++) {
+
                     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
