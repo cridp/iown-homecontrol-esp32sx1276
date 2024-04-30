@@ -474,8 +474,8 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     packets2send.back()->payload.packet.header.CtrlByte1.asByte += sizeof(toSend); ///*.size()*/;
 
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                    packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                    // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
 
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, guessed[i], 3);
@@ -483,8 +483,6 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
 
                     packets2send.back()->buffer_length = sizeof(toSend) + 9;
                     packets2send.back()->delayed = 300; // Give enough time for the answer
-
-
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send);
@@ -536,7 +534,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 uint8_t to_2[3] = {0x9a, 0x50, 0x65};
                 uint8_t to_3[3] = {0x31, 0x58, 0x24};
                 //{0x47, 0x77, 0x06}, {0x48, 0x79, 0x02}, {0x8C, 0xCB, 0x30}, {0x8C, 0xCB, 0x31}
-uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
+                uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                 uint8_t counter = 0;
                 for (const auto&command: mapValid) {
                     if (command.second == 0 || (command.second == 5 && command.first != 0x19)) {
