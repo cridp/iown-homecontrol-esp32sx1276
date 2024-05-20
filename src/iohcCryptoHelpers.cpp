@@ -15,7 +15,7 @@ size_t i;
     return i/2;
 }
 
-/*
+/**
     Helper function to convert a byte sequence to an hex string
 */
 std::string bytesToHexString(const uint8_t *byteString, uint8_t len) {
