@@ -350,7 +350,7 @@ namespace IOHC {
         // Radio::clearFlags();
         if (rxCB ) rxCB(iohc);
         iohc->decode(true); //stats);
-
+free(iohc); // correct Bug memory
         digitalWrite(RX_LED, false);
         return true;
     }

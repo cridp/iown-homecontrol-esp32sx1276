@@ -20,8 +20,8 @@ inline const char *mqtt_password = "passwd";
     #define HTTP_PASSWORD       "admin"
     #if defined(ESP8266)
         #define SERIALSPEED         460800
-    #elif defined(HELTEC)
-        #define SERIALSPEED         921600
+    #elif defined(ESP32)
+        #define SERIALSPEED         115200 //921600
     #endif
 
 #endif
