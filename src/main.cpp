@@ -269,7 +269,7 @@ void setup() {
     Cmd::addHandler((char *)"stop", (char *)"1W stop device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Stop, cmd);    });
     Cmd::addHandler((char *)"vent", (char *)"1W vent device", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Vent, cmd);    });
     Cmd::addHandler((char *)"force", (char *)"1W force device open", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::ForceOpen, cmd);    });
-    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
+//    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
 
         Cmd::addHandler((char *)"mode1", (char *)"1W Mode1", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode1, cmd);    });
         Cmd::addHandler((char *)"mode2", (char *)"1W Mode2", [](Tokens* cmd)-> void {        remote1W->cmd(IOHC::RemoteButton::Mode2, cmd);    });
