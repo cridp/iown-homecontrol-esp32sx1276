@@ -16,6 +16,9 @@
     Also, the address and private key can be configured within the same json file.
 */
 namespace IOHC {
+/// The `enum class DeviceButton` is defining an enumeration type with different button commands that can be used for a specific device. 
+/// Each of the identifiers within the enumeration represents a specific button command that can be sent to the device. 
+/// This enumeration provides a convenient way to refer to these commands using descriptive names rather than raw integer values.
     enum class DeviceButton {
         powerOn,
         setTemp,
