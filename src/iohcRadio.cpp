@@ -14,6 +14,14 @@ namespace IOHC {
     volatile bool iohcRadio::txMode = false;
 
     TaskHandle_t handle_interrupt;
+/**
+ * The function `handle_interrupt_task` waits for a notification and then calls the `tickerCounter`
+ * function if certain conditions are met.
+ * 
+ * @param pvParameters The `pvParameters` parameter in the `handle_interrupt_task` function is a void
+ * pointer that can be used to pass any data or object to the task when it is created. In this specific
+ * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
+ */
     void IRAM_ATTR handle_interrupt_task(void *pvParameters) {
         static uint32_t thread_notification;
         const TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
@@ -25,7 +33,10 @@ namespace IOHC {
         } 
     }
 
-    /* Notify the thread so it will wake up when the ISR is complete */
+/**
+ * The function `handle_interrupt_fromisr` reads digital inputs and notifies a thread to wake up when
+ * the interrupt service routine is complete.
+ */
     void IRAM_ATTR handle_interrupt_fromisr(/*void *arg*/) {
         iohcRadio::_g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
         iohcRadio::f_lock = iohcRadio::_g_preamble;
@@ -70,6 +81,12 @@ namespace IOHC {
         }
     }
 
+/**
+ * @brief The function `iohcRadio::getInstance()` returns a pointer to a single instance of the `iohcRadio`
+ * class, creating it if it doesn't already exist.
+ * 
+ * @return An instance of the `iohcRadio` class is being returned.
+ */
     iohcRadio* iohcRadio::getInstance() {
         if (!_iohcRadio)
             _iohcRadio = new iohcRadio();
@@ -161,6 +178,15 @@ namespace IOHC {
 #endif
     }
 
+/**
+ * The `send` function in the `iohcRadio` class sends packets stored in a vector with a specified
+ * repeat time.
+ * 
+ * @param iohcTx `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
+ * 
+ * @return If `txMode` is true, the `send` function will return early without executing the rest of the
+ * code inside the function.
+ */
     void iohcRadio::send(std::vector<iohcPacket *>&iohcTx) {
         if (txMode) return;
 
