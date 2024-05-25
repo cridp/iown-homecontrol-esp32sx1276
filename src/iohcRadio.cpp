@@ -4,7 +4,7 @@
 #include <utility>
 
 namespace IOHC {
-    iohcRadio* iohcRadio::_iohcRadio = nullptr;
+    iohcRadio *iohcRadio::_iohcRadio = nullptr;
     volatile bool iohcRadio::_g_preamble = false;
     volatile bool iohcRadio::_g_payload = false;
     volatile unsigned long iohcRadio::_g_payload_millis = 0L;
@@ -14,34 +14,34 @@ namespace IOHC {
     volatile bool iohcRadio::txMode = false;
 
     TaskHandle_t handle_interrupt;
-/**
- * The function `handle_interrupt_task` waits for a notification and then calls the `tickerCounter`
- * function if certain conditions are met.
- * 
- * @param pvParameters The `pvParameters` parameter in the `handle_interrupt_task` function is a void
- * pointer that can be used to pass any data or object to the task when it is created. In this specific
- * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
- */
+    /**
+     * The function `handle_interrupt_task` waits for a notification and then calls the `tickerCounter`
+     * function if certain conditions are met.
+     *
+     * @param pvParameters The `pvParameters` parameter in the `handle_interrupt_task` function is a void
+     * pointer that can be used to pass any data or object to the task when it is created. In this specific
+     * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
+     */
     void IRAM_ATTR handle_interrupt_task(void *pvParameters) {
         static uint32_t thread_notification;
         const TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
-        while (true) {    
+        while (true) {
             thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime/*xNoDelay*/); // Attendre la notification
-            if (thread_notification && (iohcRadio::_g_payload || iohcRadio::_g_preamble)) { 
-            iohcRadio::tickerCounter((iohcRadio*) pvParameters);
+            if (thread_notification && (iohcRadio::_g_payload || iohcRadio::_g_preamble)) {
+                iohcRadio::tickerCounter((iohcRadio *) pvParameters);
             }
-        } 
+        }
     }
 
-/**
- * The function `handle_interrupt_fromisr` reads digital inputs and notifies a thread to wake up when
- * the interrupt service routine is complete.
- */
+    /**
+     * The function `handle_interrupt_fromisr` reads digital inputs and notifies a thread to wake up when
+     * the interrupt service routine is complete.
+     */
     void IRAM_ATTR handle_interrupt_fromisr(/*void *arg*/) {
         iohcRadio::_g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
         iohcRadio::f_lock = iohcRadio::_g_preamble;
         iohcRadio::_g_payload = digitalRead(RADIO_PACKET_AVAIL);
-        // Notify the thread so it will wake up when the ISR is complete  
+        // Notify the thread so it will wake up when the ISR is complete
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -59,21 +59,23 @@ namespace IOHC {
 
         // Attach interrupts to Preamble detected and end of packet sent/received
         /* TODO this is wrongly named and/or assigned, but work like that*/
-//        printf("Starting TickTimer Handler...\n");
-//        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
+        //        printf("Starting TickTimer Handler...\n");
+        //        TickTimer.attach_us(SM_GRANULARITY_US/*SM_GRANULARITY_MS*/, tickerCounter, this);
 #if defined(RADIO_SX127X)
-//        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); // 
-//        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
+        //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); //
+        //        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
         attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
-//        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
-        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING);  //CHANGE); //
+        //        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
+        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
 #elif defined(CC1101)
         attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, RISING);
 #endif
- 
+
         // start state machine
         printf("Starting Interrupt Handler...\n");
-        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192, this /*nullptr*//*device*/, /*tskIDLE_PRIORITY*/4, &handle_interrupt, /*tskNO_AFFINITY*/xPortGetCoreID());
+        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192,
+                                                       this /*nullptr*//*device*/, /*tskIDLE_PRIORITY*/4,
+                                                       &handle_interrupt, /*tskNO_AFFINITY*/xPortGetCoreID());
         if (task_code != pdPASS) {
             printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
             // sx127x_destroy(device);
@@ -81,19 +83,39 @@ namespace IOHC {
         }
     }
 
-/**
- * @brief The function `iohcRadio::getInstance()` returns a pointer to a single instance of the `iohcRadio`
- * class, creating it if it doesn't already exist.
- * 
- * @return An instance of the `iohcRadio` class is being returned.
- */
-    iohcRadio* iohcRadio::getInstance() {
+    /**
+     * @brief The function `iohcRadio::getInstance()` returns a pointer to a single instance of the `iohcRadio`
+     * class, creating it if it doesn't already exist.
+     *
+     * @return An instance of the `iohcRadio` class is being returned.
+     */
+    iohcRadio *iohcRadio::getInstance() {
         if (!_iohcRadio)
             _iohcRadio = new iohcRadio();
         return _iohcRadio;
     }
 
-    void iohcRadio::start(uint8_t num_freqs, uint32_t* scan_freqs, uint32_t scanTimeUs,
+/**
+ * The `start` function initializes the radio with specified parameters and sets it to receive mode.
+ * 
+ * @param num_freqs The `num_freqs` parameter in the `start` function represents the number of
+ * frequencies to scan. It is of type `uint8_t`, which means it is an unsigned 8-bit integer. This
+ * parameter specifies how many frequencies the radio will scan during operation.
+ * @param scan_freqs The `scan_freqs` parameter is an array of `uint32_t` values that represent the
+ * frequencies to be scanned during the radio operation. The `start` function initializes the radio
+ * with the provided frequencies for scanning.
+ * @param scanTimeUs The `scanTimeUs` parameter in the `start` function of the `iohcRadio` class
+ * represents the time interval in microseconds for scanning frequencies. If a specific value is
+ * provided for `scanTimeUs`, it will be used as the scan interval. Otherwise, the default scan
+ * interval defined as
+ * @param rxCallback The `rxCallback` parameter is of type `IohcPacketDelegate`, which is a delegate or
+ * function pointer that will be called when a packet is received by the radio. It is set to `nullptr`
+ * by default if not provided during the function call.
+ * @param txCallback The `txCallback` parameter in the `start` function of the `iohcRadio` class is of
+ * type `IohcPacketDelegate`. It is a callback function that will be called when a packet is
+ * transmitted by the radio. This callback function can be provided by the user of the `
+ */
+    void iohcRadio::start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs,
                           IohcPacketDelegate rxCallback = nullptr, IohcPacketDelegate txCallback = nullptr) {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
@@ -109,14 +131,26 @@ namespace IOHC {
         Radio::setRx();
     }
 
-    void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio* radio) {
+/**
+ * The `tickerCounter` function in C++ handles various radio operations based on different conditions
+ * and configurations for SX127X and CC1101 radios.
+ * 
+ * @param radio The `radio` parameter in the `iohcRadio::tickerCounter` function is a pointer to an
+ * instance of the `iohcRadio` class. This pointer is used to access and modify the properties and
+ * methods of the `iohcRadio` object within the function. The function uses this pointer
+ * 
+ * @return In the provided code snippet, the function `tickerCounter` is returning different values
+ * based on the conditions met within the function. Here is a breakdown of the possible return
+ * scenarios:
+ */
+    void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio *radio) {
         // Not need to put in IRAM as we reuse task for µs instead ISR
 #if defined(RADIO_SX127X)
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
 
-            // If Int of PayLoad
+        // If Int of PayLoad
         if (_g_payload) {
-                // if TX ready?
+            // if TX ready?
             if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
                 radio->sent(radio->iohc);
                 Radio::clearFlags();
@@ -139,7 +173,7 @@ namespace IOHC {
             radio->tickCounter = 0;
             radio->preCounter += 1;
 
-//            if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
+            //            if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
             // In case of Sync received resets the preamble duration
             if ((radio->preCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) {
                 // Avoid hanging on a too long preamble detect
@@ -178,16 +212,16 @@ namespace IOHC {
 #endif
     }
 
-/**
- * The `send` function in the `iohcRadio` class sends packets stored in a vector with a specified
- * repeat time.
- * 
- * @param iohcTx `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
- * 
- * @return If `txMode` is true, the `send` function will return early without executing the rest of the
- * code inside the function.
- */
-    void iohcRadio::send(std::vector<iohcPacket *>&iohcTx) {
+    /**
+     * The `send` function in the `iohcRadio` class sends packets stored in a vector with a specified
+     * repeat time.
+     *
+     * @param iohcTx `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
+     *
+     * @return If `txMode` is true, the `send` function will return early without executing the rest of the
+     * code inside the function.
+     */
+    void iohcRadio::send(std::vector<iohcPacket *> &iohcTx) {
         if (txMode) return;
 
         packets2send = iohcTx; //std::move(iohcTx); //
@@ -197,7 +231,15 @@ namespace IOHC {
         Sender.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
     }
 
-    void IRAM_ATTR iohcRadio::packetSender(iohcRadio* radio) {
+/**
+ * The function `packetSender` in the `iohcRadio` class handles the transmission of packets using radio
+ * communication, including frequency setting, packet preparation, and handling of repeated
+ * transmissions.
+ * 
+ * @param radio The `radio` parameter in the `packetSender` function is a pointer to an object of type
+ * `iohcRadio`. It is used to access and manipulate data and functions within the `iohcRadio` class.
+ */
+    void IRAM_ATTR iohcRadio::packetSender(iohcRadio *radio) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // Stop frequency hopping
         f_lock = true;
@@ -208,8 +250,7 @@ namespace IOHC {
             if (radio->delayed != nullptr)
                 // Use Saved Delayed Packet
                 radio->iohc = radio->delayed;
-        }
-        else
+        } else
             radio->iohc = radio->packets2send[radio->txCounter];
 
         //        if (radio->iohc->frequency != 0) {
@@ -250,13 +291,12 @@ namespace IOHC {
                 if (radio->packets2send[radio->txCounter]->delayed != 0) {
                     radio->delayed = radio->packets2send[radio->txCounter];
                     radio->packets2send[radio->txCounter] = nullptr;
-                    radio->Sender.delay_ms(radio->delayed/*radio->packets2send[radio->txCounter]*/->delayed, packetSender, radio);
-                }
-                else {
+                    radio->Sender.delay_ms(radio->delayed/*radio->packets2send[radio->txCounter]*/->delayed,
+                                           packetSender, radio);
+                } else {
                     radio->Sender.attach_ms(radio->packets2send[radio->txCounter]->repeatTime, packetSender, radio);
                 }
-            }
-            else {
+            } else {
                 // In any case, after last packet sent, unlock the radio
                 txMode = false;
                 radio->packets2send.clear();
@@ -265,7 +305,17 @@ namespace IOHC {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
 
-    bool IRAM_ATTR iohcRadio::sent(iohcPacket* packet) {
+/**
+ * The `sent` function in the `iohcRadio` class checks if a callback function `txCB` is set and calls
+ * it with a packet as a parameter, returning the result.
+ * 
+ * @param packet The `packet` parameter is a pointer to an object of type `iohcPacket`.
+ * 
+ * @return The `sent` function is returning a boolean value, which is determined by the result of
+ * calling the `txCB` function with the `packet` parameter. If `txCB` is not null, the return value
+ * will be the result of calling `txCB(packet)`, otherwise it will be `false`.
+ */
+    bool IRAM_ATTR iohcRadio::sent(iohcPacket *packet) {
         bool ret = false;
         if (txCB) {
             ret = txCB(packet);
@@ -289,8 +339,8 @@ namespace IOHC {
             int16_t thres = Radio::readByte(REG_RSSITHRESH);
             iohc->snr = iohc->rssi > thres ? 0 : (thres - iohc->rssi);
             //            iohc->lna = RF96lnaMap[ (Radio::readByte(REG_LNA) >> 5) & 0x7 ];
-            int16_t f = (uint16_t)Radio::readByte(REG_AFCMSB);
-            f = (f << 8) | (uint16_t)Radio::readByte(REG_AFCLSB);
+            int16_t f = (uint16_t) Radio::readByte(REG_AFCMSB);
+            f = (f << 8) | (uint16_t) Radio::readByte(REG_AFCLSB);
             //            iohc->afc = f * (32000000.0 / 524288.0); // static_cast<float>(1 << 19));
             iohc->afc = /*(int32_t)*/f * 61.0;
             //            iohc->rssiAt = micros();
@@ -374,9 +424,9 @@ namespace IOHC {
 #endif
 
         // Radio::clearFlags();
-        if (rxCB ) rxCB(iohc);
+        if (rxCB) rxCB(iohc);
         iohc->decode(true); //stats);
-free(iohc); // correct Bug memory
+        free(iohc); // correct Bug memory
         digitalWrite(RX_LED, false);
         return true;
     }
@@ -387,7 +437,7 @@ free(iohc); // correct Bug memory
 #elif defined(CC1101)
         __g_preamble = true;
 #endif
-        f_lock = _g_preamble;      
+        f_lock = _g_preamble;
     }
 
     void IRAM_ATTR iohcRadio::i_payload() {

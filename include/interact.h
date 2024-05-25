@@ -26,11 +26,7 @@ extern "C" {
 
 #include <utils.h>
 
-#if defined(ESP8266)
-  #include <TickerUs.h>
-  #define MAXCMDS 25
-#elif defined(ESP32)
-//  #include <picoMQTT.h> 	
+#if defined(ESP32)
   #include <TickerUsESP32.h>
   #define MAXCMDS 50
 #endif
@@ -311,6 +307,7 @@ namespace Cmd {
   }
   
   inline void init() {
+    
     #if defined(MQTT)
     mqttClient.setClientId("iown");
     mqttClient.setCredentials("user", "passwd");

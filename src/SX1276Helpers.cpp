@@ -4,21 +4,21 @@
 #include <board-config.h>
 
 #if defined(RADIO_SX127X)
-    #include <map>
+#include <map>
 
 #if defined(ESP8266)
     #include <TickerUs.h>
 #elif defined(ESP32)
-    #define CONFIG_DISABLE_HAL_LOCKS true
-    #include <TickerUsESP32.h>
-    #include <esp_task_wdt.h>
-    #include <SPI.h>
-    // #include <SPIeX.h>
+#define CONFIG_DISABLE_HAL_LOCKS true
+#include <TickerUsESP32.h>
+#include <esp_task_wdt.h>
+#include <SPI.h>
+// #include <SPIeX.h>
 #endif
 
 namespace Radio {
     SPISettings SpiSettings(4000000, MSBFIRST, SPI_MODE0);
-    
+
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
     {
@@ -43,7 +43,7 @@ namespace Radio {
     void initHardware() {
         printf("\nSPI Init");
 
-        gpio_pullup_en((gpio_num_t)RADIO_MISO);
+        gpio_pullup_en((gpio_num_t) RADIO_MISO);
 
         // SPI pins configuration
 #if defined(ESP8266)
@@ -99,7 +99,7 @@ namespace Radio {
         // Switch-off clockout
         writeByte(REG_OSC, RF_OSC_CLKOUT_OFF); // This only give power saveing maybe we can use it as ticker µs
 
-        // Variable packet lenght, generates working CRC. 
+        // Variable packet lenght, generates working CRC.
         // Packet mode, IoHomeOn, IoHomePowerFrame to be added (0x10) to avoid rx to newly detect the preamble during tx radio shutdown
         // Must CRCAUTOCLEAR_ON or do full clean FIFO !
         writeByte(
@@ -107,13 +107,18 @@ namespace Radio {
             RF_PACKETCONFIG1_PACKETFORMAT_VARIABLE | RF_PACKETCONFIG1_DCFREE_OFF | RF_PACKETCONFIG1_CRC_ON |
             RF_PACKETCONFIG1_CRCAUTOCLEAR_ON | RF_PACKETCONFIG1_CRCWHITENINGTYPE_CCITT |
             RF_PACKETCONFIG1_ADDRSFILTERING_OFF);
-        writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
+        writeByte(
+            REG_PACKETCONFIG2,
+            RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
         // Is IoHomePowerFrame useful ?
 
         // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
-        writeByte(REG_SYNCCONFIG, RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_OFF | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON); //0x51); // 0x91); // TODOVERIFY 0x92
+        writeByte(
+            REG_SYNCCONFIG,
+            RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_OFF | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
+        //0x51); // 0x91); // TODOVERIFY 0x92
         //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
-        
+
         // Set Sync word to 0xff33 both for rx and tx
         writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
         writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
@@ -123,7 +128,9 @@ namespace Radio {
         // Mapping of pins DIO4 and DIO5
         // DIO4: PreambleDetect  DIO5: Data
         // DIO Mapping Data Packet Table 30 Page 69
-        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
+        writeByte(
+            REG_DIOMAPPING1,
+            RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
         //        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
         writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10);
         // Preamble on DIO4
@@ -131,7 +138,7 @@ namespace Radio {
         // Enable Fast Hoping (frequency change) // Not needed all the time
         // Not using that, as it miss a lot of frames
         if (MAX_FREQS != 1)
-            writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON); 
+            writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON);
 
         // ---------------- TX Register init section ----------------
         // PA boost maximum power
@@ -160,7 +167,7 @@ namespace Radio {
 
         writeByte(REG_AFCFEI, 0x01);
         // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ; 
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ;
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
@@ -170,11 +177,11 @@ namespace Radio {
         // PA boost maximum power
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
-        writeByte(REG_PADAC,0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
+        writeByte(REG_PADAC, 0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
     }
 
     /**
-     * 
+     *
      */
     void calibrate() {
         // Save context
@@ -185,19 +192,22 @@ namespace Radio {
         // RC Calibration (only call after setting correct frequency band)
         writeByte(REG_OSC, RF_OSC_RCCALSTART);
         // Start image and RSSI calibration
-        writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
+        writeByte(
+            REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
-        while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) { }
+        while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) {
+        }
         // Set a Frequency in HF band
         Radio::setCarrier(Radio::Carrier::Frequency, 868000000);
         // Start image and RSSI calibration
-        writeByte(REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
+        writeByte(
+            REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);
         // Wait end of calibration
         while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) {
         }
 
         // Restore context
-        writeByte(REG_PACONFIG, regPaConfigInitVal);    
+        writeByte(REG_PACONFIG, regPaConfigInitVal);
     }
 
     /*!
@@ -246,7 +256,7 @@ namespace Radio {
         // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
-        
+
         TxReady;
     }
 
@@ -254,7 +264,7 @@ namespace Radio {
         // Uncommon and incompatible settings
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-        
+
         RxReady;
         /*
                 // Start Sequencer
@@ -264,7 +274,7 @@ namespace Radio {
     }
 
 
-    void readBurst(uint8_t regAddr, uint8_t* buffer, uint8_t size) {
+    void readBurst(uint8_t regAddr, uint8_t *buffer, uint8_t size) {
         for (uint8_t i = 0; i < size; ++i) {
             buffer[i] = readByte(regAddr + i);
         }
@@ -318,7 +328,7 @@ namespace Radio {
         return (getByte);
     }
 
-    void IRAM_ATTR readBytes(uint8_t regAddr, uint8_t* out, uint8_t len) {
+    void IRAM_ATTR readBytes(uint8_t regAddr, uint8_t *out, uint8_t len) {
         SPI_beginTransaction();
         SPI.transfer(regAddr); // Send Address
         for (uint8_t idx = 0; idx < len; ++idx) {
@@ -331,7 +341,7 @@ namespace Radio {
         return writeBytes(regAddr, &data, 1, check);
     }
 
-    auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t* in, uint8_t len, bool check) -> bool {
+    auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check) -> bool {
         SPI_beginTransaction();
         SPI.write(regAddr | SPI_Write); // Send Address with Write flag
         for (uint8_t idx = 0; idx < len; ++idx) {
@@ -437,7 +447,7 @@ namespace Radio {
     }
 
     regBandWidth bwRegs(uint8_t bandwidth) {
-        for (auto&it: __bw)
+        for (auto &it: __bw)
             if (it.first == bandwidth)
                 return it.second;
 
@@ -451,22 +461,22 @@ namespace Radio {
         do {
             Serial.printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx));
             idx += 1;
-        }
-        while (idx < 0x7f);
+        } while (idx < 0x7f);
         Serial.printf("PKT\tFalse;False;255;0;\nXTAL\t32000000\n");
         // Serial.printf("\n");
         dumpReal();
     }
+
     void dumpReal() {
         uint8_t registers[0x80];
-          registers[0] = 0x00;
-          readBytes(0x01, registers + 1, 0x7F);
+        registers[0] = 0x00;
+        readBytes(0x01, registers + 1, 0x7F);
         // sx127x_dump_registers(registers, device);
         for (int idx = 0; idx < sizeof(registers); idx++) {
             if (idx != 0) {
                 printf(",");
             }
-        printf("0x%2.2x", registers[idx]);
+            printf("0x%2.2x", registers[idx]);
         }
         printf("\n");
 
