@@ -30,32 +30,38 @@ namespace Radio {
         {250, {0x00, 0x01}} // 250KHz
     };
 
+/**
+ * The function `SPI_beginTransaction` begins a SPI transaction and sets the RADIO_NSS pin to LOW.
+ */
     void IRAM_ATTR SPI_beginTransaction() {
         SPI.beginTransaction(Radio::SpiSettings);
         digitalWrite(RADIO_NSS, LOW);
     }
 
+/**
+ * The function `SPI_endTransaction` ends the SPI transaction and sets the RADIO_NSS pin to HIGH.
+ */
     void IRAM_ATTR SPI_endTransaction() {
         digitalWrite(RADIO_NSS, HIGH);
         SPI.endTransaction();
     }
 
+/**
+ * The function `initHardware` initializes the hardware for SPI communication with a radio chip, checks
+ * the availability of the radio, configures SPI settings, and puts the radio chip in standby mode.
+ */
     void initHardware() {
         printf("\nSPI Init");
 
         gpio_pullup_en((gpio_num_t) RADIO_MISO);
 
         // SPI pins configuration
-#if defined(ESP8266)
-        SPI.pins(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
-#endif
+
         pinMode(RADIO_RESET, INPUT); // Connected to Reset; floating for POR
 
         // Check the availability of the Radio
         while (!digitalRead(RADIO_RESET)) {
-#if defined(ESP8266)
-            wdt_reset();
-#elif defined(ESP32)
+#if defined(ESP32)
             esp_task_wdt_reset();
 #endif
             delayMicroseconds(1);
@@ -63,9 +69,7 @@ namespace Radio {
         delayMicroseconds(BOARD_READY_AFTER_POR);
 
         // Initialize SPI bus
-#if defined(ESP8266)
-        SPI.begin();
-#elif defined(ESP32)
+#if defined(ESP32)
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
 #endif
         // SPI.setFrequency(SPI_CLK_FRQ);
@@ -91,6 +95,15 @@ namespace Radio {
         printf("\nRadio Chip is ready\n");
     }
 
+/**
+ * The `initRegisters` function initializes various registers of a radio module for both transmission
+ * and reception in a C++ program.
+ * 
+ * @param maxPayloadLength The `maxPayloadLength` parameter in the `initRegisters` function is used to
+ * set the maximum payload length for the radio communication. In this function, it is set to a default
+ * value of `0xff` (255 in decimal). This parameter is used to configure the radio module to handle
+ * packets
+ */
     void initRegisters(uint8_t maxPayloadLength = 0xff) {
         // Firstly put radio in StandBy mode as some parameters cannot be changed differently
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
@@ -180,9 +193,10 @@ namespace Radio {
         writeByte(REG_PADAC, 0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
     }
 
-    /**
-     *
-     */
+/**
+ * The `calibrate` function in C++ performs radio calibration by adjusting power levels and setting the
+ * frequency band.
+ */
     void calibrate() {
         // Save context
         uint8_t regPaConfigInitVal = readByte(REG_PACONFIG);
