@@ -26,14 +26,6 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
-        //             packet->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
-        //            packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
-        // Broadcast Target
-        //            u_int16_t bcast = typn;
-        //            uint16_t bcast = (_type.at(typn)<<6) + 0b111111;
-        // packet->payload.packet.header.target[0] = 0x00;
-        // packet->payload.packet.header.target[1] = bcast >> 8;
-        // packet->payload.packet.header.target[2] = bcast & 0x00ff;
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 25;
@@ -190,7 +182,6 @@ namespace IOHC {
 
                 break;
             }
-
             case DeviceButton::setPresence: {
                 packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -222,7 +213,6 @@ namespace IOHC {
                 _radioInstance->send(packets2send); // Verify !
                 break;
             }
-
             case DeviceButton::setWindow: {
                 packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);

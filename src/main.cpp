@@ -49,6 +49,8 @@ uint32_t frequencies[] = FREQS2SCAN;
 // using namespace ESP32Console;
 // Console console;
 
+using namespace IOHC;
+
 void setup() {
     Serial.begin(115200); //SERIALSPEED);
     //Register builtin commands like 'reboot', 'version', or 'meminfo'
@@ -87,7 +89,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
     JsonDocument doc; 
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
-        case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
+        case iohcDevice::RECEIVED_DISCOVER_0x28: {
             printf("2W Pairing Asked\n");
             if (!Cmd::pairMode) break;
 
@@ -128,15 +130,17 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             break;
         }
-        case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
+        case iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
             printf("2W Actuator Ack Asked\n");
             if (!Cmd::pairMode) break;
 
-            packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+
+            packets2send.clear();
+            packets2send.push_back(new IOHC::iohcPacket);
+
             std::vector<uint8_t> toSend = {};
 
-            packets2send.push_back(new IOHC::iohcPacket);
             packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
             // Header len if protocol version is 8 else 10 ;)
             packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
@@ -147,9 +151,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
             memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-
-            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
-            // packets2send[0]->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
 
             packets2send.back()->buffer_length = toSend.size() + 9;
             packets2send.back()->frequency = CHANNEL2;
@@ -163,7 +164,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             break;
         }
-        case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
+        case iohcDevice::RECEIVED_LAUNCH_KEY_TRANSFERT_0x38: {
             printf("2W Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
             if (!Cmd::pairMode) break;
 
@@ -228,11 +229,12 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             break;
         }
-        case 0x20:
+        case iohcDevice::RECEIVED_WRITE_PRIVATE_0x20:  {
             cozyDevice2W->memorizeSend.memorizedCmd = iohc->payload.packet.header.cmd;
             IOHC::lastSendCmd = iohc->payload.packet.header.cmd;
             break;
-        case 0x21: {
+        }
+        case iohcDevice::RECEIVED_PRIVATE_ACK_0x21: {
             // Answer of 0x20, publish the confirmed command
             // doc["type"] = "Cozy";
             // doc["from"] = bytesToHexString(iohc->payload.packet.header.target, 3);
@@ -244,7 +246,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             // mqttClient.publish("iown/Frame", 0, false, message.c_str(), messageSize);
             break;
         }
-        case 0x3C: {
+        case iohcDevice::RECEIVED_CHALLENGE_REQUEST_0x3C: {
             // Answer only to our gateway, not to others devices
             if (cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) {
                 // (true) { //
@@ -267,7 +269,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 printf("Challenge asked after Memorized Command %2.2X\n", cozyDevice2W->memorizeSend.memorizedCmd);
 
                 if (Cmd::scanMode) {
-                    cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C;
+                    cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohcDevice::RECEIVED_CHALLENGE_REQUEST_0x3C;
                     break;
                 }
 
@@ -286,7 +288,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 if (cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::RECEIVED_ASK_CHALLENGE_0x31) {
                     packets2send_tmp.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
                     dataLen = 16;
-                    IVdata = {0x31};
+                    IVdata = {iohcDevice::RECEIVED_ASK_CHALLENGE_0x31};
                     constructInitialValue(IVdata, initial_value, 1, challengeAsked, nullptr);
                     AES_ECB_encrypt(&ctx, initial_value);
                     for (int i = 0; i < dataLen; i++)
@@ -354,17 +356,18 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
         }
         case 0x04:
         case 0x0D:
-        case 0x2D:
+        case iohcDevice::RECEIVED_DISCOVER_ACTUATOR_ACK_0x2D:
         case 0x4B:
         case 0x55:
         case 0x57:
-        case 0x59:
+        case 0x59: {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
                 cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd;
             }
-            break;
+        break;
+    }
         case 0xFE: {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
@@ -373,7 +376,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             }
             break;
         }
-        case 0x29: {
+        case iohcDevice::RECEIVED_DISCOVER_ANSWER_0x29: {
             printf("2W Device want to be paired\n");
             if (!Cmd::pairMode) break;
 
@@ -385,7 +388,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             printf("\n");
 
             // printf("Sending 0x38 \n");
-            printf("Sending 0x2C \n");
+            printf("Sending SEND_DISCOVER_ACTUATOR_0x2C \n");
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             // std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; // 38
             std::vector<uint8_t> toSend = {}; // 2C
@@ -395,7 +398,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             // init(packets2send[0]);
             // packets2send.back()->payload.packet.header.cmd = 0x38;
-            packets2send.back()->payload.packet.header.cmd = 0x2C;
+            packets2send.back()->payload.packet.header.cmd = iohcDevice::SEND_DISCOVER_ACTUATOR_0x2C;
             // cozyDevice2W->memorizeSend.memorizedData = toSend;
             // cozyDevice2W->memorizeSend.memorizedCmd = 0x2C;
 
@@ -420,14 +423,12 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             break;
         }
-
-        case 0x2B: {
+        case iohcDevice::RECEIVED_DISCOVER_REMOTE_ANSWER_0x2B: {
             sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
                                 iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
                                 iohc->payload.packet.msg.p0x2b.info);
             break;
         }
-
         case 0x30: {
             for (uint8_t idx = 0; idx < 16; idx++)
                 keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
