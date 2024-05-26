@@ -1,7 +1,7 @@
 #include <board-config.h>
 #include <user_config.h>
 
-#include "ESP32Console.h"
+//#include "ESP32Console.h"
 
 #include <interact.h>
 #include <crypto2Wutils.h>
