@@ -324,6 +324,17 @@ namespace IOHC {
     }
 
     //    static uint8_t RF96lnaMap[] = { 0, 0, 6, 12, 24, 36, 48, 48 };
+/**
+ * The `iohcRadio::receive` function in C++ toggles an LED, reads radio data, processes it, and
+ * triggers a callback function.
+ * 
+ * @param stats The `stats` parameter in the `iohcRadio::receive` function is a boolean parameter that
+ * is used to determine whether to gather additional statistics during the radio reception process. If
+ * `stats` is set to `true`, the function will collect and process additional information such as RSSI
+ * (Received Signal
+ * 
+ * @return The function `iohcRadio::receive` is returning a boolean value `true`.
+ */
     bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // bool frmErr = false;
@@ -431,6 +442,10 @@ namespace IOHC {
         return true;
     }
 
+/**
+ * The function `i_preamble` sets the value of `f_lock` based on the state of `_g_preamble` or
+ * `__g_preamble` depending on the defined radio type.
+ */
     void IRAM_ATTR iohcRadio::i_preamble() {
 #if defined(RADIO_SX127X)
         _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
@@ -440,6 +455,10 @@ namespace IOHC {
         f_lock = _g_preamble;
     }
 
+/**
+ * The function `iohcRadio::i_payload()` reads the value of a digital pin and stores it in a variable
+ * `_g_payload` if the macro `RADIO_SX127X` is defined.
+ */
     void IRAM_ATTR iohcRadio::i_payload() {
 #if defined(RADIO_SX127X)
         _g_payload = digitalRead(RADIO_PACKET_AVAIL);

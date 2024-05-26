@@ -1,6 +1,8 @@
 #include <board-config.h>
 #include <user_config.h>
 
+#include "ESP32Console.h"
+
 #include <interact.h>
 #include <crypto2Wutils.h>
 #include <iohcCryptoHelpers.h>
@@ -18,28 +20,19 @@ extern "C" {
 #include "freertos/task.h"
 }
 
-// Receiving buffer
-bool verbosity = true;
-bool pairMode = false;
-bool scanMode = false;
-
 void txUserBuffer(Tokens *cmd);
 void testKey();
 void scanDump();
 bool publishMsg(IOHC::iohcPacket *iohc);
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc);
 bool msgArchive(IOHC::iohcPacket *iohc);
-void createCommands();
 
 uint8_t keyCap[16] = {};
 //uint8_t source_originator[3] = {0};
-//unsigned long relStamp; // In all Devvices
 
-//#define MAXPACKETS  199
 IOHC::iohcRadio *radioInstance;
 IOHC::iohcPacket *radioPackets[IOHC_INBOUND_MAX_PACKETS];
-//IOHC::iohcPacket *packets2send[IOHC_OUTBOUND_MAX_PACKETS];
-//std::array<IOHC::iohcPacket *, 25> packets2send;
+
 std::vector<IOHC::iohcPacket *> packets2send{};
 std::vector<IOHC::iohcPacket *> packets2send_tmp{};
 
@@ -53,10 +46,17 @@ IOHC::iohcOtherDevice2W *otherDevice2W;
 
 uint32_t frequencies[] = FREQS2SCAN;
 
+// using namespace ESP32Console;
+// Console console;
+
 void setup() {
     Serial.begin(115200); //SERIALSPEED);
+    //Register builtin commands like 'reboot', 'version', or 'meminfo'
+//    console.begin(115200);
+//    console.registerSystemCommands();
+//    console.registerVFSCommands();
 
-    pinMode(RX_LED, OUTPUT); // we are goning to blink this LED
+    pinMode(RX_LED, OUTPUT); // Blink this LED
     digitalWrite(RX_LED, 1);
 
     // Mount LittleFS filesystem
@@ -75,9 +75,9 @@ void setup() {
 
     //   AES_init_ctx(&ctx, transfert_key); // PreInit AES for cozy (1W use original version) TODO
 
-    createCommands();
+    Cmd::createCommands();
 
-    esp_timer_dump(stdout);
+//    esp_timer_dump(stdout);
 
     printf("Startup completed. type help to see what you can do!\n");
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -89,7 +89,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
     switch (iohc->payload.packet.header.cmd) {
         case IOHC::iohcDevice::RECEIVED_DISCOVER_0x28: {
             printf("2W Pairing Asked\n");
-            if (!pairMode) break;
+            if (!Cmd::pairMode) break;
 
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -130,7 +130,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
         }
         case IOHC::iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
             printf("2W Actuator Ack Asked\n");
-            if (!pairMode) break;
+            if (!Cmd::pairMode) break;
 
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -165,7 +165,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
         }
         case IOHC::iohcDevice::SEND_LAUNCH_KEY_TRANSFERT_0x38: {
             printf("2W Key Transfert Asked after Command %2.2X\n", iohc->payload.packet.header.cmd);
-            if (!pairMode) break;
+            if (!Cmd::pairMode) break;
 
             packets2send.clear();
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -266,7 +266,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 printf("Challenge asked after LastSend Command %2.2X\n", IOHC::lastSendCmd);
                 printf("Challenge asked after Memorized Command %2.2X\n", cozyDevice2W->memorizeSend.memorizedCmd);
 
-                if (scanMode) {
+                if (Cmd::scanMode) {
                     cozyDevice2W->mapValid[IOHC::lastSendCmd] = 0x3C;
                     break;
                 }
@@ -359,14 +359,14 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
         case 0x55:
         case 0x57:
         case 0x59:
-            if (scanMode) {
+            if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
                 cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd;
             }
             break;
         case 0xFE: {
-            if (scanMode) {
+            if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
                 cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9];
@@ -375,7 +375,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
         }
         case 0x29: {
             printf("2W Device want to be paired\n");
-            if (!pairMode) break;
+            if (!Cmd::pairMode) break;
 
             std::vector<uint8_t> deviceAsked;
             deviceAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 18);
@@ -470,8 +470,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
     return true;
 }
 
-
-/*TODO Merge with decode here (radio.cpp line 168)*/
 /**
  * The function `publishMsg` creates a JSON message from an `iohcPacket` object and publishes it using
  * MQTT if enabled.
@@ -500,6 +498,7 @@ bool publishMsg(IOHC::iohcPacket *iohc) {
 }
 
 /**
+ * @deprecated
  * The function `msgArchive` copies data from one `iohcPacket` object to another and stores it in an
  * array, returning true if successful and false if there are not enough buffers available.
  * 
@@ -537,6 +536,7 @@ bool msgArchive(IOHC::iohcPacket *iohc) {
 }
 
 /**
+ * @deprecated
  * The function `txUserBuffer` sends a packet using a radio instance based on the input command and
  * frequency.
  * 
@@ -569,141 +569,6 @@ void txUserBuffer(Tokens *cmd) {
 
     radioInstance->send(packets2send);
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-}
-
-/**
- * The function `createCommands()` initializes and adds various command handlers for controlling
- * different devices and functionalities.
- */
-void createCommands() {
-    Cmd::init(); // Initialize Serial commands reception and handlers
-    // Cozybox Kizbox Conexoon 2W
-    Cmd::addHandler((char *) "powerOn", (char *) "Permit to retrieve paired devices", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::powerOn, nullptr);
-    });
-    Cmd::addHandler((char *) "setTemp", (char *) "7.0 to 28.0 - 0 get actual temp", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::setTemp, cmd /*cmd->at(1).c_str()*/);
-    });
-    Cmd::addHandler((char *) "setMode", (char *) "auto prog manual off - FF to get actual mode",
-                    [](Tokens *cmd)-> void {
-                        cozyDevice2W->cmd(IOHC::DeviceButton::setMode, cmd /*cmd->at(1).c_str()*/);
-                    });
-    Cmd::addHandler((char *) "setPresence", (char *) "on off", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::setPresence, cmd /*cmd->at(1).c_str()*/);
-    });
-    Cmd::addHandler((char *) "setWindow", (char *) "open close", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::setWindow, cmd /*cmd->at(1).c_str()*/);
-    });
-    Cmd::addHandler((char *) "midnight", (char *) "Synchro Paired", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::midnight, nullptr);
-    });
-    Cmd::addHandler((char *) "associate", (char *) "Synchro Paired", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::associate, nullptr);
-    });
-    Cmd::addHandler((char *) "custom", (char *) "test unknown commands", [](Tokens *cmd)-> void {
-        /*scanMode = true;*/
-        cozyDevice2W->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);
-    });
-    Cmd::addHandler((char *) "custom60", (char *) "test 0x60 commands", [](Tokens *cmd)-> void {
-        /*scanMode = true;*/
-        cozyDevice2W->cmd(IOHC::DeviceButton::custom60, cmd /*cmd->at(1).c_str()*/);
-    });
-    // 1W
-    Cmd::addHandler((char *) "pair", (char *) "1W put device in pair mode", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Pair, cmd);
-    });
-    Cmd::addHandler((char *) "add", (char *) "1W add controller to device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Add, cmd);
-    });
-    Cmd::addHandler((char *) "remove", (char *) "1W remove controller from device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Remove, cmd);
-    });
-    Cmd::addHandler((char *) "open", (char *) "1W open device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Open, cmd);
-    });
-    Cmd::addHandler((char *) "close", (char *) "1W close device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Close, cmd);
-    });
-    Cmd::addHandler((char *) "stop", (char *) "1W stop device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Stop, cmd);
-    });
-    Cmd::addHandler((char *) "vent", (char *) "1W vent device", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Vent, cmd);
-    });
-    Cmd::addHandler((char *) "force", (char *) "1W force device open", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::ForceOpen, cmd);
-    });
-    //    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
-
-    Cmd::addHandler((char *) "mode1", (char *) "1W Mode1", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Mode1, cmd);
-    });
-    Cmd::addHandler((char *) "mode2", (char *) "1W Mode2", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Mode2, cmd);
-    });
-    Cmd::addHandler((char *) "mode3", (char *) "1W Mode3", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Mode3, cmd);
-    });
-    Cmd::addHandler((char *) "mode4", (char *) "1W Mode4", [](Tokens *cmd)-> void {
-        remote1W->cmd(IOHC::RemoteButton::Mode4, cmd);
-    });
-    // Other 2W
-    Cmd::addHandler((char *) "discovery", (char *) "Send discovery on air", [](Tokens *cmd)-> void {
-        otherDevice2W->cmd(IOHC::Other2WButton::discovery, nullptr);
-    });
-    Cmd::addHandler((char *) "getName", (char *) "Name Of A Device", [](Tokens *cmd)-> void {
-        otherDevice2W->cmd(IOHC::Other2WButton::getName, cmd);
-    });
-    // Utils
-    Cmd::addHandler((char *) "dump", (char *) "Dump Transceiver registers", [](Tokens *cmd)-> void {
-        Radio::dump();
-        Serial.printf("*%d packets in memory\t", nextPacket);
-        Serial.printf("*%d devices discovered\n\n", sysTable->size());
-    });
-    //    Cmd::addHandler((char *)"dump2", (char *)"Dump Transceiver registers 1Col", [](Tokens*cmd)->void {Radio::dump2(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
-    Cmd::addHandler((char *) "list1W", (char *) "List received packets", [](Tokens *cmd)-> void {
-        for (uint8_t i = 0; i < nextPacket; i++) msgRcvd(radioPackets[i]);
-        sysTable->dump1W();
-    });
-    Cmd::addHandler((char *) "save", (char *) "Saves Objects table", [](Tokens *cmd)-> void { sysTable->save(true); });
-    Cmd::addHandler((char *) "erase", (char *) "Erase received packets", [](Tokens *cmd)-> void {
-        for (uint8_t i = 0; i < nextPacket; i++) free(radioPackets[i]);
-        nextPacket = 0;
-    });
-    Cmd::addHandler((char *) "send", (char *) "Send packet from cmd line",
-                    [](Tokens *cmd)-> void { txUserBuffer(cmd); });
-    Cmd::addHandler((char *) "verbose", (char *) "Toggle verbose output on packets list",
-                    [](Tokens *cmd)-> void { verbosity = !verbosity; });
-    Cmd::addHandler((char *) "ls", (char *) "List filesystem", [](Tokens *cmd)-> void { listFS(); });
-    Cmd::addHandler((char *) "cat", (char *) "Print file content", [](Tokens *cmd)-> void { cat(cmd->at(1).c_str()); });
-    Cmd::addHandler((char *) "rm", (char *) "Remove file", [](Tokens *cmd)-> void { rm(cmd->at(1).c_str()); });
-    Cmd::addHandler((char *) "list2W", (char *) "List received packets", [](Tokens *cmd)-> void {
-        for (uint8_t i = 0; i < nextPacket; i++) msgRcvd(radioPackets[i]);
-        sysTable->dump2W();
-    });
-    // Unnecessary just for test
-    Cmd::addHandler((char *) "discover28", (char *) "discover28", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::discover28, nullptr);
-    });
-    Cmd::addHandler((char *) "discover2A", (char *) "discover2A", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::discover2A, nullptr);
-    });
-    Cmd::addHandler((char *) "fake0", (char *) "fake0", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::fake0, nullptr);
-    });
-    Cmd::addHandler((char *) "ack", (char *) "ack33", [](Tokens *cmd)-> void {
-        cozyDevice2W->cmd(IOHC::DeviceButton::ack, nullptr);
-    });
-    Cmd::addHandler((char *) "pairMode", (char *) "pairMode", [](Tokens *cmd)-> void { pairMode = !pairMode; });
-
-    Cmd::addHandler((char *) "scanMode", (char *) "scanMode", [](Tokens *cmd)-> void {
-        scanMode = true;
-        cozyDevice2W->cmd(IOHC::DeviceButton::checkCmd, nullptr);
-    });
-    Cmd::addHandler((char *) "scanDump", (char *) "Dump Scan Results", [](Tokens *cmd)-> void {
-        scanMode = false;
-        cozyDevice2W->scanDump();
-    });
 }
 
 void loop() {

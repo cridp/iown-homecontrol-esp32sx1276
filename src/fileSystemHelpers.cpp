@@ -1,6 +1,18 @@
 #include <fileSystemHelpers.h>
 #include <board-config.h>
 
+/**
+ * The function `printFileInfo` prints information about a file in a specified directory with a given
+ * indentation level.
+ * 
+ * @param dirName The `dirName` parameter is a pointer to a constant character array that represents
+ * the directory name where the file is located.
+ * @param filePath The `filePath` parameter is a string that represents the path to a file within a
+ * directory. It is used to specify the location of the file whose information needs to be printed.
+ * @param level The `level` parameter in the `printFileInfo` function is used to indicate the depth of
+ * the file in the directory structure. It is of type `uint8_t`, which means it is an unsigned 8-bit
+ * integer used to represent the level of nesting or depth in the directory structure.
+ */
 void printFileInfo(const char* dirName, const char* filePath, uint8_t level) {
   File file = LittleFS.open((String(dirName) + String(filePath)).c_str(), "r");
   if (!file.isDirectory()) {
@@ -13,25 +25,20 @@ void printFileInfo(const char* dirName, const char* filePath, uint8_t level) {
   file.close();
 }
 
+/**
+ * The function `traverseDirectory` recursively traverses a directory on an ESP32 device, printing
+ * information about files and subdirectories at different levels.
+ * 
+ * @param dirName The `dirName` parameter is a pointer to a constant character array that represents
+ * the name of the directory to be traversed.
+ * @param level The `level` parameter in the `traverseDirectory` function is used to keep track of the
+ * depth of the directory traversal. It is incremented by 1 each time a subdirectory is encountered,
+ * allowing the function to print the appropriate indentation for better visualization of the directory
+ * structure.
+ */
 void traverseDirectory(const char* dirName, uint8_t level) {
 
-#if defined(ESP8266)    
-  Dir dir = LittleFS.openDir(dirName);
-
-  while (dir.next()) {
-    String fileName = dir.fileName();
-    if (dir.isDirectory()) {
-      // If the entry is a directory, traverse it recursively
-        std::string depth((level), '\t');
-        Serial.printf("%s", depth.c_str());
-      Serial.printf("%s\n", fileName.c_str());
-      traverseDirectory((String(dirName) + "/" + fileName).c_str(), level+1);
-    } else {
-      // If the entry is a file, print its information
-      printFileInfo(dirName, fileName.c_str(), level);
-    }
-  }
-#elif defined(ESP32)
+#if defined(ESP32)
   File root = LittleFS.open(dirName);
   File fileName;
   while (fileName = root.openNextFile()) {
@@ -51,6 +58,15 @@ void listFS() {
     traverseDirectory("/", 0);
 }
 
+/**
+ * The function `cat` reads and prints the contents of a file specified by the filename in C++.
+ * 
+ * @param fname The `fname` parameter in the `cat` function is a pointer to a constant character array,
+ * which represents the file name of the file to be read and displayed.
+ * 
+ * @return The function `cat` is returning `void`, which means it does not return any value. It simply
+ * prints the contents of the file specified by the `fname` parameter to the Serial monitor.
+ */
 void cat(const char *fname) {
     if (!LittleFS.exists(fname)) {
       Serial.printf("File %s does not exists\n\n", fname);
@@ -62,6 +78,14 @@ void cat(const char *fname) {
     file.close();
 }
 
+/**
+ * The function `rm` removes a file with the given filename if it exists in the LittleFS file system.
+ * 
+ * @param fname The parameter `fname` is a pointer to a constant character array, which represents the
+ * file name that you want to remove using the `rm` function.
+ * 
+ * @return The function `rm` is returning `void`, which means it does not return any value.
+ */
 void rm(const char *fname) {
     if (!LittleFS.exists(fname)) {
       Serial.printf("File %s does not exists\n\n", fname);
