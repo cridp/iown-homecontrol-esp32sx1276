@@ -130,6 +130,59 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
             break;
         }
+        case iohcDevice::RECEIVED_DISCOVER_ANSWER_0x29: {
+            printf("2W Device want to be paired\n");
+            if (!Cmd::pairMode) break;
+
+            std::vector<uint8_t> deviceAsked;
+            deviceAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 18);
+            for (unsigned char i: deviceAsked) {
+                printf("%02X ", i);
+            }
+            printf("\n");
+
+            // printf("Sending 0x38 \n");
+            printf("Sending SEND_DISCOVER_ACTUATOR_0x2C \n");
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            // std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; // 38
+            std::vector<uint8_t> toSend = {}; // 2C
+
+            packets2send.clear();
+            packets2send.push_back(new IOHC::iohcPacket);
+
+            // init(packets2send[0]);
+            // packets2send.back()->payload.packet.header.cmd = 0x38;
+            packets2send.back()->payload.packet.header.cmd = iohcDevice::SEND_DISCOVER_ACTUATOR_0x2C;
+            // cozyDevice2W->memorizeSend.memorizedData = toSend;
+            // cozyDevice2W->memorizeSend.memorizedCmd = 0x2C;
+
+            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+
+            /* Swap */
+            memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
+            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+
+            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+
+            packets2send.back()->buffer_length = toSend.size() + 9;
+            packets2send.back()->frequency = CHANNEL2;
+            packets2send.back()->repeatTime = 25;
+            IOHC::packetStamp = esp_timer_get_time(); //
+            packets2send.back()->repeat = 1; // Need to stop txMode
+            packets2send.back()->lock = false; //true; // Need to received ASAP
+
+            radioInstance->send(packets2send);
+            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+            break;
+        }
+        case iohcDevice::RECEIVED_DISCOVER_REMOTE_ANSWER_0x2B: {
+            sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
+                                iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
+                                iohc->payload.packet.msg.p0x2b.info);
+            break;
+        }
         case iohcDevice::RECEIVED_DISCOVER_ACTUATOR_0x2C: {
             printf("2W Actuator Ack Asked\n");
             if (!Cmd::pairMode) break;
@@ -376,59 +429,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             }
             break;
         }
-        case iohcDevice::RECEIVED_DISCOVER_ANSWER_0x29: {
-            printf("2W Device want to be paired\n");
-            if (!Cmd::pairMode) break;
-
-            std::vector<uint8_t> deviceAsked;
-            deviceAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 18);
-            for (unsigned char i: deviceAsked) {
-                printf("%02X ", i);
-            }
-            printf("\n");
-
-            // printf("Sending 0x38 \n");
-            printf("Sending SEND_DISCOVER_ACTUATOR_0x2C \n");
-            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            // std::vector<uint8_t> toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; // 38
-            std::vector<uint8_t> toSend = {}; // 2C
-
-            packets2send.clear();
-            packets2send.push_back(new IOHC::iohcPacket);
-
-            // init(packets2send[0]);
-            // packets2send.back()->payload.packet.header.cmd = 0x38;
-            packets2send.back()->payload.packet.header.cmd = iohcDevice::SEND_DISCOVER_ACTUATOR_0x2C;
-            // cozyDevice2W->memorizeSend.memorizedData = toSend;
-            // cozyDevice2W->memorizeSend.memorizedCmd = 0x2C;
-
-            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
-
-            /* Swap */
-            memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-            memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
-
-            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-
-            packets2send.back()->buffer_length = toSend.size() + 9;
-            packets2send.back()->frequency = CHANNEL2;
-            packets2send.back()->repeatTime = 25;
-            IOHC::packetStamp = esp_timer_get_time(); //
-            packets2send.back()->repeat = 1; // Need to stop txMode
-            packets2send.back()->lock = false; //true; // Need to received ASAP
-
-            radioInstance->send(packets2send);
-            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-            break;
-        }
-        case iohcDevice::RECEIVED_DISCOVER_REMOTE_ANSWER_0x2B: {
-            sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
-                                iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
-                                iohc->payload.packet.msg.p0x2b.info);
-            break;
-        }
         case 0x30: {
             for (uint8_t idx = 0; idx < 16; idx++)
                 keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
@@ -440,10 +440,10 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             printf("\n");
             break;
         }
-        case 0X2E:
+        case 0X2E: {
             printf("1W Learning mode\n");
             break;
-
+        }
         case 0x39: {
             if (keyCap[0] == 0) break;
             uint8_t hmac[16];
