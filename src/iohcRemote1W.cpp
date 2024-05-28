@@ -584,7 +584,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         this->save(); // Save sequence number
     }
 
-    bool iohcRemote1W::load() {
+   bool iohcRemote1W::load() {
         _radioInstance = iohcRadio::getInstance();
 
         if (LittleFS.exists(IOHC_1W_REMOTE))
@@ -647,13 +647,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         // _sequence = 0x1402;    // DEBUG
         return true;
     }
-/**
- * @brief 
- * 
- * @return true 
- * @return false 
- */
-    bool iohcRemote1W::save() {
+   bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
         /*Dynamic*/JsonDocument doc; //(8192);
         for (const auto&r: remotes) {

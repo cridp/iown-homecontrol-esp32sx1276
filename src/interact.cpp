@@ -102,13 +102,14 @@ void createCommands() {
                     [](Tokens *cmd)-> void { verbosity = !verbosity; });
 
     Cmd::addHandler((char *) "pairMode", (char *) "pairMode", [](Tokens *cmd)-> void { pairMode = !pairMode; });
-    /*
+
     // Utils
     Cmd::addHandler((char *) "dump", (char *) "Dump Transceiver registers", [](Tokens *cmd)-> void {
         Radio::dump();
-        Serial.printf("*%d packets in memory\t", nextPacket);
-        Serial.printf("*%d devices discovered\n\n", sysTable->size());
+//        Serial.printf("*%d packets in memory\t", nextPacket);
+//        Serial.printf("*%d devices discovered\n\n", sysTable->size());
     });
+    /*    
     //    Cmd::addHandler((char *)"dump2", (char *)"Dump Transceiver registers 1Col", [](Tokens*cmd)->void {Radio::dump2(); Serial.printf("*%d packets in memory\t", nextPacket); Serial.printf("*%d devices discovered\n\n", sysTable->size());});
     Cmd::addHandler((char *) "list1W", (char *) "List received packets", [](Tokens *cmd)-> void {
         for (uint8_t i = 0; i < nextPacket; i++) msgRcvd(radioPackets[i]);
