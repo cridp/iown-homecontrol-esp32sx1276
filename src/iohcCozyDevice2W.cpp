@@ -48,7 +48,6 @@ namespace IOHC {
     //     0x58, 0x8b, 0x8c, 0x8d, 0x8F, 0x9e, 0xa0, 0xa1, 0xa2, 0xbe, 0xbf, 0xc0, 0xc1, 0xc2, 0xe0, 0xe1, 0xf0, 0xf1, 0xf2, 0xf3, 0xff
     // };
 
-
     void iohcCozyDevice2W::cmd(DeviceButton cmd, Tokens* data) {
         // Emulates device button press
         if (!_radioInstance) {
@@ -87,7 +86,6 @@ namespace IOHC {
                 packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 std::vector<uint8_t> toSend = {0x0C, 0x60, 0x01, 0x2C};
-
 
                 packets2send.push_back(new iohcPacket);
                 init(packets2send.back());
