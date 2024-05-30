@@ -23,8 +23,10 @@ _At first time or when a JSON in data folder is modified:_
 _After any other changes:_  
   - upload and monitor
 
-[^1]: I use SX1276. If CC1101/SX1262: Feel free to use the old code (Not checked/garanted)
-[^2]: I use Visual Studio Code Insider / CLion Nova
+[^1]: I use an SX1276. If CC1101/SX1262: Feel free to use the old code (Not checked/garanted)
+
+[^2]: I use Visual Studio Code Insider
+
 [^3]: Decoding can be verbose (RSSI, Timing, ...)
 
 #### **License**
