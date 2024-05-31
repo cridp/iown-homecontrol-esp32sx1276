@@ -38,7 +38,7 @@ namespace IOHC {
 
     uint8_t fake_gateway[3] = {0xba, 0x11, 0xad};
 
-    void iohcOtherDevice2W::init(iohcPacket* packet, size_t typn) {
+    void iohcOtherDevice2W::forgePacket(iohcPacket* packet, size_t typn) {
         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
 
         packet->payload.packet.header.cmd = 0x2A; //0x28; //typn;
@@ -62,11 +62,11 @@ namespace IOHC {
     }
 
     void iohcOtherDevice2W::cmd(Other2WButton cmd, Tokens* data) {
-        // Emulates device button press
         if (!_radioInstance) {
             Serial.println("NO RADIO INSTANCE");
             _radioInstance = iohcRadio::getInstance();
-        } // Verify !
+        }
+        packets2send.clear();
 
         // for (uint8_t typn=0; typn<_type.size(); typn++) { // Pre-allocate packets vector; one packet for each remote type loaded
         //     if (!packets2send[typn])
@@ -77,9 +77,9 @@ namespace IOHC {
         // packets2send[0] = new iohcPacket; //(IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
         // packets2send[0]->payload.packet.header.CtrlByte1.asByte = 8; // Header len if protocol version is 0 else 10
         // packets2send[0]->payload.packet.header.CtrlByte2.asByte = 0;
+        // Emulates device button press
         switch (cmd) {
             case Other2WButton::discovery: {
-               packets2send.clear();
                  int bec = 0;
 //                for (int x = 0; x < 15; x++) {
 //                    for (int i = 0; i < 15; i++) {
@@ -90,7 +90,7 @@ namespace IOHC {
 
                             std::string discovery = "d430477706ba11ad31"; //28"; //"2b578ebc37334d6e2f50a4dfa9";
                             packets2send.back()/*[j]*/->buffer_length = hexStringToBytes(discovery, packets2send.back()/*[j]*/->payload.buffer);
-                            init(packets2send.back()/*[j]*//*->payload.buffer[4]*/, bec);
+                            forgePacket(packets2send.back()/*[j]*//*->payload.buffer[4]*/, bec);
                             bec += 0x01;
                             // packets2send.back()/*[j]*/->repeatTime = 225;
 //                            packets2send.back()/*[j]*/->decode(); // Not for the cozydevice -> change and adapt for KLR 2W
@@ -102,7 +102,7 @@ namespace IOHC {
             break;
             }
             case Other2WButton::getName: {
-                packets2send.clear();
+//                packets2send.clear();
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 std::vector<uint8_t> toSend = {}; // {0x0C, 0x60, 0x01, 0xFF};
 
@@ -117,7 +117,7 @@ namespace IOHC {
                 // toSend[3] = custom; 
 
                 packets2send.push_back(new iohcPacket);
-                init(packets2send.back(), 0);
+                forgePacket(packets2send.back(), 0);
                 packets2send.back()->payload.packet.header.cmd = SEND_GET_NAME_0x50;
                 // memorizeSend.memorizedData = toSend;
                 // memorizeSend.memorizedCmd = SEND_WRITE_PRIVATE_0x20;
@@ -267,7 +267,7 @@ namespace IOHC {
         }
 
         fs::File f = LittleFS.open(OTHER_2W_FILE, "r", true);
-        /*Dynamic*/JsonDocument doc; //(256);
+        JsonDocument doc;
         deserializeJson(doc, f);
         f.close();
 
