@@ -3,6 +3,7 @@
 /docs/
 compile_commands.json
 git_rev_macro.py
+sdkconfig
 sdkconfig.HeltecESP32
 CMakeLists.txt
 .idea/inspectionProfiles/Project_Default.xml
@@ -14,5 +15,6 @@ test/variousHeater
 src/CMakeLists.txt
 /.vscode/
 /lib/
-/build
-
+/build/
+/archives/
+*.org

@@ -1,7 +1,17 @@
+/*
+ Copyright (c) 2024. CRIDP https://github.com/cridp
+
+ Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
+ You may obtain a copy of the License at :
+
+  http://www.apache.org/licenses/LICENSE-2.0
+
+ Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ See the License for the specific language governing permissions and limitations under the License.
+ */
+
 #include <board-config.h>
 #include <user_config.h>
-
-//#include "ESP32Console.h"
 
 #include <interact.h>
 #include <crypto2Wutils.h>
@@ -84,8 +94,8 @@ void setup() {
 void IRAM_ATTR init(iohcPacket* packet) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     // Common Flags
-    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
     // 8 if protocol version is 0 else 10
+    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
     packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 0;
     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
     packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
@@ -115,10 +125,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             init(packets2send.back());
 
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
             packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ANSWER_0x29;
+ 
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, cozyDevice2W->gateway, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
@@ -128,11 +139,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.back()->buffer_length = toSend.size() + 9;
             //packet2send[0]->payload.packet.header.framelength +1;
 //           packets2send.back()->frequency = CHANNEL2;
-            packets2send.back()->repeatTime = 25;
+//            packets2send.back()->repeatTime = 25;
             packets2send.back()->delayed = 250;
 //            IOHC::packetStamp = esp_timer_get_time();
             packets2send.back()->repeat = 0;
-            packets2send.back()->lock = false;
+//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -164,8 +175,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             // cozyDevice2W->memorizeSend.memorizedData = toSend;
             // cozyDevice2W->memorizeSend.memorizedCmd = SEND_DISCOVER_ACTUATOR_0x2C;
 
-            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+//            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+//            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
             packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
             /* Swap */
@@ -176,10 +187,10 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             packets2send.back()->buffer_length = toSend.size() + 9;
 //            packets2send.back()->frequency = CHANNEL2;
-            packets2send.back()->repeatTime = 25;
-//            IOHC::packetStamp = esp_timer_get_time(); //
-            packets2send.back()->repeat = 1; // Need to stop txMode
-            packets2send.back()->lock = false; //true; // Need to received ASAP
+ //           packets2send.back()->repeatTime = 25;
+//            IOHC::packetStamp = esp_timer_get_time();
+            packets2send.back()->repeat = 1;
+//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -201,8 +212,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             init(packets2send.back());
 
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
             packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ACTUATOR_ACK_0x2D;
             /* Swap */
@@ -213,11 +224,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             packets2send.back()->buffer_length = toSend.size() + 9;
 //            packets2send.back()->frequency = CHANNEL2;
-            packets2send.back()->repeatTime = 25;
+//            packets2send.back()->repeatTime = 25;
             packets2send.back()->delayed = 250;
 //            IOHC::packetStamp = esp_timer_get_time(); //
-            packets2send.back()->repeat = 0; // Need to stop txMode
-            packets2send.back()->lock = false; //true; // Need to received ASAP
+            packets2send.back()->repeat = 0;
+//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -262,8 +273,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             init(packets2send.back());
 
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
             packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
             cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
@@ -276,10 +287,10 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             packets2send.back()->buffer_length = toSend.size() + 9;
 //            packets2send.back()->frequency = CHANNEL2;
-            packets2send.back()->repeatTime = 25;
+//           packets2send.back()->repeatTime = 25;
 //            IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0;
-            packets2send.back()->lock = false;
+//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -352,8 +363,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                     cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
                 }
 
-                packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-                packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
+//                packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
+//                packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
                 packets2send.back()->payload.packet.header.CtrlByte1.asByte += dataLen;
                 /* Swap */
                 memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
@@ -367,7 +378,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 packets2send.back()->repeatTime = 6;
 //                IOHC::packetStamp = esp_timer_get_time(); //
                 packets2send.back()->repeat = 1;
-                packets2send.back()->lock = false;
+//                packets2send.back()->lock = false;
 
                 radioInstance->send(packets2send);
 
@@ -473,7 +484,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 }
 
 /**
- * The function `publishMsg` creates a JSON message from an `iohcPacket` object and publishes it using
+ * The function creates a JSON message from an `iohcPacket` object and publishes it using
  * MQTT if enabled.
  * 
  * @param iohc The `iohc` parameter is a pointer to an object of type `IOHC::iohcPacket`. The function
@@ -501,7 +512,7 @@ bool publishMsg(IOHC::iohcPacket *iohc) {
 
 /**
  * @deprecated
- * The function `msgArchive` copies data from one `iohcPacket` object to another and stores it in an
+ * The function copies data from one `iohcPacket` object to another and stores it in an
  * array, returning true if successful and false if there are not enough buffers available.
  * 
  * @param iohc The `iohc` parameter in the `msgArchive` function is a pointer to an object of type
