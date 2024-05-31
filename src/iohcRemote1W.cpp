@@ -1,13 +1,17 @@
 /*
- Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024. CRIDP https://github.com/cridp
 
- Licensed under the Apache License, Version 2.0 (the "License"); you may not use this file except in compliance with the License.
- You may obtain a copy of the License at :
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
 
-  http://www.apache.org/licenses/LICENSE-2.0
+           http://www.apache.org/licenses/LICENSE-2.0
 
- Unless required by applicable law or agreed to in writing, software distributed under the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- See the License for the specific language governing permissions and limitations under the License.
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
  */
 
 #include <iohcRemote1W.h>
@@ -30,16 +34,9 @@ namespace IOHC {
         return _iohcRemote1W;
     }
 
-    void iohcRemote1W::init(iohcPacket* packet, uint16_t/*size_t*/ typn) {
-        //           for (size_t typn=0; typn<_type.size(); typn++) { // Pre-allocate packets vector; one packet for each remote type loaded
-        // Pas besoin de new ici, std::array gère automatiquement la mémoire
-        // Vous pouvez directement accéder à l'élément avec l'opérateur [].
-        //            auto& packet = packets2send[typn];
-        //                packets2send[typn] = new iohcPacket; //(iohcPacket *) malloc(sizeof(iohcPacket));
-        //            else
-        //                memset((void *)packets2send[typn]->payload.buffer, 0x00, sizeof(packets2send[typn]->payload.buffer));
-        // Common Flags
-        //printf("CreateNew packet\n");
+    void iohcRemote1W::init(iohcPacket* packet, uint16_t typn) {
+        IOHC::relStamp = esp_timer_get_time();
+        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
         packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 1;
@@ -48,7 +45,7 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte2.asByte = 0;
         packet->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
         // Broadcast Target
-        uint16_t bcast = (typn << 6) + 0b111111; // (_type.at(typn) << 6) + 0b111111;
+        uint16_t bcast = (typn << 6) + 0b111111; 
         packet->payload.packet.header.target[0] = 0x00;
         packet->payload.packet.header.target[1] = bcast >> 8;
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
@@ -57,7 +54,7 @@ namespace IOHC {
         packet->repeatTime = 40;
         packet->repeat = 0;
         packet->lock = false;
-        // }
+        
     }
 
     std::vector<uint8_t> frame;
@@ -124,11 +121,8 @@ namespace IOHC {
                 // 0x2e: 0x1120 + target broadcast + source + 0x2e00 + sequence + hmac
                 packets2send.clear();
 
-                IOHC::relStamp = esp_timer_get_time();
 //                for (auto&r: remotes) {
                 if (!found) break;
-
-                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -169,11 +163,9 @@ namespace IOHC {
                 // 0x39: 0x1c00 + target broadcast + source + 0x3900 + sequence + hmac
                 packets2send.clear();
 
-                IOHC::relStamp = esp_timer_get_time();
 //                for (auto&r: remotes) {
                 if (!found) break;
 
-                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -214,11 +206,8 @@ namespace IOHC {
                 // 0x30: 0x1100 + target broadcast + source + 0x3000 + ???
                 packets2send.clear();
 
-                IOHC::relStamp = esp_timer_get_time();
 //                for (auto&r: remotes) {
                 if (!found) break;
-
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -365,12 +354,10 @@ namespace IOHC {
             default: {
                 packets2send.clear();
 
-                IOHC::relStamp = esp_timer_get_time();
                 // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
 //                for (auto&r: remotes) {
                 if (!found) break;
 
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::init(packet, r.type[0]);
@@ -607,9 +594,9 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
         }
 
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "r");
-        /*Dynamic*/JsonDocument doc; //(8192);
+        JsonDocument doc; 
 
-        DeserializationError error = deserializeJson(doc, f); // buf.get());
+        DeserializationError error = deserializeJson(doc, f); 
 
         if (error) {
             Serial.print("Failed to parse JSON: ");
@@ -661,7 +648,7 @@ Every 9 -> 0x20 12:41:28.171 > (23) 1W S 1 E 1  FROM B60D1A TO 00003F CMD 20 <  
     }
    bool iohcRemote1W::save() {
         fs::File f = LittleFS.open(IOHC_1W_REMOTE, "w+");
-        /*Dynamic*/JsonDocument doc; //(8192);
+        JsonDocument doc; 
         for (const auto&r: remotes) {
             // jobj["key"] = bytesToHexString(_key, sizeof(_key));
 //            JsonObject jobj = doc.createNestedObject(bytesToHexString(r.node, sizeof(r.node)));
