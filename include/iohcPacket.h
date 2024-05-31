@@ -46,6 +46,7 @@ namespace IOHC {
         CB2 asStruct;
     };
 
+    /// Common frame header
     struct _header {
         CtrlByte1Union CtrlByte1; //1
         CtrlByte2Union CtrlByte2; //1
