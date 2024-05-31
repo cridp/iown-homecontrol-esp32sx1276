@@ -34,7 +34,7 @@ namespace IOHC {
         return _iohcRemote1W;
     }
 
-    void iohcRemote1W::init(iohcPacket* packet, uint16_t typn) {
+    void iohcRemote1W::forgePacket(iohcPacket* packet, uint16_t typn) {
         IOHC::relStamp = esp_timer_get_time();
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
@@ -125,7 +125,7 @@ namespace IOHC {
                 if (!found) break;
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]);
+                    IOHC::iohcRemote1W::forgePacket(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
@@ -168,7 +168,7 @@ namespace IOHC {
 
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]);
+                    IOHC::iohcRemote1W::forgePacket(packet, r.type[0]);
                     // Packet length
                     //                    packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
@@ -210,7 +210,7 @@ namespace IOHC {
                 if (!found) break;
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]);
+                    IOHC::iohcRemote1W::forgePacket(packet, r.type[0]);
                     // Packet length
                     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
 
@@ -360,7 +360,7 @@ namespace IOHC {
 
 
                     auto* packet = new iohcPacket;
-                    IOHC::iohcRemote1W::init(packet, r.type[0]);
+                    IOHC::iohcRemote1W::forgePacket(packet, r.type[0]);
                     // Packet length
                     // packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x00);
                     // Source (me)

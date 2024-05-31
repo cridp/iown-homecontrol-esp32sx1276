@@ -52,7 +52,7 @@ namespace IOHC {
         bool save() override;
         void scanDump() override { }
 
-        static void init(iohcPacket* packet, uint16_t typn);
+        static void forgePacket(iohcPacket* packet, uint16_t typn);
 
     private:
         iohcRemote1W();

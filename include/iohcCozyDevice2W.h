@@ -84,10 +84,10 @@ namespace IOHC {
         void cmd(DeviceButton cmd, Tokens* data /*const char* data*/);
         bool load() override;
         bool save() override;
-        static void init(iohcPacket* packet);
+        static void forgePacket(iohcPacket* packet);
         void initializeValid();
         // std::vector<uint8_t> valid; //(256);
-        std::/*unordered_*/map<uint8_t, int> mapValid;
+        std::map<uint8_t, int> mapValid;
         // size_t validKey{};
         void scanDump() override;
 

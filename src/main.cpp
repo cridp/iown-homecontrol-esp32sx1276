@@ -95,7 +95,7 @@ void setup() {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 }
 
-void IRAM_ATTR init(iohcPacket* packet) {
+void IRAM_ATTR forgePacket(iohcPacket* packet) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     // Common Flags
     // 8 if protocol version is 0 else 10
@@ -115,7 +115,9 @@ void IRAM_ATTR init(iohcPacket* packet) {
 }
 
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
-    JsonDocument doc; 
+    packets2send.clear();
+
+    JsonDocument doc;
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
         case iohcDevice::RECEIVED_DISCOVER_0x28: {
@@ -125,9 +127,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00};
             // 0x0b OverKiz 0x0c Atlantic
 
-            packets2send.clear();
+//            packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            init(packets2send.back());
+            forgePacket(packets2send.back());
 
 //            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
 //            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
@@ -172,7 +174,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            init(packets2send.back());
+            forgePacket(packets2send.back());
 
             // packets2send.back()->payload.packet.header.cmd = 0x38;
             packets2send.back()->payload.packet.header.cmd = iohcDevice::SEND_DISCOVER_ACTUATOR_0x2C;
@@ -212,9 +214,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             std::vector<uint8_t> toSend = {};
 
-            packets2send.clear();
+            // packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            init(packets2send.back());
+            forgePacket(packets2send.back());
 
 //            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
 //            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
@@ -273,9 +275,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             std::vector<uint8_t> toSend;
             toSend.assign(encrypted_key, encrypted_key + 16);
 
-            packets2send.clear();
+            // packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            init(packets2send.back());
+            forgePacket(packets2send.back());
 
 //            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
 //            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
@@ -346,7 +348,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
                 packets2send.clear();
                 packets2send.push_back(new IOHC::iohcPacket);
-                init(packets2send.back());
+                forgePacket(packets2send.back());
 
                 packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_CHALLENGE_ANSWER_0x3D;
 
