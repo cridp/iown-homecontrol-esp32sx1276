@@ -1,9 +1,9 @@
-Based on the work of [Velocet/iown-homecontrol](https://github.com/Velocet/iown-homecontrol)
+Based on the wonderfull work of [Velocet/iown-homecontrol](https://github.com/Velocet/iown-homecontrol)
 
 ### **Disclaimer**  
 Tool designed for educational and testing purposes, provided "as is", without warranty of any kind. Creators and contributors are not responsible for any misuse or damage caused by this tool.
 
-_I don't give any support, especially concerning the removed 1W part._
+_I don't give any support, especially concerning the obsolete 1W part._
 
 ### Usage
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
