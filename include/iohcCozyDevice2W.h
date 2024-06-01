@@ -75,10 +75,11 @@ namespace IOHC {
         bool verbosity = true;
 
         bool isFake(address nodeSrc, address nodeDst) override;
-        void cmd(DeviceButton cmd, Tokens* data /*const char* data*/);
+
+        void cmd(DeviceButton cmd, Tokens* data);
         bool load() override;
         bool save() override;
-        static void forgePacket(iohcPacket* packet);
+        static void forgePacket(iohcPacket* packet, std::vector<uint8_t> vector);
         void initializeValid();
         // std::vector<uint8_t> valid; //(256);
         std::map<uint8_t, int> mapValid;
