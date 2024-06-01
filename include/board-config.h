@@ -19,7 +19,7 @@
 
 #define RADIO_SX127X
 #define Regulatory_Domain_EU_868
-
+#define RADIO_SX126X
 /*
  * Board pins definitions
  */
@@ -52,7 +52,6 @@
 #define RADIO_RESET        RADIO_RST_PIN  //                 12
 #define RADIO_NSS          RADIO_CS_PIN   //                 25
 #endif
-
 #if defined(RADIO_SX127X)
 //#define RADIO_DIO_0                             5   // NodeMCU D1
 //#define RADIO_DIO_1                             2   // NodeMCU D4 // Not used - No wire
@@ -63,14 +62,11 @@
 //#define RADIO_DIO_2                             34      // Not used - No wire
 #define RADIO_DIO_4                             RADIO_DIO2_PIN //                 34
 #endif
-
 #if defined(RADIO_SX127X)
 #define RADIO_PACKET_AVAIL                      RADIO_DIO_0     // Packet Received / CRC ok from Radio
 #define RADIO_DATA_AVAIL                        RADIO_DIO_1     // FIFO empty from Radio
 #define RADIO_RXTIMEOUT                         RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequency)
-
 #define RADIO_PREAMBLE_DETECTED                 RADIO_DIO_4     // Preamble detected from Radio (used instead of FIFO empty)
-
 #endif
 
 #define SPI_CLK_FRQ                                 10000000

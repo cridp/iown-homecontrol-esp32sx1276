@@ -15,6 +15,7 @@
  */
 
 #include <esp32-hal-gpio.h>
+#include <map>
 
 #include <iohcRadio.h>
 #include <utility>
