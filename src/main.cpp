@@ -56,12 +56,8 @@ IOHC::iohcSystemTable *sysTable;
 IOHC::iohcRemote1W *remote1W;
 IOHC::iohcCozyDevice2W *cozyDevice2W;
 IOHC::iohcOtherDevice2W *otherDevice2W;
-//IOHC::iohcObject *dev;
 
 uint32_t frequencies[] = FREQS2SCAN;
-
-// using namespace ESP32Console;
-// Console console;
 
 using namespace IOHC;
 
@@ -95,28 +91,27 @@ void setup() {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 }
 
-void IRAM_ATTR forgePacket(iohcPacket* packet) {
+void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> vector) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+    IOHC::packetStamp = esp_timer_get_time();
+
     // Common Flags
     // 8 if protocol version is 0 else 10
     packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
     packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 0;
     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
     packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+    packet->payload.packet.header.CtrlByte1.asByte += vector.size();
+
     packet->payload.packet.header.CtrlByte2.asByte = 0;
 
     packet->frequency = CHANNEL2;
     packet->repeatTime = 25;
     packet->repeat = 0;
     packet->lock = false;
-
-    IOHC::packetStamp = esp_timer_get_time(); //
-
 }
 
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
-    packets2send.clear();
-
     JsonDocument doc;
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
@@ -124,16 +119,14 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             printf("2W Pairing Asked\n");
             if (!Cmd::pairMode) break;
 
-            std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00};
             // 0x0b OverKiz 0x0c Atlantic
+            std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00};
 
-//            packets2send.clear();
+            packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            forgePacket(packets2send.back());
+            forgePacket(packets2send.back(), toSend);
 
-//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ANSWER_0x29;
  
             /* Swap */
@@ -143,13 +136,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
             packets2send.back()->buffer_length = toSend.size() + 9;
-            //packet2send[0]->payload.packet.header.framelength +1;
-//           packets2send.back()->frequency = CHANNEL2;
-//            packets2send.back()->repeatTime = 25;
+
             packets2send.back()->delayed = 250;
-//            IOHC::packetStamp = esp_timer_get_time();
             packets2send.back()->repeat = 0;
-//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -174,16 +163,14 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            forgePacket(packets2send.back());
+            forgePacket(packets2send.back(), toSend);
 
             // packets2send.back()->payload.packet.header.cmd = 0x38;
             packets2send.back()->payload.packet.header.cmd = iohcDevice::SEND_DISCOVER_ACTUATOR_0x2C;
             // cozyDevice2W->memorizeSend.memorizedData = toSend;
             // cozyDevice2W->memorizeSend.memorizedCmd = SEND_DISCOVER_ACTUATOR_0x2C;
 
-//            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-//            packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
@@ -192,11 +179,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
             packets2send.back()->buffer_length = toSend.size() + 9;
-//            packets2send.back()->frequency = CHANNEL2;
- //           packets2send.back()->repeatTime = 25;
-//            IOHC::packetStamp = esp_timer_get_time();
             packets2send.back()->repeat = 1;
-//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -214,14 +197,13 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
             std::vector<uint8_t> toSend = {};
 
-            // packets2send.clear();
+            packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            forgePacket(packets2send.back());
+            forgePacket(packets2send.back(), toSend);
 
-//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+//            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ACTUATOR_ACK_0x2D;
+
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
@@ -229,12 +211,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
             packets2send.back()->buffer_length = toSend.size() + 9;
-//            packets2send.back()->frequency = CHANNEL2;
-//            packets2send.back()->repeatTime = 25;
             packets2send.back()->delayed = 250;
-//            IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0;
-//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -275,13 +253,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             std::vector<uint8_t> toSend;
             toSend.assign(encrypted_key, encrypted_key + 16);
 
-            // packets2send.clear();
+            packets2send.clear();
             packets2send.push_back(new IOHC::iohcPacket);
-            forgePacket(packets2send.back());
+            forgePacket(packets2send.back(), toSend);
 
-//            packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-//            packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
-            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
             cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
 
@@ -292,11 +268,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
             packets2send.back()->buffer_length = toSend.size() + 9;
-//            packets2send.back()->frequency = CHANNEL2;
-//           packets2send.back()->repeatTime = 25;
-//            IOHC::packetStamp = esp_timer_get_time(); //
             packets2send.back()->repeat = 0;
-//            packets2send.back()->lock = false;
 
             radioInstance->send(packets2send);
             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -348,7 +320,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
                 packets2send.clear();
                 packets2send.push_back(new IOHC::iohcPacket);
-                forgePacket(packets2send.back());
 
                 packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_CHALLENGE_ANSWER_0x3D;
 
@@ -369,9 +340,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                     cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
                 }
 
-//                packets2send.back()->payload.packet.header.CtrlByte1.asByte = 8;
-//                packets2send.back()->payload.packet.header.CtrlByte2.asByte = 0;
-                packets2send.back()->payload.packet.header.CtrlByte1.asByte += dataLen;
+                // packets2send.back()->payload.packet.header.CtrlByte1.asByte += dataLen;
+                std::vector<uint8_t> toSend;
+                toSend.assign(initial_value, initial_value + dataLen);
+                forgePacket(packets2send.back(), toSend);
+
                 /* Swap */
                 memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
@@ -380,11 +353,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
 
                 packets2send.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
 
-//                packets2send.back()->frequency = CHANNEL2;
                 packets2send.back()->repeatTime = 6;
-//                IOHC::packetStamp = esp_timer_get_time(); //
                 packets2send.back()->repeat = 1;
-//                packets2send.back()->lock = false;
 
                 radioInstance->send(packets2send);
 
