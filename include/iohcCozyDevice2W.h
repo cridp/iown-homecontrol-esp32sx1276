@@ -25,12 +25,6 @@
 
 #define COZY_2W_FILE  "/Cozy2W.json"
 
-/*
-    Singleton class with a full implementation of a COZYTOUCH/KIZBOX/CONEXOON controller
-    The type of the controller can be managed changing related value within its profile file (Cozy2W.json)
-    Type can be multiple, as it would be for KLI310, KLI312 and KLI313
-    Also, the address and private key can be configured within the same json file.
-*/
 namespace IOHC {
 /// The `enum class DeviceButton` is defining an enumeration type with different button commands that can be used for a specific device. 
 /// Each of the identifiers within the enumeration represents a specific button command that can be sent to the device. 
@@ -73,7 +67,7 @@ namespace IOHC {
         std::vector<Address> addresses = {
             Address{0x48, 0x79, 0x02}, //Master_to
             Address{0x8C, 0xCB, 0x31}, //Slave_to
-            //        Address{0x47, 0x77, 0x06},
+            // Address{0x47, 0x77, 0x06},
             // Address{0x8C, 0xCB, 0x30},
             // Address{0xba, 0x11, 0xad},
         };
