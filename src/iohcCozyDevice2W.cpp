@@ -57,11 +57,9 @@ namespace IOHC {
         return this->Fake;
     }
 
-    static size_t j, k = 0;
-
+    /// Emulates device button press
     void iohcCozyDevice2W::cmd(DeviceButton cmd, Tokens* data) {
-        packets2send.clear();
-        // Emulates device button press
+
         if (!_radioInstance) {
             Serial.println("NO RADIO INSTANCE");
             _radioInstance = IOHC::iohcRadio::getInstance();
@@ -71,7 +69,7 @@ namespace IOHC {
             case DeviceButton::associate: {
                 std::vector<uint8_t> toSend = {};
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -96,7 +94,7 @@ namespace IOHC {
             case DeviceButton::powerOn: {
                 std::vector<uint8_t> toSend = {0x0C, 0x60, 0x01, 0x2C};
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -128,7 +126,7 @@ namespace IOHC {
                 if (data->size() == 2) addr = 0;
                 else addr = std::stoi(data->at(2));
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -168,7 +166,7 @@ namespace IOHC {
 
                 size_t dest = 0;
 
-                // packets2send.clear();
+                packets2send.clear();
                 for (const auto &addr: addresses) {
                     packets2send.push_back(new iohcPacket);
                     forgePacket(packets2send.back());
@@ -229,7 +227,7 @@ namespace IOHC {
                 if (data->size() == 2) addr = 0;
                 else addr = std::stoi(data->at(2));
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -256,7 +254,7 @@ namespace IOHC {
                 // std::vector<uint8_t> toSend = {0x00, 0x0c, 0x00, 0x00, 0x03, 0x00, 0x00, 0x01, 0x53};
                 std::vector<uint8_t> toSend = {0x0c, 0x60, 0x01, 0x30}; //, 0x2b, 0x05, 0x00, 0x0f, 0x04, 0x0c, 0xe7, 0x07};
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -294,7 +292,7 @@ namespace IOHC {
                 uint8_t to[3] = {0xda, 0x2e, 0xe6}; //
                 uint8_t to_1[3] = {0x05, 0x4e, 0x17}; //{0x31, 0x58, 0x24}; //
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -330,7 +328,7 @@ namespace IOHC {
  
                 toSend[3] = custom; //custom;
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -363,7 +361,7 @@ namespace IOHC {
                 //                uint8_t broadcast[3];
                 uint8_t broadcast[3] = {0x00, 0xFF, 0xFB}; //{0x02, 0x02, 0xFB}; //data->at(1).c_str();
                 //            hexStringToBytes(dat, broadcast);
-                // packets2send.clear();
+                packets2send.clear();
                 size_t i = 0;
                 for (i = 0; i < 10; i++) {
                     packets2send.push_back(new iohcPacket);
@@ -403,7 +401,7 @@ namespace IOHC {
                 uint8_t broadcast_1[3] = {0x00, 0xFF, 0xFB}; //data->at(1).c_str();
                 uint8_t broadcast_2[3] = {0x00, 0x0d, 0x3b};
                 //                hexStringToBytes(dat, broadcast);
-                // packets2send.clear();
+                packets2send.clear();
                 size_t i = 0;
                 for (i = 0; i < 20; i++) {
                     packets2send.push_back(new iohcPacket);
@@ -451,7 +449,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                     {0x47, 0x77, 0x06}, {0x48, 0x79, 0x02}, {0x8C, 0xCB, 0x30}, {0x8C, 0xCB, 0x31}
                 };
 
-                // packets2send.clear();
+                packets2send.clear();
                 size_t i = 0;
                 for (i = 0; i < 15; i++) {
                     packets2send.push_back(new iohcPacket);
@@ -483,7 +481,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
             case DeviceButton::ack: {
                 std::vector<uint8_t> toSend = {};
 
-                // packets2send.clear();
+                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back());
 
@@ -505,8 +503,6 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 break;
             }
             case DeviceButton::checkCmd: {
-                // packets2send.clear();
-                // digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 std::vector<uint8_t> toSend;
                 // = {}; //{0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; //, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12};
                 uint8_t special12[] = {
@@ -526,6 +522,7 @@ else                    memcpy(packets2send.back()->payload.packet.header.target
                 //{0x47, 0x77, 0x06}, {0x48, 0x79, 0x02}, {0x8C, 0xCB, 0x30}, {0x8C, 0xCB, 0x31}
                 uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
                 uint8_t counter = 0;
+                packets2send.clear();
                 for (const auto&command: mapValid) {
                     if (command.second == 0 || (command.second == 5 && command.first != 0x19)) {
                         counter++;

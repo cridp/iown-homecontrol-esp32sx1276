@@ -35,23 +35,6 @@ namespace IOHC {
     enum class Other2WButton {
         discovery,
         getName,
-        // powerOn,
-        // setTemp,
-        // setMode,
-        // setPresence,
-        // midnight,
-        // custom,
-        // discover28,
-        // discover2A_1,
-        // discover2A_2,
-//        Pair,
-//        Add,
-//        Remove,
-//        Open,
-//        Close,
-//        Stop,
-//        Vent,
-//        ForceOpen
     };
 
     class iohcOtherDevice2W : public iohcDevice {
