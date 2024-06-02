@@ -59,6 +59,7 @@ namespace IOHC {
     std::vector<uint8_t> frame;
 
     void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
+        if (data->size() == 1) {return; }
         std::string description = data->at(1).c_str();
 
         auto it = std::find_if( remotes.begin(), remotes.end(),  [&] ( const remote &r  ) {
@@ -66,7 +67,6 @@ namespace IOHC {
               } );
 
         // auto&[node, sequence, key, type, manufacturer, description] = *it;
-
         remote& r = *it;
         bool found = true;
         if (it == remotes.end()) {
@@ -89,17 +89,7 @@ namespace IOHC {
             // return;
         }
 */
-/*
-        auto it = std::find_if(remotes.begin(), remotes.end(), [&](const remote& r) {
-            // Create a temporary object (assuming you have a way to construct it)
-            iohcRemote1W tempRemote;
-            return tempRemote.compareTarget(r);
-        });
 
-        if (it == remotes.end()) {
-            printf("ERROR %p NOT IN JSON", target);
-            return; }
-*/
 /*
         // remote address
         address remoteAddress = {static_cast<uint8_t>(value >> 16),
@@ -358,7 +348,6 @@ namespace IOHC {
                 // 0x00: 0x1600 + target broadcast + source + 0x00 + Originator + ACEI + Main Param + FP1 + FP2 + sequence + hmac
 //                for (auto&r: remotes) {
                 if (!found) break;
-
 
                     auto* packet = new iohcPacket;
                     IOHC::iohcRemote1W::forgePacket(packet, r.type[0]);

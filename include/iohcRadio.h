@@ -17,9 +17,7 @@
 #ifndef IOHC_RADIO_H
 #define IOHC_RADIO_H
 
-#include <map>
 #include <Delegate.h>
-#include <memory>
 
 #include <board-config.h>
 #include <iohcCryptoHelpers.h>
@@ -27,13 +25,11 @@
 
 #if defined(RADIO_SX127X)
         #include <SX1276Helpers.h>
-#elif defined(CC1101)
-        #include <CC1101Helpers.h>
 #endif
-
-#if defined(ESP8266)
-  #include <TickerUs.h>
-#elif defined(ESP32)  	
+#if defined(RADIO_SX126X)
+        #include <SX126xHelpers.h>
+#endif
+#if defined(ESP32)
     #include <TickerUsESP32.h>
 #endif
 

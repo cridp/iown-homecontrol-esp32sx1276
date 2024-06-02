@@ -17,9 +17,9 @@ VARIOUS 2W
 - **scanDump**    _Dump Scan Results_
 - **pairMode**    _pairMode_
 
-VARIOUS 1W
+VARIOUS 1W (Use the description name in 1W.json as argument)
 - **pair**      _1W put device in pair mode_
-- **add**       _1*W add controller to device_
+- **add**       _1W add controller to device_
 - **remove**    _1W remove controller from device_
 - **open**      _1W open device_
 - **close**     _1W close device_
@@ -31,6 +31,6 @@ VARIOUS 1W
 - **mode3**     _1W Mode3_
 - **mode4**     _1W Mode4_
 
-VARIOUS
+COMMON
 - **verbose**   _Toggle verbose output on packets list_
 - **help**      _This command_
