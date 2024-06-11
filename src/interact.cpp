@@ -81,8 +81,6 @@ void createCommands() {
     Cmd::addHandler((char *) "force", (char *) "1W force device open", [](Tokens *cmd)-> void {
         IOHC::iohcRemote1W::getInstance()->cmd(IOHC::RemoteButton::ForceOpen, cmd);
     });
-    //    Cmd::addHandler((char *)"testKey", (char *)"Test keys generation", [](Tokens* cmd)-> void {    remote1W->cmd(IOHC::RemoteButton::testKey, nullptr);    });
-
     Cmd::addHandler((char *) "mode1", (char *) "1W Mode1", [](Tokens *cmd)-> void {
         IOHC::iohcRemote1W::getInstance()->cmd(IOHC::RemoteButton::Mode1, cmd);
     });

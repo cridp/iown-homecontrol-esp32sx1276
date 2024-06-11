@@ -640,8 +640,13 @@ valid = {
         printf("%u toCheck \n", count);
     }
 
+    /**
+    * @brief Load Cozy 2W settings from file and store in _radioInstance.
+    * @return True if successful false otherwise. This is a blocking call
+    */
     bool iohcCozyDevice2W::load() {
         _radioInstance = iohcRadio::getInstance();
+        // Load Cozy 2W device settings from file
         if (LittleFS.exists(COZY_2W_FILE))
             Serial.printf("Loading Cozy 2W devices settings from %s\n", COZY_2W_FILE);
         else {

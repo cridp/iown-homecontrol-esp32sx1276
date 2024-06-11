@@ -39,7 +39,7 @@ namespace IOHC {
         Stop,
         Vent,
         ForceOpen,
-        testKey, Mode1, Mode2, Mode3, Mode4
+        Mode1, Mode2, Mode3, Mode4
     };
 
     class iohcRemote1W : public iohcDevice {
