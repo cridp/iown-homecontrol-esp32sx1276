@@ -100,6 +100,11 @@ void setup() {
  * which is a standard C++ container that stores a sequence of elements of type `uint8_t` (unsigned
  * 8-bit integer). In this function, the size of the `
  */
+/**
+* @brief Creates a iohcPacket with the given vector. This is the function that is called by I / OHC to forge the IOHC packet
+* @param packet * The packet you want to forge
+* @param vector The vector that will be added to the packet
+*/
 void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> vector) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     IOHC::packetStamp = esp_timer_get_time();
