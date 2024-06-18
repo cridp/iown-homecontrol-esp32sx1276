@@ -6,7 +6,7 @@ Tool designed for educational and testing purposes, provided "as is", without wa
 
 _I don't give any support, especially concerning the obsolete 1W part._
 
-### Documention
+### Documentation
 This code was intentionally written with all possible details found in the protocol documentation.
 This allows those who have little knowledge of C/CPP to understand the sequence of each command.
 All these details require you to carefully read the work of @Velocet to understand this protocol.
