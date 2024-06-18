@@ -8,7 +8,9 @@ _I don't give any support, especially concerning the obsolete 1W part._
 
 ### Documentation
 This code was intentionally written with all possible details found in the protocol documentation.
-This allows those who have little knowledge of C/CPP to understand the sequence of each command.
+- (ie: there's 3 differents CRC, 3 differents AES implementation, all detailled)
+
+- This allows those who have little knowledge of C/CPP to understand the sequence of each command.
 All these details require you to carefully read the work of @Velocet to understand this protocol.
 There is no magic documentation, there is only personal work to adapt to your own needs. The functional basis for the 1W and 2W is there.
 
