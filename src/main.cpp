@@ -91,6 +91,20 @@ void setup() {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 }
 
+/**
+ * The function `forgePacket` modifies a given `iohcPacket` structure with specific values and
+ * settings.
+ * 
+ * @param packet The `packet` parameter is a pointer to an `iohcPacket` struct.
+ * @param vector The `vector` parameter in the `forgePacket` function is a `std::vector<uint8_t>` type,
+ * which is a standard C++ container that stores a sequence of elements of type `uint8_t` (unsigned
+ * 8-bit integer). In this function, the size of the `
+ */
+/**
+* @brief Creates a iohcPacket with the given vector. This is the function that is called by I / OHC to forge the IOHC packet
+* @param packet * The packet you want to forge
+* @param vector The vector that will be added to the packet
+*/
 void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> vector) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     IOHC::packetStamp = esp_timer_get_time();
@@ -126,7 +140,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             forgePacket(packets2send.back(), toSend);
 
-            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ANSWER_0x29;
  
             /* Swap */

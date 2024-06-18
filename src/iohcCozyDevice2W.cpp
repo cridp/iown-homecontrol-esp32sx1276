@@ -33,6 +33,11 @@ namespace IOHC {
         return _iohcCozyDevice2W;
     }
 
+    /**
+    * @brief Forge IOHC Cozy Device 2 packet. This function is called by iohcCozyDevice2W :: forgePacket
+    * @param packet * Pointer to the IOHC packet to forge
+    * @param vector Vector of data to put in the I / O
+    */
     void iohcCozyDevice2W::forgePacket(iohcPacket* packet, std::vector<unsigned char> vector) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         IOHC::relStamp = esp_timer_get_time();
@@ -53,8 +58,15 @@ namespace IOHC {
         packet->lock = false; 
     }
 
+    /**
+    * @brief Checks if this cozy is a wake. This is used to detect if we have an IOCHA device that is in charge of the IOCHA and should be woken up.
+    * @param nodeSrc The source node address of the IOCHA.
+    * @param nodeDst The destination node address of the IOCHA.
+    * @return true if this device is a wake false otherwise. Note that this device is not a wake
+    */
     bool iohcCozyDevice2W::isFake(address nodeSrc, address nodeDst) {
         this->Fake = false;
+        // Fake to ensure that the node is in the same node src and dst.
         if (!memcmp(this->gateway, nodeSrc, 3) || !memcmp(this->gateway, nodeDst, 3)) { this->Fake = true; }
         return this->Fake;
     }
@@ -617,31 +629,48 @@ valid = {
         // printf("MapValid size: %zu\n", mapValid.size());
     }
 
+    /**
+    * @brief Dump the scan result to the console for debugging purposes. \ ingroup iohcCozy
+    */
     void iohcCozyDevice2W::scanDump() {
         printf("*********************** Scan result ***********************\n");
 
         uint8_t count = 0;
 
         for (auto &it: mapValid) {
+            // Prints the first two bytes of the second.
+            // Prints the token and argument.
             if (it.second != 0x08) {
+                // Prints the first and second of the token.
+                // Prints the argument string representation of the argument.
                 if(it.second == 0x3C)
                     printf("%2.2x=AUTH ", it.first, it.second);
+                // Prints the string representation of the argument.
+                // Prints the string representation of the argument.
                 else if(it.second == 0x80)
                     printf("%2.2x=NRDY ", it.first, it.second);
                 else
                     printf("%2.2x=%2.2x\t", it.first, it.second);
                 count++;
+                // Prints the number of bytes to the console.
+                // Prints the number of bytes to the console.
                 if (count % 16 == 0) printf("\n");
             }
         }
 
+        // Prints the number of bytes to the console.
         if (count % 16 != 0) printf("\n");
         
         printf("%u toCheck \n", count);
     }
 
+    /**
+    * @brief Load Cozy 2W settings from file and store in _radioInstance.
+    * @return True if successful false otherwise. This is a blocking call
+    */
     bool iohcCozyDevice2W::load() {
         _radioInstance = iohcRadio::getInstance();
+        // Load Cozy 2W device settings from file
         if (LittleFS.exists(COZY_2W_FILE))
             Serial.printf("Loading Cozy 2W devices settings from %s\n", COZY_2W_FILE);
         else {
