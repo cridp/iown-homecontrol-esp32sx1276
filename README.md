@@ -14,6 +14,8 @@ This code was intentionally written with all possible details found in the proto
 All these details require you to carefully read the work of @Velocet to understand this protocol.
 - There is no magic documentation, there is only personal work to adapt to your own needs. 
 - But all the functional basis for the 1W and 2W is there.
+- All AES are there, without using an external library.
+- All 1W / 2W commands pairing/associating answers are there too.
 
 ### Usage
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
