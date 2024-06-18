@@ -1,9 +1,16 @@
 Based on the wonderfull work of [Velocet/iown-homecontrol](https://github.com/Velocet/iown-homecontrol)
 
+
 ### **Disclaimer**  
 Tool designed for educational and testing purposes, provided "as is", without warranty of any kind. Creators and contributors are not responsible for any misuse or damage caused by this tool.
 
 _I don't give any support, especially concerning the obsolete 1W part._
+
+### Documentation
+This code was intentionally written with all possible details found in the protocol documentation.
+This allows those who have little knowledge of C/CPP to understand the sequence of each command.
+All these details require you to carefully read the work of @Velocet to understand this protocol.
+There is no magic documentation, there is only personal work to adapt to your own needs. The functional basis for the 1W and 2W is there.
 
 ### Usage
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
