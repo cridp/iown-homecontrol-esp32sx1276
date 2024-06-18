@@ -12,7 +12,8 @@ This code was intentionally written with all possible details found in the proto
 
 - This allows those who have little knowledge of C/CPP to understand the sequence of each command.
 All these details require you to carefully read the work of @Velocet to understand this protocol.
-- There is no magic documentation, there is only personal work to adapt to your own needs. But all the functional basis for the 1W and 2W is there.
+- There is no magic documentation, there is only personal work to adapt to your own needs. 
+- But all the functional basis for the 1W and 2W is there.
 
 ### Usage
 Use it like a scanner, do some commands on your real device to identify the corresponding CMDid and address
