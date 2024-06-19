@@ -6,6 +6,9 @@ Tool designed for educational and testing purposes, provided "as is", without wa
 
 _I don't give any support, especially concerning the obsolete 1W part._
 
+This code doesnt use the RadioLib, even perfect for noob, it doesnt allow to be fast as possible
+
+
 ### Documentation
 This code was intentionally written with all possible details found in the protocol documentation.
 - (ie: there's 3 differents CRC, 3 differents AES implementation, all detailled)
