@@ -97,6 +97,7 @@ namespace IOHC {
         address _node{};
         address _dst{};
         std::string _type;
+        std::string _description;
         // uint16_t _sequence;
         // uint8_t _key[16];
         // std::vector<uint16_t> _type;

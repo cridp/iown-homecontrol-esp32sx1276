@@ -6,7 +6,7 @@ Tool designed for educational and testing purposes, provided "as is", without wa
 
 _I don't give any support, especially concerning the obsolete 1W part._
 
-This code doesnt use the RadioLib, even perfect for noob, it doesnt allow to be fast as possible
+This code doesnt use the RadioLib, even perfect for start, it doesnt allow to be fast as possible
 
 
 ### Documentation
