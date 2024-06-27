@@ -687,6 +687,8 @@ valid = {
         for (JsonPair kv: doc.as<JsonObject>()) {
             hexStringToBytes(kv.key().c_str(), _node);
             auto jobj = kv.value().as<JsonObject>();
+            _type = jobj["type"].as<std::string>();
+            _description = jobj["description"].as<std::string>();
             //     hexStringToBytes(jobj["key"].as<const char*>(), _key);
             hexStringToBytes(jobj["dst"].as<const char *>(), _dst);
             //     uint8_t btmp[2];
@@ -716,6 +718,10 @@ valid = {
         JsonObject jobj = doc[bytesToHexString(_node, sizeof(_node))].to<JsonObject>();
      //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
         jobj["dst"] = bytesToHexString(_dst, sizeof _dst);
+
+        jobj["type"] = _type;
+        jobj["description"] = _description;
+
         //        uint8_t btmp[2];
         //        btmp[1] = _sequence & 0x00ff;
         //        btmp[0] = _sequence >> 8;

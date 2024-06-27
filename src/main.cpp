@@ -96,16 +96,16 @@ void setup() {
  * settings.
  * 
  * @param packet The `packet` parameter is a pointer to an `iohcPacket` struct.
- * @param vector The `vector` parameter in the `forgePacket` function is a `std::vector<uint8_t>` type,
+ * @param toSend The `vector` parameter in the `forgePacket` function is a `std::vector<uint8_t>` type,
  * which is a standard C++ container that stores a sequence of elements of type `uint8_t` (unsigned
  * 8-bit integer). In this function, the size of the `
  */
 /**
 * @brief Creates a iohcPacket with the given vector. This is the function that is called by I / OHC to forge the IOHC packet
 * @param packet * The packet you want to forge
-* @param vector The vector that will be added to the packet
+* @param toSend The vector that will be added to the packet
 */
-void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> vector) {
+void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> toSend) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     IOHC::packetStamp = esp_timer_get_time();
 
@@ -115,7 +115,9 @@ void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> vector) {
     packet->payload.packet.header.CtrlByte1.asStruct.Protocol = 0;
     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
     packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
-    packet->payload.packet.header.CtrlByte1.asByte += vector.size();
+    packet->payload.packet.header.CtrlByte1.asByte += toSend.size();
+    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+    packets2send.back()->buffer_length = toSend.size() + 9;
 
     packet->payload.packet.header.CtrlByte2.asByte = 0;
 
@@ -146,9 +148,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.source, cozyDevice2W->gateway, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-
-            packets2send.back()->buffer_length = toSend.size() + 9;
+//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            packets2send.back()->buffer_length = toSend.size() + 9;
 
             packets2send.back()->delayed = 250;
             packets2send.back()->repeat = 0;
@@ -189,9 +190,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            packets2send.back()->buffer_length = toSend.size() + 9;
 
-            packets2send.back()->buffer_length = toSend.size() + 9;
             packets2send.back()->repeat = 1;
 
             radioInstance->send(packets2send);
@@ -221,9 +222,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            packets2send.back()->buffer_length = toSend.size() + 9;
 
-            packets2send.back()->buffer_length = toSend.size() + 9;
             packets2send.back()->delayed = 250;
             packets2send.back()->repeat = 0;
 
@@ -278,9 +279,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//            packets2send.back()->buffer_length = toSend.size() + 9;
 
-            packets2send.back()->buffer_length = toSend.size() + 9;
             packets2send.back()->repeat = 0;
 
             radioInstance->send(packets2send);
@@ -353,7 +354,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                     cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
                 }
 
-                // packets2send.back()->payload.packet.header.CtrlByte1.asByte += dataLen;
                 std::vector<uint8_t> toSend;
                 toSend.assign(initial_value, initial_value + dataLen);
                 forgePacket(packets2send.back(), toSend);
@@ -362,9 +362,8 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-                memcpy(packets2send.back()->payload.buffer + 9, initial_value, dataLen);
-
-                packets2send.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, initial_value, dataLen);
+//                packets2send.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
 
                 packets2send.back()->repeatTime = 6;
                 packets2send.back()->repeat = 1;
