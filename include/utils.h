@@ -19,6 +19,7 @@
 
 #include <unordered_map>
 /* Various Part*/
+#include <iohcPacket.h>
 #include <iostream>
 #include <sstream>
 #include <iomanip>
@@ -162,5 +163,32 @@ Note Typically only USER or SAAC are used.
 */
 inline std::unordered_map<int, std::string> sOriginator = {
 };
+
+inline int get_address_class(address address) {// char (*uint_8)[3]) {
+
+        if (address[0] != 0) { return 13; } // bits 0..8
+
+        if (address[1] || (address[2] & 0xC0) != 0) { // bits 8..18
+            switch (address[2] & 0x3F) { // bits 18..24
+                case 0x3B: return  7;
+                case 0x3C: return  8;
+                case 0x3D: return  9;
+                case 0x3E: return 10;
+                case 0x3F: return 11;
+                default: return 12;
+            }
+        }
+        else { switch (address[2] & 0x3F) { // bits 18..24
+            case 0x00: return 0;
+            default: return 1;
+            case 0x3B: return 2;
+            case 0x3C: return 3;
+            case 0x3D: return 4;
+            case 0x3E: return 5;
+            case 0x3F: return 6; // broadcast
+        }
+        }
+    }
+
 }
 #endif

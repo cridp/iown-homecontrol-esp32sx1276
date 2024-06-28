@@ -36,9 +36,9 @@ namespace IOHC {
     /**
     * @brief Forge IOHC Cozy Device 2 packet. This function is called by iohcCozyDevice2W :: forgePacket
     * @param packet * Pointer to the IOHC packet to forge
-    * @param vector Vector of data to put in the I / O
+    * @param toSend Vector of data to put in the I / O
     */
-    void iohcCozyDevice2W::forgePacket(iohcPacket* packet, std::vector<unsigned char> vector) {
+    void iohcCozyDevice2W::forgePacket(iohcPacket* packet, const std::vector<unsigned char> &toSend) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         IOHC::relStamp = esp_timer_get_time();
 
@@ -50,7 +50,9 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
         packet->payload.packet.header.CtrlByte2.asByte = 0;
 
-        packet->payload.packet.header.CtrlByte1.asByte += vector.size();
+        packet->payload.packet.header.CtrlByte1.asByte += toSend.size();
+        memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
+        packet->buffer_length = toSend.size() + 9;
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 25;
@@ -59,10 +61,10 @@ namespace IOHC {
     }
 
     /**
-    * @brief Checks if this cozy is a wake. This is used to detect if we have an IOCHA device that is in charge of the IOCHA and should be woken up.
+    * @brief Checks if this cozy is a fake. This is used to detect if we have an IOCHA device that is in charge of the IOCHA and should be woken up.
     * @param nodeSrc The source node address of the IOCHA.
     * @param nodeDst The destination node address of the IOCHA.
-    * @return true if this device is a wake false otherwise. Note that this device is not a wake
+    * @return true if this device is a fake false otherwise. Note that this device is not a wake
     */
     bool iohcCozyDevice2W::isFake(address nodeSrc, address nodeDst) {
         this->Fake = false;
@@ -97,9 +99,9 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); 
@@ -121,9 +123,9 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); 
@@ -153,9 +155,10 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
+
                 packets2send.back()->delayed = 50;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -193,8 +196,10 @@ namespace IOHC {
 //                    packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
-                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-                    packets2send.back()->buffer_length = toSend.size() + 9;
+
+//                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                    packets2send.back()->buffer_length = toSend.size() + 9;
+
                     dest++;
                 }
                 packets2send[1]->delayed = 250;
@@ -224,9 +229,10 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
+
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); 
                 break;
@@ -256,9 +262,9 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
 //                memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
                 packets2send.back()->delayed = 50;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -282,9 +288,10 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
+
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); 
                 
@@ -323,9 +330,10 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
+
                 packets2send.back()->delayed = 250; // Give enough time for the answer
 
                 }
@@ -359,12 +367,12 @@ namespace IOHC {
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, slave_to, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
                 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                packets2send.back()->delayed = 501;
+                packets2send.back()->delayed = 250;
                 // packets2send.back()->repeat = 1;
 //                }
                _radioInstance->send(packets2send); // Verify !
@@ -395,15 +403,14 @@ namespace IOHC {
 
                     memcpy(packets2send[i]->payload.packet.header.source, gateway, 3);
                     memcpy(packets2send[i]->payload.packet.header.target, broadcast, 3);
-                    memcpy(packets2send[i]->payload.buffer + 9, toSend.data(), toSend.size());
 
-                    packets2send[i]->buffer_length = toSend.size() + 9;
+//                    memcpy(packets2send[i]->payload.buffer + 9, toSend.data(), toSend.size());
+//                    packets2send[i]->buffer_length = toSend.size() + 9;
+
                     packets2send[i]->delayed = 250; // Give enough time for the answer
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-                
-                _radioInstance->send(packets2send); 
-                
+                _radioInstance->send(packets2send);
                 break;
             }
             case DeviceButton::discover2A: {
@@ -441,9 +448,8 @@ if( i < 10)
 else
     memcpy(packets2send.back()->payload.packet.header.target, broadcast_1, 3);
 
-                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size()); // 12);
-
-                    packets2send.back()->buffer_length = toSend.size() /*sizeof(toSend)*/ + 9;
+//                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size()); // 12);
+//                    packets2send.back()->buffer_length = toSend.size() /*sizeof(toSend)*/ + 9;
                     packets2send.back()->delayed = 250; // Give enough time for the answer
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -487,10 +493,11 @@ else
 
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, guessed[i], 3);
-                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size()); //  sizeof(toSend));
 
-                    packets2send.back()->buffer_length = sizeof(toSend) + 9;
-                    packets2send.back()->delayed = 300; // Give enough time for the answer
+//                    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size()); //  sizeof(toSend));
+//                    packets2send.back()->buffer_length = sizeof(toSend) + 9;
+
+                    packets2send.back()->delayed = 250; // Give enough time for the answer
                 }
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send);
@@ -513,9 +520,9 @@ else
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_from, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
  
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send); 
@@ -532,14 +539,14 @@ else
                 // const char* dat = data->at(1).c_str();
                 // hexStringToBytes(dat, broadcast);
                 //                uint8_t broadcast[3];
-                uint8_t from[3] = {0x08, 0x42, 0xe3}; //data->at(1).c_str(); //
-                
-                uint8_t to_0[3] = {0xda, 0x2e, 0xe6}; //
-                uint8_t to_1[3] = {0x05, 0x4e, 0x17}; //{0x31, 0x58, 0x24}; //
-                uint8_t to_2[3] = {0x9a, 0x50, 0x65};
-                uint8_t to_3[3] = {0x31, 0x58, 0x24};
+                address from/*[3]*/ = {0x08, 0x42, 0xe3}; //data->at(1).c_str(); //
+                address to_0/*[3]*/ = {0xda, 0x2e, 0xe6}; //
+                address to_1/*[3]*/ = {0x05, 0x4e, 0x17}; //{0x31, 0x58, 0x24}; //
+                address to_2/*[3]*/ = {0x9a, 0x50, 0x65};
+                address to_3/*[3]*/ = {0x31, 0x58, 0x24};
                 //{0x47, 0x77, 0x06}, {0x48, 0x79, 0x02}, {0x8C, 0xCB, 0x30}, {0x8C, 0xCB, 0x31}
-                uint8_t broad[3] = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
+                address broad/*[3]*/ = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
+
                 uint8_t counter = 0;
                 packets2send.clear();
                 for (const auto&command: mapValid) {
@@ -582,12 +589,12 @@ else
                         // if (command.first == 0x14 || command.first == 0x19 || command.first == 0x1e || command.first == 0x2a || command.first == 0x34 || command.first == 0x4a) {
                             // memcpy(packets2send.back()->payload.packet.header.target, broad, 3);
                         // } else {    
-                            memcpy(packets2send.back()->payload.packet.header.target, master_to, 3);
+                        memcpy(packets2send.back()->payload.packet.header.target, from/*master_to*/, 3);
                         // }
                         
-                        memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                        memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                        packets2send.back()->buffer_length = toSend.size() + 9;
 
-                        packets2send.back()->buffer_length = toSend.size() + 9;
                         packets2send.back()->delayed = 245;
                     }
                     toSend.clear();

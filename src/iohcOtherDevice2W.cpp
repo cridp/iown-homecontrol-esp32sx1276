@@ -68,21 +68,11 @@ namespace IOHC {
         }
         packets2send.clear();
 
-        // for (uint8_t typn=0; typn<_type.size(); typn++) { // Pre-allocate packets vector; one packet for each remote type loaded
-        //     if (!packets2send[typn])
-        //         packets2send[typn] = (IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
-        //     else
-        //         memset((void *)packets2send[typn]->payload.buffer, 0x00, sizeof(packets2send[typn]->payload.buffer));
-        // }
-        // packets2send[0] = new iohcPacket; //(IOHC::iohcPacket *)malloc(sizeof(IOHC::iohcPacket));
-        // packets2send[0]->payload.packet.header.CtrlByte1.asByte = 8; // Header len if protocol version is 0 else 10
-        // packets2send[0]->payload.packet.header.CtrlByte2.asByte = 0;
         // Emulates device button press
         switch (cmd) {
             case Other2WButton::discovery: {
                  int bec = 0;
-//                for (int x = 0; x < 15; x++) {
-//                    for (int i = 0; i < 15; i++) {
+
                         for (int j = 0; j < 255; j++) {
                             packets2send.push_back(new iohcPacket);
                             // packets2send[j] = new iohcPacket;
@@ -96,8 +86,7 @@ namespace IOHC {
 //                            packets2send.back()/*[j]*/->decode(); // Not for the cozydevice -> change and adapt for KLR 2W
                             digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                         }
-//                    }
-//                }
+
                         _radioInstance->send(packets2send);
             break;
             }

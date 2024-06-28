@@ -57,11 +57,11 @@ namespace IOHC {
         Memorize memorizeSend; //2W only
 
         // Put that in json
-        uint8_t gateway[3] = {0xba, 0x11, 0xad};
-        uint8_t master_from[3] = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From
-        uint8_t master_to[3] = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To
-        uint8_t slave_from[3] = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From
-        uint8_t slave_to[3] = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To
+        address gateway/*[3]*/ = {0xba, 0x11, 0xad};
+        address master_from/*[3]*/ = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From
+        address master_to/*[3]*/ = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To
+        address slave_from/*[3]*/ = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From
+        address slave_to/*[3]*/ = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To
 
 
         typedef std::array<uint8_t, 3> Address;
@@ -80,7 +80,7 @@ namespace IOHC {
         void cmd(DeviceButton cmd, Tokens* data);
         bool load() override;
         bool save() override;
-        static void forgePacket(iohcPacket* packet, std::vector<uint8_t> vector);
+        static void forgePacket(iohcPacket* packet, const std::vector<uint8_t> &vector);
         void initializeValid();
         // std::vector<uint8_t> valid; //(256);
         std::map<uint8_t, int> mapValid;
