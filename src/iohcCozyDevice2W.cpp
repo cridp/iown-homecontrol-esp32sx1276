@@ -685,12 +685,13 @@ valid = {
 
         // Iterate through the JSON object
         for (JsonPair kv: doc.as<JsonObject>()) {
-            hexStringToBytes(kv.key().c_str(), _node);
+            device d;
+            hexStringToBytes(kv.key().c_str(), d._node);
             auto jobj = kv.value().as<JsonObject>();
-            _type = jobj["type"].as<std::string>();
-            _description = jobj["description"].as<std::string>();
+            d._type = jobj["type"].as<std::string>();
+            d._description = jobj["description"].as<std::string>();
             //     hexStringToBytes(jobj["key"].as<const char*>(), _key);
-            hexStringToBytes(jobj["dst"].as<const char *>(), _dst);
+            hexStringToBytes(jobj["dst"].as<const char *>(), d._dst);
             //     uint8_t btmp[2];
             //     hexStringToBytes(jobj["sequence"].as<const char*>(), btmp);
             //            /*hexStringToBytes*/(jobj["type"].as<const char*>(), _type);
@@ -700,7 +701,9 @@ valid = {
             //     for (uint8_t i=0; i<jarr.size(); i++)
             //         _type.insert(_type.begin()+i, jarr[i].as<uint16_t>());
             //     _manufacturer = jobj["manufacturer_id"].as<uint8_t>();
+            devices.push_back(d);
         }
+        Serial.printf("Loaded %d x 2W devices\n", devices.size()); // _type.size());
 
         return true;
     }
@@ -713,30 +716,30 @@ valid = {
     bool iohcCozyDevice2W::save() {
         fs::File f = LittleFS.open(COZY_2W_FILE, "a+");
         JsonDocument doc; 
+        for (const auto&d: devices) {
+            // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
+            auto jobj = doc[bytesToHexString(d._node, sizeof(d._node))].to<JsonObject>();
+            //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
+            jobj["dst"] = bytesToHexString(d._dst, sizeof d._dst);
 
-        // JsonObject jobj = doc.createNestedObject(bytesToHexString(_node, sizeof(_node)));
-        JsonObject jobj = doc[bytesToHexString(_node, sizeof(_node))].to<JsonObject>();
-     //        jobj["key"] = bytesToHexString(_key, sizeof(_key));
-        jobj["dst"] = bytesToHexString(_dst, sizeof _dst);
+            jobj["type"] = d._type;
+            jobj["description"] = d._description;
 
-        jobj["type"] = _type;
-        jobj["description"] = _description;
+            //        uint8_t btmp[2];
+            //        btmp[1] = _sequence & 0x00ff;
+            //        btmp[0] = _sequence >> 8;
+            //        jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
 
-        //        uint8_t btmp[2];
-        //        btmp[1] = _sequence & 0x00ff;
-        //        btmp[0] = _sequence >> 8;
-        //        jobj["sequence"] = bytesToHexString(btmp, sizeof(btmp));
+            //        jobj["_type"] = _type;
 
-        //        jobj["_type"] = _type;
-
-        //        JsonArray jarr = jobj.createNestedArray("type");
-        //        for (uint8_t i=0; i<_type.size(); i++)
-        //            if (_type[i])
-        //                jarr.add(_type.at(i));
-        //            else
-        //                break;
-        //        jobj["manufacturer_id"] = _manufacturer;
-
+            //        JsonArray jarr = jobj.createNestedArray("type");
+            //        for (uint8_t i=0; i<_type.size(); i++)
+            //            if (_type[i])
+            //                jarr.add(_type.at(i));
+            //            else
+            //                break;
+            //        jobj["manufacturer_id"] = _manufacturer;
+        }
         serializeJsonPretty/*serializeJson*/(doc, f);
         f.close();
 

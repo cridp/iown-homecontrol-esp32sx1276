@@ -92,16 +92,13 @@ namespace IOHC {
         static iohcCozyDevice2W* _iohcCozyDevice2W;
 
     protected:
-        //            unsigned long relStamp;
-        //            uint8_t source_originator[3] = {0};
-        address _node{};
-        address _dst{};
-        std::string _type;
-        std::string _description;
-        // uint16_t _sequence;
-        // uint8_t _key[16];
-        // std::vector<uint16_t> _type;
-        // uint8_t _manufacturer;
+        struct device {
+            address _node{};
+            address _dst{};
+            std::string _type;
+            std::string _description;
+        };
+        std::vector<device> devices;
 
         std::vector<iohcPacket*> packets2send{};
 
