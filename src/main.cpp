@@ -105,7 +105,7 @@ void setup() {
 * @param packet * The packet you want to forge
 * @param toSend The vector that will be added to the packet
 */
-void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> toSend) {
+void IRAM_ATTR forgePacket(iohcPacket* packet, const std::vector<uint8_t> &toSend) {
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     IOHC::packetStamp = esp_timer_get_time();
 
@@ -116,8 +116,8 @@ void IRAM_ATTR forgePacket(iohcPacket* packet, std::vector<uint8_t> toSend) {
     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
     packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
     packet->payload.packet.header.CtrlByte1.asByte += toSend.size();
-    memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-    packets2send.back()->buffer_length = toSend.size() + 9;
+    memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
+    packet->buffer_length = toSend.size() + 9;
 
     packet->payload.packet.header.CtrlByte2.asByte = 0;
 
