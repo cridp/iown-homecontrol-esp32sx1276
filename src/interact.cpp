@@ -147,9 +147,11 @@ void createCommands() {
     Cmd::addHandler((char *) "discover28", (char *) "discover28", [](Tokens *cmd)-> void {
         IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::discover28, nullptr);
     });
+*/
     Cmd::addHandler((char *) "discover2A", (char *) "discover2A", [](Tokens *cmd)-> void {
         IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::discover2A, nullptr);
     });
+/*
     Cmd::addHandler((char *) "fake0", (char *) "fake0", [](Tokens *cmd)-> void {
         IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::fake0, nullptr);
     });

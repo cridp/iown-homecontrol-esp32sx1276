@@ -46,11 +46,11 @@ namespace IOHC {
             Memorize memorizeOther2W; //2W only
             
             // Put that in json
-//            uint8_t gateway[3] = {0xba, 0x11, 0xad};
-//            uint8_t master_from[3] = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From 
-//            uint8_t master_to[3] = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To 
-//            uint8_t slave_from[3] = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From 
-//            uint8_t slave_to[3] = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To 
+//            address gateway = {0xba, 0x11, 0xad};
+//            address master_from = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From
+//            address master_to = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To
+//            address slave_from = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From
+//            address slave_to = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To
 
 //            bool isFake(address nodeSrc, address nodeDst) override;
             void cmd(Other2WButton cmd, Tokens* data);

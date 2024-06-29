@@ -36,7 +36,7 @@ namespace IOHC {
         return _iohcOtherDevice2W;
     }
 
-    uint8_t fake_gateway[3] = {0xba, 0x11, 0xad};
+    address fake_gateway = {0xba, 0x11, 0xad};
 
     void iohcOtherDevice2W::forgePacket(iohcPacket* packet, size_t typn) {
         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;

@@ -148,9 +148,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             memcpy(packets2send.back()->payload.packet.header.source, cozyDevice2W->gateway, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
 
-//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-//            packets2send.back()->buffer_length = toSend.size() + 9;
-
             packets2send.back()->delayed = 250;
             packets2send.back()->repeat = 0;
 
@@ -184,14 +181,9 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             // cozyDevice2W->memorizeSend.memorizedData = toSend;
             // cozyDevice2W->memorizeSend.memorizedCmd = SEND_DISCOVER_ACTUATOR_0x2C;
 
-            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
-
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
-
-//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-//            packets2send.back()->buffer_length = toSend.size() + 9;
 
             packets2send.back()->repeat = 1;
 
@@ -215,15 +207,11 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             forgePacket(packets2send.back(), toSend);
 
-//            packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_DISCOVER_ACTUATOR_ACK_0x2D;
 
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
-
-//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-//            packets2send.back()->buffer_length = toSend.size() + 9;
 
             packets2send.back()->delayed = 250;
             packets2send.back()->repeat = 0;
@@ -271,16 +259,12 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             packets2send.push_back(new IOHC::iohcPacket);
             forgePacket(packets2send.back(), toSend);
 
-            // packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
             packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
             cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::SEND_KEY_TRANSFERT_0x32;
 
             /* Swap */
             memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
             memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
-
-//            memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
-//            packets2send.back()->buffer_length = toSend.size() + 9;
 
             packets2send.back()->repeat = 0;
 
@@ -361,9 +345,6 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 /* Swap */
                 memcpy(packets2send.back()->payload.packet.header.source, iohc->payload.packet.header.target, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, iohc->payload.packet.header.source, 3);
-
-//                memcpy(packets2send.back()->payload.buffer + 9, initial_value, dataLen);
-//                packets2send.back()->buffer_length = dataLen/*challengeAsked.size()*/ + 9;
 
                 packets2send.back()->repeatTime = 6;
                 packets2send.back()->repeat = 1;
