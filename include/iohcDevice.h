@@ -31,7 +31,9 @@ namespace IOHC {
         virtual bool isFake(address, address);
         virtual bool isHome(address, address);
 
-        virtual void scanDump();
+//        std::map<uint8_t, int> mapValid;
+//        virtual void initializeValid();
+//        virtual void scanDump();
 
         bool verbosity{};
         virtual bool load() = 0;
@@ -59,8 +61,6 @@ namespace IOHC {
             RECEIVED_GET_NAME_0x50 = 0x50, SEND_GET_NAME_0x50 = 0x50,
             RECEIVED_ERROR_0xFE = 0xfe, SEND_ERROR_0xFE = 0xfe,
         };
-
-        std::map<uint8_t, int> mapValid;
 
     protected:
         bool Fake = false;

@@ -107,7 +107,7 @@ void createCommands() {
     });
     Cmd::addHandler((char *) "scanDump", (char *) "Dump Scan Results", [](Tokens *cmd)-> void {
         scanMode = false;
-        IOHC::iohcCozyDevice2W::getInstance()->scanDump();
+        IOHC::iohcOtherDevice2W::getInstance()->scanDump();
     });
     Cmd::addHandler((char *) "verbose", (char *) "Toggle verbose output on packets list",
                     [](Tokens *cmd)-> void { verbosity = !verbosity; });

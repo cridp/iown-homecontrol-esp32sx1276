@@ -50,7 +50,7 @@ namespace IOHC {
         void cmd(RemoteButton cmd, Tokens* data);
         bool load() override;
         bool save() override;
-        void scanDump() override { }
+//        void scanDump() override { }
 
         static void forgePacket(iohcPacket* packet, uint16_t typn);
 
