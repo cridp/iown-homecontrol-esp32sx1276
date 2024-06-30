@@ -40,7 +40,10 @@ namespace IOHC {
 
     address fake_gateway = {0xba, 0x11, 0xad};
 
-    void iohcOtherDevice2W::forgePacket(iohcPacket *packet, const std::vector<uint8_t> &vector, size_t typn = 0) {
+    void iohcOtherDevice2W::forgePacket(iohcPacket *packet, const std::vector<uint8_t> &toSend, size_t typn = 0) {
+        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+        IOHC::relStamp = esp_timer_get_time();
+
         packet->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
 
         packet->payload.packet.header.cmd = 0x2A; //0x28; //typn;
@@ -56,6 +59,10 @@ namespace IOHC {
         packet->payload.packet.header.target[0] = 0x00;
         packet->payload.packet.header.target[1] = bcast >> 8;
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
+
+        packet->payload.packet.header.CtrlByte1.asByte += toSend.size();
+        memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
+        packet->buffer_length = toSend.size() + 9;
 
         packet->frequency = CHANNEL2;
         packet->repeatTime = 50;
@@ -77,32 +84,28 @@ namespace IOHC {
 
                 for (int j = 0; j < 255; j++) {
                     packets2send.push_back(new iohcPacket);
-                    // packets2send[j] = new iohcPacket;
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
                     std::string discovery = "d430477706ba11ad31"; //28"; //"2b578ebc37334d6e2f50a4dfa9";
                     std::vector<uint8_t> toSend = {};
-                    packets2send.back()/*[j]*/->buffer_length = hexStringToBytes(
+                    packets2send.back()->buffer_length = hexStringToBytes(
                         discovery, packets2send.back()/*[j]*/->payload.buffer);
                     forgePacket(packets2send.back()/*[j]*//*->payload.buffer[4]*/, toSend, bec);
                     bec += 0x01;
                     // packets2send.back()/*[j]*/->repeatTime = 225;
-                    //                            packets2send.back()/*[j]*/->decode(); // Not for the cozydevice -> change and adapt for KLR 2W
-                    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 }
 
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send);
                 break;
             }
             case Other2WButton::getName: {
-                //                packets2send.clear();
-                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+
                 std::vector<uint8_t> toSend = {}; // {0x0C, 0x60, 0x01, 0xFF};
 
                 // const char* dat = data->at(1).c_str();
 
                 int value = std::stol(data->at(1).c_str(), nullptr, 16);
-                int8_t target[3];
+                address target;
                 target[0] = static_cast<uint8_t>(value >> 16);
                 target[1] = static_cast<uint8_t>(value >> 8);
                 target[2] = static_cast<uint8_t>(value);
@@ -116,13 +119,13 @@ namespace IOHC {
                 // memorizeSend.memorizedCmd = SEND_WRITE_PRIVATE_0x20;
 
                 packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
+//                packets2send.back()->payload.packet.header.CtrlByte1.asByte += toSend.size();
 
                 memcpy(packets2send.back()->payload.packet.header.source, fake_gateway, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, target, 3);
-                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
 
-                packets2send.back()->buffer_length = toSend.size() + 9;
+//                memcpy(packets2send.back()->payload.buffer + 9, toSend.data(), toSend.size());
+//                packets2send.back()->buffer_length = toSend.size() + 9;
 
                 digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 // packets2send.back()->delayed = 501;
@@ -147,7 +150,7 @@ namespace IOHC {
                     address to = {0xda, 0x2e, 0xe6}; //
                     address to_1 = {0x05, 0x4e, 0x17}; //{0x31, 0x58, 0x24}; //
 
-                    packets2send.clear();
+//                    packets2send.clear();
                     packets2send.push_back(new iohcPacket);
                     forgePacket(packets2send.back(), toSend);
 
@@ -179,7 +182,7 @@ namespace IOHC {
 
                 toSend[3] = custom; //custom;
 
-                packets2send.clear();
+//                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back(), toSend);
 
@@ -195,10 +198,8 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, slave_to, 3);
 
-                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 packets2send.back()->delayed = 250;
-                // packets2send.back()->repeat = 1;
-                //                }
+                digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -208,7 +209,7 @@ namespace IOHC {
                 //                uint8_t broadcast[3];
                 address broadcast = {0x00, 0xFF, 0xFB}; //{0x02, 0x02, 0xFB}; //data->at(1).c_str();
                 //            hexStringToBytes(dat, broadcast);
-                packets2send.clear();
+//                packets2send.clear();
                 size_t i = 0;
                 for (i = 0; i < 10; i++) {
                     packets2send.push_back(new iohcPacket);
@@ -249,7 +250,7 @@ namespace IOHC {
                 address broadcast_3b = {0x00, 0x00, 0x3b};
                 address broadcast_3f = {0x00, 0x00, 0x3f};
 
-                packets2send.clear();
+//                packets2send.clear();
                 for (size_t i = 0; i < 30; i++) {
                     packets2send.push_back(new iohcPacket);
 
@@ -312,7 +313,7 @@ namespace IOHC {
                     {0x47, 0x77, 0x06}, {0x48, 0x79, 0x02}, {0x8C, 0xCB, 0x30}, {0x8C, 0xCB, 0x31}
                 };
 
-                packets2send.clear();
+//                packets2send.clear();
                 size_t i = 0;
                 for (i = 0; i < 15; i++) {
                     packets2send.push_back(new iohcPacket);
@@ -341,7 +342,7 @@ namespace IOHC {
             case Other2WButton::ack: {
                 std::vector<uint8_t> toSend = {};
 
-                packets2send.clear();
+//                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgePacket(packets2send.back(), toSend);
 
@@ -379,7 +380,7 @@ namespace IOHC {
                 address broad = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
 
                 uint8_t counter = 0;
-                packets2send.clear();
+//                packets2send.clear();
                 for (const auto &command: mapValid) {
                     if (command.second == 0 || (command.second == 5 && command.first != 0x19)) {
                         counter++;
@@ -466,6 +467,41 @@ namespace IOHC {
         }
         // printf("ValidKey: %d\n", validKey);
         // printf("MapValid size: %zu\n", mapValid.size());
+    }
+
+    /**
+    * @brief Dump the scan result to the console for debugging purposes. \ ingroup iohcCozy
+    */
+    void iohcOtherDevice2W::scanDump() {
+        printf("*********************** Scan result ***********************\n");
+
+        uint8_t count = 0;
+
+        for (auto &it: mapValid) {
+            // Prints the first two bytes of the second.
+            // Prints the token and argument.
+            if (it.second != 0x08) {
+                // Prints the first and second of the token.
+                // Prints the argument string representation of the argument.
+                if (it.second == 0x3C)
+                    printf("%2.2x=AUTH ", it.first, it.second);
+                    // Prints the string representation of the argument.
+                    // Prints the string representation of the argument.
+                else if (it.second == 0x80)
+                    printf("%2.2x=NRDY ", it.first, it.second);
+                else
+                    printf("%2.2x=%2.2x\t", it.first, it.second);
+                count++;
+                // Prints the number of bytes to the console.
+                // Prints the number of bytes to the console.
+                if (count % 16 == 0) printf("\n");
+            }
+        }
+
+        // Prints the number of bytes to the console.
+        if (count % 16 != 0) printf("\n");
+
+        printf("%u toCheck \n", count);
     }
 
     bool iohcOtherDevice2W::load() {

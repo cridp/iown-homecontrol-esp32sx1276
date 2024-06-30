@@ -63,10 +63,8 @@ namespace IOHC {
         bool load() override;
         bool save() override;
         void initializeValid();
-        // std::vector<uint8_t> valid; //(256);
-//        std::map<uint8_t, int> mapValid;
-        // size_t validKey{};
-//        void scanDump() override;
+        void scanDump();
+        std::map<uint8_t, int> mapValid;
 //        void scanDump() override {}
 
         static void forgePacket(iohcPacket *packet, const std::vector<uint8_t> &vector, size_t typn);

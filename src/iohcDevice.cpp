@@ -15,6 +15,7 @@
  */
 
 #include <iohcDevice.h>
+#include <numeric>
 
 namespace IOHC {
     bool iohcDevice::isFake(address nodeSrc, address nodeDst) {
@@ -25,40 +26,5 @@ namespace IOHC {
     bool iohcDevice::isHome(address nodeSrc, address nodeDst) {
         this->Home = false;
         return this->Home;
-    }
-
-    /**
-    * @brief Dump the scan result to the console for debugging purposes. \ ingroup iohcCozy
-    */
-    void iohcDevice::scanDump() {
-        printf("*********************** Scan result ***********************\n");
-
-        uint8_t count = 0;
-
-        for (auto &it: mapValid) {
-            // Prints the first two bytes of the second.
-            // Prints the token and argument.
-            if (it.second != 0x08) {
-                // Prints the first and second of the token.
-                // Prints the argument string representation of the argument.
-                if (it.second == 0x3C)
-                    printf("%2.2x=AUTH ", it.first, it.second);
-                    // Prints the string representation of the argument.
-                    // Prints the string representation of the argument.
-                else if (it.second == 0x80)
-                    printf("%2.2x=NRDY ", it.first, it.second);
-                else
-                    printf("%2.2x=%2.2x\t", it.first, it.second);
-                count++;
-                // Prints the number of bytes to the console.
-                // Prints the number of bytes to the console.
-                if (count % 16 == 0) printf("\n");
-            }
-        }
-
-        // Prints the number of bytes to the console.
-        if (count % 16 != 0) printf("\n");
-
-        printf("%u toCheck \n", count);
     }
 }
