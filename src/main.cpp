@@ -309,7 +309,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
                 printf("Challenge asked after Memorized Command %2.2X\n", cozyDevice2W->memorizeSend.memorizedCmd);
 
                 if (Cmd::scanMode) {
-                    cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohcDevice::RECEIVED_CHALLENGE_REQUEST_0x3C;
+                    otherDevice2W->mapValid[IOHC::lastSendCmd] = iohcDevice::RECEIVED_CHALLENGE_REQUEST_0x3C;
                     break;
                 }
 
@@ -398,7 +398,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // printf(" Answer %X Cmd %X ", iohc->payload.packet.header.cmd, IOHC::lastSendCmd);
-                cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd;
+                otherDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.packet.header.cmd;
             }
         break;
     }
@@ -406,7 +406,7 @@ bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
-                cozyDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9];
+                otherDevice2W->mapValid[IOHC::lastSendCmd] = iohc->payload.buffer[9];
             }
             break;
         }
