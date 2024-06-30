@@ -51,11 +51,11 @@ void createCommands() {
     });
     Cmd::addHandler((char *) "custom", (char *) "test unknown commands", [](Tokens *cmd)-> void {
         /*scanMode = true;*/
-        IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::custom, cmd /*cmd->at(1).c_str()*/);
+        IOHC::iohcOtherDevice2W::getInstance()->cmd(IOHC::Other2WButton::custom, cmd /*cmd->at(1).c_str()*/);
     });
     Cmd::addHandler((char *) "custom60", (char *) "test 0x60 commands", [](Tokens *cmd)-> void {
         /*scanMode = true;*/
-        IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::custom60, cmd /*cmd->at(1).c_str()*/);
+        IOHC::iohcOtherDevice2W::getInstance()->cmd(IOHC::Other2WButton::custom60, cmd /*cmd->at(1).c_str()*/);
     });
     // 1W
     Cmd::addHandler((char *) "pair", (char *) "1W put device in pair mode", [](Tokens *cmd)-> void {
@@ -103,7 +103,7 @@ void createCommands() {
     });
     Cmd::addHandler((char *) "scanMode", (char *) "scanMode", [](Tokens *cmd)-> void {
         scanMode = true;
-        IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::checkCmd, nullptr);
+        IOHC::iohcOtherDevice2W::getInstance()->cmd(IOHC::Other2WButton::checkCmd, nullptr);
     });
     Cmd::addHandler((char *) "scanDump", (char *) "Dump Scan Results", [](Tokens *cmd)-> void {
         scanMode = false;
@@ -147,9 +147,11 @@ void createCommands() {
     Cmd::addHandler((char *) "discover28", (char *) "discover28", [](Tokens *cmd)-> void {
         IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::discover28, nullptr);
     });
+*/
     Cmd::addHandler((char *) "discover2A", (char *) "discover2A", [](Tokens *cmd)-> void {
-        IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::discover2A, nullptr);
+        IOHC::iohcOtherDevice2W::getInstance()->cmd(IOHC::Other2WButton::discover2A, nullptr);
     });
+/*
     Cmd::addHandler((char *) "fake0", (char *) "fake0", [](Tokens *cmd)-> void {
         IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::fake0, nullptr);
     });

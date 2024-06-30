@@ -1030,7 +1030,7 @@ int at_util_string2hex(const char *str, uint8_t **output, size_t *output_length)
     }
   }
   size_t bytes = len;
-  uint8_t *result = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * bytes));
+  auto result = static_cast<uint8_t*>(malloc(sizeof(uint8_t) * bytes));
   if (result == nullptr) {
     return -1;
   }

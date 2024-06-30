@@ -18,8 +18,7 @@
 #define OTHER_2W_DEVICE_H
 
 #include <string>
-#include <iohcRadio.h>
-#include <vector> 
+#include <vector>
 #include <iohcDevice.h>
 #include <interact.h>
 
@@ -35,50 +34,62 @@ namespace IOHC {
     enum class Other2WButton {
         discovery,
         getName,
+        custom,
+        custom60,
+        discover28,
+        discover2A,
+        fake0,
+        ack,
+        pairMode,
+        checkCmd,
     };
 
     class iohcOtherDevice2W : public iohcDevice {
+    public:
+        static iohcOtherDevice2W *getInstance();
+        ~iohcOtherDevice2W() override = default;
 
-        public:
-            static iohcOtherDevice2W *getInstance();
-            ~iohcOtherDevice2W() override = default;
+        // Put that in json
+        address gateway/*[3]*/ = {0xba, 0x11, 0xad};
+        address master_from/*[3]*/ = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From
+        address master_to/*[3]*/ = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To
+        address slave_from/*[3]*/ = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From
+        address slave_to/*[3]*/ = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To
 
-            Memorize memorizeOther2W; //2W only
-            
-            // Put that in json
-//            uint8_t gateway[3] = {0xba, 0x11, 0xad};
-//            uint8_t master_from[3] = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From 
-//            uint8_t master_to[3] = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To 
-//            uint8_t slave_from[3] = {0x8C, 0xCB, 0x30}; // It's the new heater kitchen Address From 
-//            uint8_t slave_to[3] = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To 
+        Memorize memorizeOther2W; //2W only
 
-//            bool isFake(address nodeSrc, address nodeDst) override;
-            void cmd(Other2WButton cmd, Tokens* data);
-            bool load() override;
-            bool save() override;
-            void scanDump() override{}
+        //            bool isFake(address nodeSrc, address nodeDst) override;
+        void cmd(Other2WButton cmd, Tokens *data);
+        bool load() override;
+        bool save() override;
+        void initializeValid();
+        // std::vector<uint8_t> valid; //(256);
+//        std::map<uint8_t, int> mapValid;
+        // size_t validKey{};
+//        void scanDump() override;
+//        void scanDump() override {}
 
-            static void forgePacket(iohcPacket *packet, size_t typn);
+        static void forgePacket(iohcPacket *packet, const std::vector<uint8_t> &vector, size_t typn);
 
-        private:
-            iohcOtherDevice2W();
-            static iohcOtherDevice2W *_iohcOtherDevice2W;
+    private:
+        iohcOtherDevice2W();
+        static iohcOtherDevice2W *_iohcOtherDevice2W;
 
-        protected:
-//            unsigned long relStamp;
-//            uint8_t source_originator[3] = {0};
-            address _node{};
-            address _dst{};
-            std::string _type;
-//            uint16_t _sequence;
-//            uint8_t _key[16];
-//            std::vector<uint16_t> _type;
-//            uint8_t _manufacturer;
+    protected:
+        //            unsigned long relStamp;
+        //            uint8_t source_originator[3] = {0};
+        address _node{};
+        address _dst{};
+        std::string _type;
+        //            uint16_t _sequence;
+        //            uint8_t _key[16];
+        //            std::vector<uint16_t> _type;
+        //            uint8_t _manufacturer;
 
-//            IOHC::iohcPacket *packets2send[2]; //[25];
-            // std::array<iohcPacket*, 25> packets2send{};
-        std::vector<iohcPacket*> packets2send{};
-//            IOHC::iohcRadio *_radioInstance;
+        //            IOHC::iohcPacket *packets2send[2]; //[25];
+        // std::array<iohcPacket*, 25> packets2send{};
+        std::vector<iohcPacket *> packets2send{};
+        //            IOHC::iohcRadio *_radioInstance;
     };
 }
-#endif 
+#endif

@@ -108,7 +108,7 @@ namespace IOHC {
 
         for (auto [fst, snd] : _objects) {
             // JsonObject jobj = doc.createNestedObject(fst);
-            JsonObject jobj = doc[fst].to<JsonObject>();
+            auto jobj = doc[fst].to<JsonObject>();
 
             jobj["values"] = snd->serialize();
         }
