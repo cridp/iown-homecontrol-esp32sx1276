@@ -29,7 +29,7 @@
 #include <iohcCozyDevice2W.h>
 #include <iohcOtherDevice2W.h>
 
-#include "include/web_server_handler.h"
+#include <web_server_handler.h>
 #include "LittleFS.h"
 #include <WiFi.h> // Assuming WiFi is used and initialized elsewhere or will be here.
 
