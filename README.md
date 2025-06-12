@@ -83,4 +83,20 @@ The web interface allows you to:
 
 This feature is under development, and functionality will be expanded in the future.
 
+## Home Assistant Integration via MQTT
+
+The firmware can publish received IOHC frames to an MQTT broker, making it easier to consume the data in Home Assistant.
+
+1. **Enable MQTT**
+   * Edit `include/user_config.h` and uncomment `#define MQTT`.
+   * Adjust `MQTT_SERVER`, `MQTT_USER` and `MQTT_PASSWD` to match your broker settings.
+
+2. **Compile**
+   * Build the project with PlatformIO. The code will automatically publish a Home Assistant discovery message on connect.
+
+3. **Home Assistant**
+   * Ensure the MQTT integration is enabled.
+   * After the ESP32 connects, a sensor named *IOHC Frame* will appear automatically. Its attributes contain the last received frame.
+
+
 #### **License**

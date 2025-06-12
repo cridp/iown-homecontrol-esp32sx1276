@@ -163,6 +163,7 @@ void IRAM_ATTR forgePacket(iohcPacket* packet, const std::vector<uint8_t> &toSen
 }
 
 bool IRAM_ATTR msgRcvd(IOHC::iohcPacket *iohc) {
+    publishMsg(iohc);
     JsonDocument doc;
     doc["type"] = "Unk";
     switch (iohc->payload.packet.header.cmd) {
@@ -533,6 +534,7 @@ bool publishMsg(IOHC::iohcPacket *iohc) {
     size_t messageSize = serializeJson(doc, message);
 #if defined(MQTT)
     mqttClient.publish("iown/Frame", 1, false, message.c_str(), messageSize);
+    mqttClient.publish("homeassistant/sensor/iohc_frame/state", 0, false, message.c_str(), messageSize);
 #endif
     // }
     return false;
