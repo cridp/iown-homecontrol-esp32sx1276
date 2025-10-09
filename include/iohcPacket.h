@@ -24,6 +24,7 @@
 #include <board-config.h>
 #include <cstring>
 #include <esp_timer.h>
+#include <unordered_map>
 
 #include "esp32-hal-gpio.h"
 
@@ -212,7 +213,6 @@ namespace IOHC {
     typedef union payload {
         uint8_t buffer[MAX_FRAME_LEN];
         _packet packet;
-
     } Payload;
 
     /* keep the size of variable lenght of data */
@@ -237,7 +237,7 @@ namespace IOHC {
             this->payload.packet.header.CtrlByte1.asStruct.MsgLen = sizeof(_header) - 1;
             this->payload.packet.header.CtrlByte2.asByte = 0;
 
-            this->frequency = CHANNEL2;
+            // this->frequency = CHANNEL2;
             this->repeatTime = 25;
             this->repeat = 0;
             this->lock = false;
@@ -248,10 +248,10 @@ namespace IOHC {
         Payload payload{};
         uint8_t buffer_length = 0;
         uint32_t frequency = CHANNEL2; // Both 1W & 2W
-        unsigned long repeatTime = 0L;
+        unsigned long repeatTime = 13L;
         uint8_t repeat = 0;
         bool lock = false;
-        unsigned long delayed = 0;
+        // unsigned long delayed = 0;
 
         double afc{};  // AFC freq correction applied
         uint8_t snr{}; // in dB
@@ -264,6 +264,9 @@ namespace IOHC {
         bool operator==(const iohcPacket &other) const {
             return (memcmp(this->payload.buffer+2, other.payload.buffer+2, 16) == 0);
         }
+        bool is1W() const { return this->payload.packet.header.CtrlByte1.asStruct.Protocol; }
+        uint8_t cmd() const { return this->payload.packet.header.cmd; }
+
     };
 }
 #endif

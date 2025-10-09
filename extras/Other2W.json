@@ -15,25 +15,25 @@
     "node": "0842e3",
     "type": "",
     "description": "BUREAU",
-    "associated": "e2eac6"
+    "associated": "9a5065"
   },
   "da2ee6": {
     "node": "0842e3",
     "type": "",
     "description": "SALLE _ MANGER ",
-    "associated": "9a5065"
+    "associated": "2a940f"
   },
   "14e00e": {
     "node": "0842e3",
     "type": "",
     "description": "CUISINE",
-    "associated": "9a5065"
+    "associated": "3299d8"
   },
   "1c6858": {
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE _TAGE GA",
-    "associated": "a470d7"
+    "associated": "1c6858"
   },
   "dfe03f": {
     "node": "269411",
@@ -75,13 +75,13 @@
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE _TAGE DR",
-    "associated": "dac38d"
+    "associated": "9a5065"
   },
   "d58341": {
     "node": "0842e3",
     "type": "",
     "description": "SALLE DE BAIN CH",
-    "associated": "9a5065"
+    "associated": "d58341"
   },
   "e67334": {
     "node": "269411",
@@ -93,12 +93,18 @@
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE  INES ",
-    "associated": "79c1eb"
+    "associated": "9a5065"
   },
   "20e52e": {
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE PARENTAL",
     "associated": "b489be"
+  },
+  "5be4d0": {
+    "node": "269411",
+    "type": "",
+    "description": "NONAME",
+    "associated": "b66eac"
   }
 }

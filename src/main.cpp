@@ -54,7 +54,7 @@ void txUserBuffer(Tokens *cmd);
 void testKey();
 void scanDump();
 bool publishMsg(IOHC::iohcPacket *iohc);
-bool msgRcvd(IOHC::iohcPacket *iohc);
+bool msgRcvd(IOHC::iohcPacket *receivedPacket);
 bool msgArchive(IOHC::iohcPacket *iohc);
 
 uint8_t keyCap[16] = {};
@@ -94,7 +94,7 @@ void setup() {
     if(!LittleFS.begin()){
         ets_printf("An Error has occurred while mounting LittleFS\n");
         // Handle error appropriately, maybe by halting or indicating failure
-        return; 
+        return;
     }
     ets_printf("LittleFS mounted successfully\n");
 
@@ -103,8 +103,10 @@ void setup() {
     radioInstance = IOHC::iohcRadio::getInstance();
 #if !defined(MQTT)
 // If MQTT is not defined, txCallback is null
-    radioInstance->start(MAX_FREQS, frequencies, 0/*5000*/, msgRcvd, nullptr); //msgArchive); //, msgRcvd);
-#else
+    radioInstance->start(MAX_FREQS, frequencies, 45000, msgRcvd, nullptr); //msgArchive); //, msgRcvd);
+// 2750 Uniquement pour monitoring ultra-passif sans réponses
+
+    #else
     radioInstance->start(MAX_FREQS, frequencies, 0, msgRcvd, publishMsg);
 #endif
 
@@ -115,11 +117,8 @@ void setup() {
     otherDevice2W = IOHC::iohcOther2W::getInstance();
     remoteMap = IOHC::iohcRemoteMap::getInstance();
 
-    //   AES_init_ctx(&ctx, transfert_key); // PreInit AES for cozy (1W use original version) TODO
-
     Cmd::createCommands();
 
-//    esp_timer_dump(stdout);
 
 #endif
     nvs_init();
@@ -164,37 +163,46 @@ void IRAM_ATTR forgePacket(iohcPacket* packet, const std::vector<uint8_t> &toSen
     packet->buffer_length = toSend.size() + 9;
 }
 
-bool msgRcvd(IOHC::iohcPacket *iohc) {
+bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
     JsonDocument doc;
     doc["type"] = "Unk";
     if (Cmd::scanMode) {
         otherDevice2W->memorizeOther2W = {};
-        otherDevice2W->mapValid[IOHC::lastCmd] = iohc->payload.packet.header.cmd;
+        otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->payload.packet.header.cmd;
     }
     // Used for the AUTH replies in main
     // iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
     // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
     // cozyDevice2W->memorizeSend.memorizedData = {iohc->payload.buffer+9, iohc->payload.buffer+iohc->buffer_length};
 
-    switch (iohc->payload.packet.header.cmd) {
+    switch (receivedPacket->cmd()) {
 
         case iohcDevice::DISCOVER_0x28: {
             if (!Cmd::pairMode) break;
+            // Node type and subtype (2 bytes): type on 10 bits and subtype on the remainer
+            // Node type = (field >> 6) & 1023
+            // Node subtype = field & 63
+            // Node address (3 bytes)
+            // Manufacturer ID (1 byte)
+            // Multiinfo (1 byte)
+            // Timestamp (2 bytes)
 
             // 0x0b OverKiz 0x0c Atlantic
             std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00};
+            // Sunblind dynamit 0x344e1f fabricant 0x02 dc9c88
+            // std::vector<uint8_t> toSend = {0x04, 0x00, 0x34, 0x4E, 0x1F, 0x02, 0xDC, 0x9C, 0x88};
 
             auto* packet = new iohcPacket();
             forgePacket(packet, toSend);
 
             packet->payload.packet.header.cmd = IOHC::iohcDevice::DISCOVER_ANSWER_0x29;
- 
+
             /* Swap */
             memcpy(packet->payload.packet.header.source, cozyDevice2W->gateway, 3);
-            memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+            memcpy(packet->payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            packet->delayed = 250;
-            packet->repeat = 0;
+            packet->repeatTime = 50;
+            // packet->repeat = 0;
 
             packets2send.push_back(packet);
             radioInstance->send(packets2send);
@@ -228,10 +236,10 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             // cozyDevice2W->memorizeSend.memorizedCmd = SEND_DISCOVER_ACTUATOR_0x2C;
 
             /* Swap */
-            memcpy(packet->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-            memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+            memcpy(packet->payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
+            memcpy(packet->payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            packet->repeat = 1;
+            // packet->repeat = 1;
 
             packets2send.push_back(packet);
             radioInstance->send(packets2send);
@@ -255,11 +263,11 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             packet->payload.packet.header.cmd = IOHC::iohcDevice::DISCOVER_ACTUATOR_ACK_0x2D;
 
             /* Swap */
-            memcpy(packet->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-            memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+            memcpy(packet->payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
+            memcpy(packet->payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            packet->delayed = 250;
-            packet->repeat = 0;
+            packet->repeatTime = 50;
+            // packet->repeat = 0;
 
             packets2send.push_back(packet);
             radioInstance->send(packets2send);
@@ -270,7 +278,7 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             // ets_printf("2W Key Transfert Asked after Command %2.2X Waiting for 0x32\n", iohc->payload.packet.header.cmd);
             //
             std::vector<uint8_t> key_transfert;
-            key_transfert.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 15);
+            key_transfert.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
 
             for (unsigned char i: key_transfert) {
                 ets_printf("%02X ", i);
@@ -310,10 +318,10 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
 
             /* Swap */
-            memcpy(packet->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-            memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+            memcpy(packet->payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
+            memcpy(packet->payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            packet->repeat = 0;
+            // packet->repeat = 0;
 
             packets2send.push_back(packet);
             radioInstance->send(packets2send);
@@ -321,8 +329,8 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             break;
         }
         case iohcDevice::WRITE_PRIVATE_0x20:  {
-            cozyDevice2W->memorizeSend.memorizedCmd = iohc->payload.packet.header.cmd;
-            IOHC::lastCmd = iohc->payload.packet.header.cmd;
+            cozyDevice2W->memorizeSend.memorizedCmd = receivedPacket->payload.packet.header.cmd;
+            IOHC::lastCmd = receivedPacket->payload.packet.header.cmd;
             break;
         }
         case iohcDevice::PRIVATE_ACK_0x21: {
@@ -341,8 +349,8 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
         }
         case iohcDevice::CHALLENGE_REQUEST_0x3C: {
             // Answer only to our fake gateway, not to others real devices
-            //if (true) {
-                if (cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) {
+            // if (true) {
+            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
                 doc["type"] = "Gateway";
 
                 // if (Cmd::scanMode) {
@@ -352,12 +360,11 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
 
                 // IVdata is the challenge with commandId put on start
                 std::vector<uint8_t> challengeAsked;
-                challengeAsked.assign(iohc->payload.buffer + 9, iohc->payload.buffer + 15);
+                challengeAsked.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
                 ets_printf("Challenge asked after Last Command %2.2X and Memorized %2.2X (%d)\n", IOHC::lastCmd, cozyDevice2W->memorizeSend.memorizedCmd, cozyDevice2W->memorizeSend.memorizedData.size());
 
-
-                auto packet = new iohcPacket;
-
+                // auto response = new iohcPacket;
+                iohcPacket response;
                 // packets2send.back()->payload.packet.header.cmd = IOHC::iohcDevice::SEND_CHALLENGE_ANSWER_0x3D;
 
                 AES_init_ctx(&ctx, transfert_key);
@@ -369,7 +376,7 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
                 uint8_t dataLen = 6;
 
                 if (cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) {
-                    packet->payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
+                    response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
                     dataLen = 16;
                     IVdata = {IOHC::iohcDevice::ASK_CHALLENGE_0x31};
                     constructInitialValue(IVdata, initial_value, 1, challengeAsked, nullptr);
@@ -379,7 +386,7 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
                     cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
                     cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
                 } else {
-                    packet->payload.packet.header.cmd = IOHC::iohcDevice::CHALLENGE_ANSWER_0x3D;
+                    response.payload.packet.header.cmd = IOHC::iohcDevice::CHALLENGE_ANSWER_0x3D;
                     dataLen = 6;
                     IVdata = cozyDevice2W->memorizeSend.memorizedData;
                     IVdata.insert(IVdata.begin(), cozyDevice2W->memorizeSend.memorizedCmd);
@@ -394,24 +401,25 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
 
                 std::vector<uint8_t> toSend;
                 toSend.assign(initial_value, initial_value + dataLen);
-                forgePacket(packet, toSend);
+                forgePacket(&response, toSend);
 
                 /* Swap */
-                memcpy(packet->payload.packet.header.source, iohc->payload.packet.header.target, 3);
-                memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+                memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
+                memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
+                response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
 
-                packet->repeatTime = 9;
-                packet->repeat = 1;
+                response.repeatTime = 9;
+                // packet->repeat = 1;
 
-                packets2send.push_back(packet);
-                radioInstance->send(packets2send);
+                // packets2send.push_back(response);
+                // radioInstance->send(packets2send);
+                radioInstance->sendPriority(&response, true);
             }
             break;
         }
         case iohcDevice::GET_NAME_0x50: {
-            if (cozyDevice2W->isFake(iohc->payload.packet.header.source, iohc->payload.packet.header.target)) {
+            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
             // MY_GATEWAY 4d595f47415445574159
             std::vector<uint8_t> toSend = {0x4d, 0x59, 0x5f, 0x47, 0x41, 0x54, 0x45, 0x57, 0x41, 0x59};
             toSend.resize(16);
@@ -424,10 +432,10 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
 
             /* Swap */
             memcpy(packet->payload.packet.header.source, cozyDevice2W->gateway, 3);
-            memcpy(packet->payload.packet.header.target, iohc->payload.packet.header.source, 3);
+            memcpy(packet->payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            packet->delayed = 50;
-            packet->repeat = 0;
+            packet->repeatTime = 50;
+            // packet->repeat = 0;
 
             packets2send.push_back(packet);
             radioInstance->send(packets2send);
@@ -442,9 +450,9 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
         case 0X00:
         case 0x01:
         case 0x03: {
-            if (iohc->payload.packet.header.CtrlByte1.asStruct.Protocol == 1 && iohc->payload.packet.header.cmd == 0x00) {
+            if (receivedPacket->payload.packet.header.CtrlByte1.asStruct.Protocol == 1 && receivedPacket->payload.packet.header.cmd == 0x00) {
                 // doc["type"] = "1W";
-                uint16_t main = (iohc->payload.packet.msg.p0x00_14.main[0] << 8) | iohc->payload.packet.msg.p0x00_14.main[1];
+                uint16_t main = (receivedPacket->payload.packet.msg.p0x00_14.main[0] << 8) | receivedPacket->payload.packet.msg.p0x00_14.main[1];
                 auto action = "unknown";
                 switch (main) {
                     case 0x0000: action = "OPEN"; break;
@@ -456,10 +464,10 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
                 }
                 doc["action"] = action;
 #if defined(SSD1306_DISPLAY)
-                display1WAction(iohc->payload.packet.header.source, action, "RX");
+                display1WAction(receivedPacket->payload.packet.header.source, action, "RX");
 #endif
 #if defined(MQTT)
-                if (const auto *map = remoteMap->find(iohc->payload.packet.header.source)) {
+                if (const auto *map = remoteMap->find(receivedPacket->payload.packet.header.source)) {
                     const auto &remotes = iohcRemote1W::getInstance()->getRemotes();
                     for (const auto &desc : map->devices) {
                         auto rit = std::find_if(remotes.begin(), remotes.end(), [&](const auto &r){
@@ -480,7 +488,7 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
                 IOHC::lastCmd = cozyDevice2W->memorizeSend.memorizedCmd;
                 otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
                 cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                cozyDevice2W->memorizeSend.memorizedData = {iohc->payload.buffer+9, iohc->payload.buffer+iohc->buffer_length};
+                cozyDevice2W->memorizeSend.memorizedData = {receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+receivedPacket->buffer_length};
 
             }
             break;
@@ -503,15 +511,15 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // ets_printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
-                otherDevice2W->mapValid[IOHC::lastCmd] = iohc->payload.buffer[9];
+                otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->payload.buffer[9];
             }
             break;
         }
         case 0x30: {
             for (uint8_t idx = 0; idx < 16; idx++)
-                keyCap[idx] = iohc->payload.packet.msg.p0x30.enc_key[idx];
+                keyCap[idx] = receivedPacket->payload.packet.msg.p0x30.enc_key[idx];
 
-            iohcCrypto::encrypt_1W_key((const uint8_t *) iohc->payload.packet.header.source, (uint8_t *) keyCap);
+            iohcCrypto::encrypt_1W_key((const uint8_t *) receivedPacket->payload.packet.header.source, (uint8_t *) keyCap);
             ets_printf("CLEAR KEY: ");
             for (unsigned char idx: keyCap)
                 ets_printf("%2.2X", idx);
@@ -525,9 +533,9 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
         case 0x39: {
             if (keyCap[0] == 0) break;
             uint8_t hmac[16];
-            std::vector<uint8_t> frame(&iohc->payload.packet.header.cmd, &iohc->payload.packet.header.cmd + 2);
+            std::vector<uint8_t> frame(&receivedPacket->payload.packet.header.cmd, &receivedPacket->payload.packet.header.cmd + 2);
             // frame = {0x39, 0x00}; //
-            iohcCrypto::create_1W_hmac(hmac, iohc->payload.packet.msg.p0x39.sequence, keyCap, frame);
+            iohcCrypto::create_1W_hmac(hmac, receivedPacket->payload.packet.msg.p0x39.sequence, keyCap, frame);
             ets_printf("MAC: ");
             for (uint8_t idx = 0; idx < 6; idx++)
                 ets_printf("%2.2X", hmac[idx]);
@@ -556,18 +564,18 @@ bool msgRcvd(IOHC::iohcPacket *iohc) {
         case 0x56:
         case 0x37: break;
         default:
-            ets_printf("Received Unknown command %02X ", iohc->payload.packet.header.cmd);
+            ets_printf("Received Unknown command %02X ", receivedPacket->cmd());
             return false;
             break;
     }
-    if (iohc->payload.packet.header.CtrlByte1.asStruct.Protocol) {
+    if (receivedPacket->is1W()) {
         doc["type"] = "1W";
     } else {
         doc["type"] = "2W";
     }
 
 #if defined(MQTT)
-    publishMsg(iohc);
+    publishMsg(receivedPacket);
 #endif
     return true;
 }

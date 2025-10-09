@@ -51,6 +51,7 @@ namespace IOHC {
         memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
         packet->buffer_length = toSend.size() + 9;
 
+        packet->repeatTime = 50;
     }
 
     /**
@@ -84,7 +85,6 @@ namespace IOHC {
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::ASK_CHALLENGE_0x31;
 
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                 packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
@@ -103,8 +103,6 @@ namespace IOHC {
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedData = toSend;
-
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);
@@ -131,12 +129,8 @@ namespace IOHC {
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
-
-                packet->delayed = 50;
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
@@ -170,15 +164,18 @@ namespace IOHC {
 
                     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     memcpy(packet->payload.packet.header.source, gateway, 3);
-                    memcpy(packet->payload.packet.header.target,
-                           addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
+                    memcpy(packet->payload.packet.header.target, addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
 
                     dest++;
+                    packet->repeatTime = 75;
                     packets2send.push_back(packet);
                 }
-                packets2send[1]->delayed = 250;
                 _radioInstance->send(packets2send);
-
+                // Libérer vos paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
+                packets2send.clear();
                 break;
             }
             case DeviceButton::setPresence: {
@@ -189,14 +186,11 @@ namespace IOHC {
                 if (strcasecmp(dat, "off") == 0) toSend[4] = 0x00;
 
                 auto* packet = new iohcPacket();
-                // packets2send.push_back(new iohcPacket);
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
-
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);
@@ -217,19 +211,18 @@ namespace IOHC {
                 else addr = std::stoi(data->at(2));
 
                 auto* packet = new iohcPacket();
-                // packets2send.push_back(new iohcPacket);
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                // packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
 
-                packet->delayed = 50;
+                packet->repeatTime = 50;
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
@@ -241,14 +234,11 @@ namespace IOHC {
                 //, 0x2b, 0x05, 0x00, 0x0f, 0x04, 0x0c, 0xe7, 0x07};
 
                 auto* packet = new iohcPacket();
-                // packets2send.push_back(new iohcPacket);
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
-
-                packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);

@@ -47,7 +47,7 @@ namespace IOHC {
 
         Memorize memorizeSend; //2W only
 
-        // Put that in json
+        // Put that in JSON
         address gateway/*[3]*/ = {0xba, 0x11, 0xad};
         address master_from/*[3]*/ = {0x47, 0x77, 0x06}; // It's the new heater kitchen Address From
         address master_to/*[3]*/ = {0x48, 0x79, 0x02}; // It's the new heater kitchen Address To

@@ -101,7 +101,7 @@ void connectToWifi() {
         wifiStatus = ConnState::Connected;
         updateDisplayStatus();
 
-        esp_timer_dump(stdout);
+        //esp_timer_dump(stdout);
 
 #if defined(MQTT)
         // Kick off MQTT connection when WiFi becomes available

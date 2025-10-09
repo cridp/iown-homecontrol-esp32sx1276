@@ -83,6 +83,7 @@ namespace IOHC {
         packet->payload.packet.header.target[2] = bcast & 0x00ff;
 
         packet->repeat = 4;
+        packet->frequency = CHANNEL2;
     }
 
     std::vector<uint8_t> frame;
@@ -140,37 +141,40 @@ namespace IOHC {
         switch (cmd) {
             case RemoteButton::Pair: {
                 // 0x2e: 0x1120 + target broadcast + source + 0x2e00 + sequence + hmac
-                auto* packet = new iohcPacket();
-                forge1WPacket(packet, r.type[0]);
+                // auto* packet = new iohcPacket();
+                iohcPacket packet;
+                forge1WPacket(&packet, r.type[0]);
 
                 // Update Packet length
-                packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
+                packet.payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
                 // Source (me)
                 for (size_t i = 0; i < sizeof(address); i++)
-                    packet->payload.packet.header.source[i] = r.node[i];
+                    packet.payload.packet.header.source[i] = r.node[i];
 
                 //Command
-                packet->payload.packet.header.cmd = 0x2e;
+                packet.payload.packet.header.cmd = 0x2e;
                 // Data
-                packet->payload.packet.msg.p0x2e.data = 0x00;
+                packet.payload.packet.msg.p0x2e.data = 0x00;
                 // Sequence
-                packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
-                packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
+                packet.payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
+                packet.payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
                 r.sequence += 1;
                 nvs_write_sequence(r.node, r.sequence);
                 // hmac
-                frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
+                frame = std::vector(&packet.payload.packet.header.cmd, &packet.payload.packet.header.cmd + 2);
                 uint8_t hmac[16];
-                iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x2e.sequence, r.key, frame);
+                iohcCrypto::create_1W_hmac(hmac, packet.payload.packet.msg.p0x2e.sequence, r.key, frame);
 
                 for (uint8_t i = 0; i < 6; i++)
-                    packet->payload.packet.msg.p0x2e.hmac[i] = hmac[i];
+                    packet.payload.packet.msg.p0x2e.hmac[i] = hmac[i];
 
-                packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
+                packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                packets2send.push_back(packet);
-                _radioInstance->send(packets2send);
-#if defined(SSD1306_DISPLAY)
+                // packets2send.push_back(packet);
+                // _radioInstance->send(packets2send);
+                _radioInstance->sendSingle(&packet, true);
+
+                #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
                 Serial.printf("%s position: %.0f%%\n", r.name.c_str(), r.positionTracker.getPosition());
                 display1WPosition(r.node, r.positionTracker.getPosition(), r.name.c_str());
@@ -181,36 +185,38 @@ namespace IOHC {
 
             case RemoteButton::Remove: {
                 // 0x39: 0x1c00 + target broadcast + source + 0x3900 + sequence + hmac
-                auto* packet = new iohcPacket();
-                forge1WPacket(packet, r.type[0]);
+                // auto* packet = new iohcPacket();
+                iohcPacket packet;
+                forge1WPacket(&packet, r.type[0]);
 
                 // Update Packet length
-                packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
+                packet.payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x2e);
 
                 // Source (me)
                 for (size_t i = 0; i < sizeof(address); i++)
-                    packet->payload.packet.header.source[i] = r.node[i];
+                    packet.payload.packet.header.source[i] = r.node[i];
 
                 //Command
-                packet->payload.packet.header.cmd = 0x39;
+                packet.payload.packet.header.cmd = 0x39;
                 // Data
-                packet->payload.packet.msg.p0x2e.data = 0x00;
+                packet.payload.packet.msg.p0x2e.data = 0x00;
                 // Sequence
-                packet->payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
-                packet->payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
+                packet.payload.packet.msg.p0x2e.sequence[0] = r.sequence >> 8;
+                packet.payload.packet.msg.p0x2e.sequence[1] = r.sequence & 0x00ff;
                 r.sequence += 1;
                 nvs_write_sequence(r.node, r.sequence);
                 // hmac
                 uint8_t hmac[16];
-                frame = std::vector(&packet->payload.packet.header.cmd, &packet->payload.packet.header.cmd + 2);
-                iohcCrypto::create_1W_hmac(hmac, packet->payload.packet.msg.p0x2e.sequence, r.key, frame);
+                frame = std::vector(&packet.payload.packet.header.cmd, &packet.payload.packet.header.cmd + 2);
+                iohcCrypto::create_1W_hmac(hmac, packet.payload.packet.msg.p0x2e.sequence, r.key, frame);
                 for (uint8_t i = 0; i < 6; i++)
-                    packet->payload.packet.msg.p0x2e.hmac[i] = hmac[i];
+                    packet.payload.packet.msg.p0x2e.hmac[i] = hmac[i];
 
-                packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
+                packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                packets2send.push_back(packet);
-                _radioInstance->send(packets2send);
+                // packets2send.push_back(packet);
+                // _radioInstance->send(packets2send);
+                _radioInstance->sendSingle(&packet, true);
 
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
@@ -223,37 +229,40 @@ namespace IOHC {
 
             case RemoteButton::Add: {
                 // 0x30: 0x1100 + target broadcast + source + 0x3000 + ???
-                auto* packet = new iohcPacket();
-                forge1WPacket(packet, r.type[0]);
+                // auto* packet = new iohcPacket();
+                iohcPacket packet;
+
+                forge1WPacket(&packet, r.type[0]);
                 // Update Packet length
-                packet->payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
+                packet.payload.packet.header.CtrlByte1.asStruct.MsgLen += sizeof(_p0x30);
 
                 // Source (me)
                 for (size_t i = 0; i < sizeof(address); i++)
-                    packet->payload.packet.header.source[i] = r.node[i];
+                    packet.payload.packet.header.source[i] = r.node[i];
                 //Command
-                packet->payload.packet.header.cmd = 0x30;
+                packet.payload.packet.header.cmd = 0x30;
 
                 // Encrypted key
                 uint8_t encKey[16];
                 memcpy(encKey, r.key, 16);
                 iohcCrypto::encrypt_1W_key(r.node, encKey);
-                memcpy(packet->payload.packet.msg.p0x30.enc_key, encKey, 16);
+                memcpy(packet.payload.packet.msg.p0x30.enc_key, encKey, 16);
 
                 // Manufacturer
-                packet->payload.packet.msg.p0x30.man_id = r.manufacturer;
+                packet.payload.packet.msg.p0x30.man_id = r.manufacturer;
                 // Data
-                packet->payload.packet.msg.p0x30.data = 0x01;
+                packet.payload.packet.msg.p0x30.data = 0x01;
                 // Sequence
-                packet->payload.packet.msg.p0x30.sequence[0] = r.sequence >> 8;
-                packet->payload.packet.msg.p0x30.sequence[1] = r.sequence & 0x00ff;
+                packet.payload.packet.msg.p0x30.sequence[0] = r.sequence >> 8;
+                packet.payload.packet.msg.p0x30.sequence[1] = r.sequence & 0x00ff;
                 r.sequence += 1;
                 nvs_write_sequence(r.node, r.sequence);
 
-                packet->buffer_length = packet->payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
+                packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                packets2send.push_back(packet);
-                _radioInstance->send(packets2send);
+                // packets2send.push_back(packet);
+                // _radioInstance->send(packets2send);
+                _radioInstance->sendSingle(&packet, true);
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
                 Serial.printf("%s position: %.0f%%\n", r.name.c_str(), r.positionTracker.getPosition());
@@ -539,6 +548,12 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
 */
                 // Send all packets
                 _radioInstance->send(packets2send);
+                // Libérer vos paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
+                packets2send.clear();
+
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
                 Serial.printf("%s position: %.0f%%\n", r.name.c_str(), r.positionTracker.getPosition());

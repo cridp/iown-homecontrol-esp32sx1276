@@ -87,8 +87,7 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend, bec);
                     packets2send.back()->payload.packet.header.cmd = 0x2e;
                     bec += 0x3B;
-                    packets2send.back()->delayed = 75;
-                    // packets2send.back()/*[j]*/->repeatTime = 225;
+                    packets2send.back()->repeatTime = 60;
                 }
 
                 _radioInstance->send(packets2send);
@@ -112,7 +111,7 @@ namespace IOHC {
                     memcpy(packet->payload.packet.header.source, d._node, 3);
                     memcpy(packet->payload.packet.header.target, d._dst, 3);
 
-                    packet->delayed = 125;
+                    packet->repeatTime = 60;
 
                     packets2send.push_back(packet);
                 }
@@ -122,8 +121,14 @@ namespace IOHC {
                 cozyDevice2W->memorizeSend.memorizedData = {};
 
                 _radioInstance->send(packets2send);
+                // Libérer vos paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
+                packets2send.clear();
                 break;
             }
+
             case Other2WButton::custom: {
                 std::vector<uint8_t> toSend = {0x01, 0x47, 0xc8, 0x00, 0x00, 0x00};
                 //{0x03, 0x65, 0xd4, 0x00, 0x00, 0x00}; //{0x0C, 0x60, 0x01, 0xFF, 0xFF};
@@ -158,7 +163,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
 
-                    packets2send.back()->delayed = 150;
+                    packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
@@ -190,7 +195,7 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to/*slave_to*/, 3);
 
-                packets2send.back()->delayed = 250;
+                packets2send.back()->repeatTime = 50;
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -235,7 +240,7 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.target, broadcast, 3);
 
-                    packets2send.back()->delayed = 75;
+                    packets2send.back()->repeatTime = 75;
                 }
 
                 _radioInstance->send(packets2send);
@@ -327,8 +332,13 @@ namespace IOHC {
                     // packets2send.back()->delayed = 75; // Give enough time for the answer
                     // packets2send.back()->frequency = CHANNEL3;
                 }
-
+                // Envoyer (les paquets sont copiés, vous pouvez les libérer après)
                 _radioInstance->send(packets2send);
+                // Libérer vos paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
+                packets2send.clear();
 
                 break;
             }
@@ -337,28 +347,39 @@ namespace IOHC {
 
                 size_t i = 0;
                 for (const auto &d: devices) {
-                    packets2send.push_back(new iohcPacket);
-                    forgeAnyWPacket(packets2send.back(), toSend);
+                    iohcPacket singlePkt;
+                    // std::vector<iohcPacket*> singlePacket;
+                    // singlePacket.push_back(new iohcPacket);
+                    // packets2send.push_back(new iohcPacket);
+                    forgeAnyWPacket(&singlePkt, toSend);
 
-                    packets2send.back()->payload.packet.header.cmd = 0x03;
+                    singlePkt.payload.packet.header.cmd = 0x03;
                     memorizeOther2W.memorizedData = toSend;
                     memorizeOther2W.memorizedCmd = 0x03;
                     IOHC::lastCmd = 0x03;
                     cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
                     cozyDevice2W->memorizeSend.memorizedData = toSend;
 
-                    packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                    singlePkt.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                     // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                     // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
 
-                    memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
-                    memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
+                    memcpy(singlePkt.payload.packet.header.source, d._node, 3);
+                    memcpy(singlePkt.payload.packet.header.target, d._dst, 3);
 
-                    packets2send.back()->delayed = 120;
+                    // packets2send.back()->delayed = 120;
+                    // packets2send.back()->repeat = 1;
+                    // packets2send.back()->repeatTime = 120;
+
+                    // Attendre la fin de l'envoi si nécessaire (sinon les paquets risquent d'être ignorés)
+                    // while (_radioInstance->txMode)
+                    //     vTaskDelay(100 / portTICK_PERIOD_MS);
+
+                    _radioInstance->sendSingle(&singlePkt, true);
                 }
 
-                _radioInstance->send(packets2send);
+                // _radioInstance->send(packets2send);
 
                 break;
             }
@@ -473,7 +494,7 @@ namespace IOHC {
                         memcpy(packets2send.back()->payload.packet.header.target, GARAGE, 3);
                         // }
 
-                        packets2send.back()->delayed = 145;
+                        packets2send.back()->repeatTime = 50;
                     }
                     toSend.clear();
                 }
