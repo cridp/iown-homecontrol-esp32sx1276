@@ -354,7 +354,7 @@ namespace IOHC {
         }
         ets_printf("\n");
         relStamp = packetStamp;
-        // if (save2W) {iohcOther2W::getInstance()->save();}
+        if (save2W) {iohcOther2W::getInstance()->save();}
     }
 
     std::string iohcPacket::decodeToString(bool verbosity) {

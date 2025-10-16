@@ -91,14 +91,14 @@ void setup() {
 
     nvs_init();
     // Initialize network services
-    // initWifi();
+    initWifi();
     // Wait for WiFi to be connected before starting services
-    // while (WiFi.status() != WL_CONNECTED) {
-        // vTaskDelay(100 / portTICK_PERIOD_MS);
-    // }
+    while (WiFi.status() != WL_CONNECTED) {
+        vTaskDelay(100 / portTICK_PERIOD_MS);
+    }
 
     // set WiFi power mode
-    // esp_wifi_set_ps(WIFI_PS_NONE);
+    esp_wifi_set_ps(WIFI_PS_NONE);
 
 #if defined(MQTT)
     initMqtt();
@@ -481,8 +481,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                 IOHC::lastCmd = 0x03;
                 otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
                 cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                // cozyDevice2W->memorizeSend.memorizedData = {receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+receivedPacket->buffer_length};
-                cozyDevice2W->memorizeSend.memorizedData.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+receivedPacket->buffer_length);
+                // cozyDevice2W->memorizeSend.memorizedData.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+23);
             }
             break;
         }
@@ -504,7 +503,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
                 // ets_printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
-                otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->payload.buffer[9];
+                otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->cmd();// payload.buffer[9];
             }
             break;
         }
