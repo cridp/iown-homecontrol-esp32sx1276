@@ -175,14 +175,8 @@ void setPreambleLength(uint16_t preambleLen) {
         if (MAX_FREQS != 1)
             writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON);
 
-        // ---------------- TX Register init section ----------------
-        // PA boost maximum power
-        // writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
-        // writeByte(REG_OCP, RF_OCP_TRIM_240_MA); // 0x37); //200mA
-        // writeByte(REG_PADAC, 0x87); // turn 20dBm mode on
-
         // PA Ramp: No Shaping, Ramp up/down 15us
-        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0012_US); //_0015_US); //_0031_US); //
+        writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US); //_0012_US); //_0031_US); //
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
         writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);

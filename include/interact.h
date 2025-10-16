@@ -61,7 +61,6 @@ namespace IOHC {
     extern Adafruit_SSD1306 display;
 #endif
 
-
 void tokenize(std::string const &str, const char delim, Tokens &out);
 
 struct _cmdEntry {

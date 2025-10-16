@@ -95,7 +95,7 @@
     "sequence": "5200",
     "type": [
       0,
-      0
+      1
     ],
     "manufacturer_id": 2,
     "description": "GARAGE",
@@ -108,7 +108,7 @@
     "sequence": "2c50",
     "type": [
       0,
-      1
+      0
     ],
     "manufacturer_id": 2,
     "description": "PORTAIL",

@@ -570,25 +570,13 @@ namespace IOHC {
      */
     bool iohcRadio::sendSingle(iohcPacket *packet) {
         if (!packet) return false;
-// todo utiliser mutex vtaskdelay too slow
         uint32_t timeout = millis() + 100;
         while (txQueue_busy && millis() < timeout) {
             vTaskDelay(pdMS_TO_TICKS(1));
         }
 
-        // if (txQueue_busy) {
-        //     ets_printf("TX queue timeout in sendSingle\n");
-        //     return false;
-        // }
-
         txQueue_busy = true;
-
-        // iohcPacket *pktToSend = new iohcPacket(*packet) ;
-        // TxPacketWrapper *wrapper = new TxPacketWrapper(pktToSend, true);
-        // txQueue.push_back(wrapper);
-        // Utiliser la factory function
-        TxPacketWrapper* wrapper = createPacketWrapper(packet);
-        if (wrapper) txQueue.push_back(wrapper);
+        if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_back(wrapper);
         else {
             txQueue_busy = false;
             ets_printf("sendSingle: Failed to create packet wrapper");
@@ -601,8 +589,8 @@ namespace IOHC {
     }
 
     /**
-     * Insère un paquet en priorité (au début de la queue)
-    * Utile pour les réponses urgentes
+    * Insère un paquet en priorité (au début de la queue)
+    * Pour les réponses urgentes
     */
     bool iohcRadio::sendPriority(iohcPacket *packet) {
         if (!packet) return false;
@@ -619,13 +607,8 @@ namespace IOHC {
 
         txQueue_busy = true;
 
-        // Ajouter le paquet prioritaire
-        // iohcPacket *pktToSend = new iohcPacket(*packet);
-        // TxPacketWrapper *wrapper = new TxPacketWrapper(pktToSend, true);
-        // Utiliser la factory function
-        TxPacketWrapper* wrapper = createPacketWrapper(packet);
         // O(1)
-        if (wrapper) txQueue.push_front(wrapper);
+        if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
         else {
             txQueue_busy = false;
             ets_printf("sendPriority: Failed to create packet wrapper");
@@ -655,7 +638,6 @@ namespace IOHC {
 
         // Verrouiller pour transmission
         radio->lockFHSS(FHSSLockReason::TRANSMITTING);
-        // radio->updateFHSSActivity();
         txMode = true;
 
         iohcPacket *pkt = radio->currentTxPacket->packet;

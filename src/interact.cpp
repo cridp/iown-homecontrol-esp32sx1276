@@ -132,7 +132,7 @@ namespace Cmd {
         });
         Cmd::addHandler("scanMode", "scanMode", [](Tokens *cmd)-> void {
             scanMode = true;
-            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::checkCmd, nullptr);
+            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::scanMode, nullptr);
         });
         Cmd::addHandler("scanDump", "Dump Scan Results", [](Tokens *cmd)-> void {
             scanMode = false;

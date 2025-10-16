@@ -35,7 +35,7 @@ void wifiReconnectTask(void *param) {
 }
 
 void startWifiReconnectTask() {
-    xTaskCreate(wifiReconnectTask, "wifiTask", 8192, nullptr, 1, &wifiTaskHandle);
+    xTaskCreate(wifiReconnectTask, "wifiTask", 4096, nullptr, 1, &wifiTaskHandle);
 }
 
 void wifiTimerCallback(TimerHandle_t xTimer) {

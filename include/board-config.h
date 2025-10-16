@@ -45,12 +45,15 @@
 #if defined(LILYGO)
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
+#define DISPLAY_OLED_RST_PIN 14
 #elif defined(HELTEC)
 #define I2C_SDA_PIN 4
 #define I2C_SCL_PIN 15
+#define DISPLAY_OLED_RST_PIN 16
 #else
 #define I2C_SDA_PIN 21
 #define I2C_SCL_PIN 22
+#define DISPLAY_OLED_RST_PIN 16
 #endif
 
 // OK LilyGo Wifi ESP32 Lora v2.1.6
@@ -104,7 +107,7 @@
 #define CHANNEL3  869850000 //2W
 
 #define FREQS2SCAN              {CHANNEL2, CHANNEL3, CHANNEL1}
-#define MAX_FREQS                3       // Number of Frequencies to scan through Fast Hopping set to 1 to disable FHSS
+#define MAX_FREQS               3       // Number of Frequencies to scan through Fast Hopping set to 1 to disable FHSS
 
 //#if defined(HELTEC)
 #define SCAN_LED                  BOARD_LED_PIN //              22
