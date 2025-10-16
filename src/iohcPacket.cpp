@@ -101,8 +101,7 @@ namespace IOHC {
                 case iohcDevice::DISCOVER_0x28:
                     // ets_printf("DISCOVER_REMOTE_0x28");
                 case iohcDevice::DISCOVER_REMOTE_0x2A: {
-                    ets_printf("DISCOVER_REMOTE_0x2A");
-                    ets_printf("\tWITH CHALLENGE KEY (12)");
+                    ets_printf("DISCOVER_REMOTE_0x2A WITH CHALLENGE KEY (12)");
                     break;
                 }
                 case iohcDevice::DISCOVER_ANSWER_0x29:
@@ -322,11 +321,11 @@ namespace IOHC {
                 if (this->cmd() == 0x57) {ets_printf("general info 2 %s ", iohcOther2W::extractAndNormalizeName(this->payload.buffer, 9, 16).c_str());}
                 if (this->cmd() == 0x59) {ets_printf("general info 3 %s ", iohcOther2W::extractAndNormalizeName(this->payload.buffer, 9, 16).c_str());}
                 if (this->cmd() == 0x3D) {
-if (sameDiscussion && iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd == 0x3C) {
-    std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAnswer.begin());
-    IOHC::iohcOther2W::getInstance()->mapChallenge.insert_or_assign(challengeAsked, challengeAnswer);
-    ets_printf("%d %d", countDiscussions, IOHC::iohcOther2W::getInstance()->mapChallenge.size());
-}
+// if (sameDiscussion && iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd == 0x3C) {
+    // std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAnswer.begin());
+    // IOHC::iohcOther2W::getInstance()->mapChallenge.insert_or_assign(challengeAsked, challengeAnswer);
+    // ets_printf("%d %d", countDiscussions, IOHC::iohcOther2W::getInstance()->mapChallenge.size());
+// }
 
                     // ets_printf("Challenge response for %2.2X: ", IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd); // iohc->payload.packet.header.cmd);
                     // for (int i = 0; i < 6; i++)
@@ -334,9 +333,12 @@ if (sameDiscussion && iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd =
                     // ets_printf("\n");
                 }
                 if (this->cmd() == 0x3C) {
-IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd = 0x3C;
-IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData = {this->payload.buffer+9, this->payload.buffer+this->buffer_length};
-std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAsked.begin());
+                    ets_printf("Challenge asked after Last Command %2.2X and Memorized %2.2X (%d)", IOHC::lastCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedData.size());
+
+// IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd = 0x3C;
+// IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.assign(this->payload.buffer+9, this->payload.buffer+15);
+                    // = {this->payload.buffer+9, this->payload.buffer+this->buffer_length};
+// std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAsked.begin());
                     // ets_printf("Challenge response for %2.2X: ", IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd); // iohc->payload.packet.header.cmd);
                     // for (int i = 0; i < 6; i++)
                     //     ets_printf("%02X ", iohc->payload.buffer[10+i]);
@@ -352,7 +354,7 @@ std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begi
         }
         ets_printf("\n");
         relStamp = packetStamp;
-        if (save2W) {iohcOther2W::getInstance()->save();}
+        // if (save2W) {iohcOther2W::getInstance()->save();}
     }
 
     std::string iohcPacket::decodeToString(bool verbosity) {

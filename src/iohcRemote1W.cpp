@@ -136,9 +136,11 @@ namespace IOHC {
         if (foundRemote != nullptr)
             printf( "Remote found : %s\n", foundRemote->description.c_str());
 */
+
         // Emulates remote button press
         if (found)
         switch (cmd) {
+
             case RemoteButton::Pair: {
                 // 0x2e: 0x1120 + target broadcast + source + 0x2e00 + sequence + hmac
                 // auto* packet = new iohcPacket();
@@ -170,9 +172,7 @@ namespace IOHC {
 
                 packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                // packets2send.push_back(packet);
-                // _radioInstance->send(packets2send);
-                _radioInstance->sendSingle(&packet, true);
+                _radioInstance->sendSingle(&packet);
 
                 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
@@ -214,9 +214,8 @@ namespace IOHC {
 
                 packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                // packets2send.push_back(packet);
-                // _radioInstance->send(packets2send);
-                _radioInstance->sendSingle(&packet, true);
+                // _radioInstance->adaptiveFHSS->prepareForConversation();
+                _radioInstance->sendSingle(&packet);
 
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
@@ -260,9 +259,8 @@ namespace IOHC {
 
                 packet.buffer_length = packet.payload.packet.header.CtrlByte1.asStruct.MsgLen + 1;
 
-                // packets2send.push_back(packet);
-                // _radioInstance->send(packets2send);
-                _radioInstance->sendSingle(&packet, true);
+                // _radioInstance->adaptiveFHSS->prepareForConversation();
+                _radioInstance->sendSingle(&packet);
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
                 Serial.printf("%s position: %.0f%%\n", r.name.c_str(), r.positionTracker.getPosition());
@@ -548,11 +546,6 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
 */
                 // Send all packets
                 _radioInstance->send(packets2send);
-                // Libérer vos paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
-                packets2send.clear();
 
 #if defined(SSD1306_DISPLAY)
                 display1WAction(r.node, remoteButtonToString(cmd), "TX", r.name.c_str());
@@ -563,15 +556,21 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
 //            }
         }
         this->save(); // Save sequence number
+        // Libérer vos paquets originaux
+        for (auto* p : packets2send) {
+            delete p;
+        }
+        packets2send.clear();
+
     }
 
    bool iohcRemote1W::load() {
         _radioInstance = iohcRadio::getInstance();
 
         if (LittleFS.exists(IOHC_1W_REMOTE))
-            Serial.printf("Loading 1W remote settings from %s\n", IOHC_1W_REMOTE);
+            ets_printf("Loading 1W remote settings from %s\n", IOHC_1W_REMOTE);
         else {
-            Serial.printf("*1W remote not available\n");
+            ets_printf("*1W remote not available\n");
             return false;
         }
 
@@ -581,8 +580,7 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
         DeserializationError error = deserializeJson(doc, f); 
 
         if (error) {
-            Serial.print("Failed to parse JSON: ");
-            Serial.println(error.c_str());
+            ets_printf("Failed to parse JSON: %s\n ",error.c_str());
             return false;
         }
         f.close();
@@ -656,7 +654,7 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
             remotes.push_back(r);
         }
 
-        Serial.printf("Loaded %d x 1W remotes\n", remotes.size()); // _type.size());
+        ets_printf("Loaded %d x 1W remotes\n", remotes.size()); // _type.size());
         // Ensure JSON reflects the latest sequence values and persist defaults
         if (updateFile) {
             this->save();
@@ -708,11 +706,11 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
         for (auto &r : remotes) {
             r.positionTracker.update();
 
-            float pos = r.positionTracker.getPosition();
+            int pos = r.positionTracker.getPosition();
             bool moving = r.positionTracker.isMoving();
 
             if (moving) {
-                Serial.printf("%s position: %.0f%%\n", r.name.c_str(), pos);
+                ets_printf("%s position: %.0d%%\n", r.name.c_str(), pos);
 #if defined(SSD1306_DISPLAY)
                 display1WPosition(r.node, pos, r.name.c_str());
 #endif

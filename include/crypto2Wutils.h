@@ -29,7 +29,12 @@ inline uint8_t system_key[16] = {0xCE, 0x0D, 0x4B, 0x2F, 0x5C, 0x68, 0x24, 0x93,
 inline uint8_t transfert_key[16] = {0x34, 0xc3, 0x46, 0x6e, 0xd8, 0x8f, 0x4e, 0x8e, 0x16, 0xaa, 0x47, 0x39, 0x49, 0x88, 0x43, 0x73};
 inline uint8_t setgo[16] = {0x9A, 0x00, 0x72, 0x1E, 0x3E, 0xE2, 0x9A, 0x7B, 0xF1, 0xB4, 0xA6, 0x08, 0x6C, 0x14, 0x52, 0xEB};
 
-inline AES_ctx ctx; // RadioLibAES128 aes;
+// Chaque translation unit (ou chaque appel inlined) avait sa propre copie non déterministe de ctx, parfois sur la pile, parfois réutilisée — d’où des corruptions heap/pile impossibles à reproduire.
+// En la rendant static, on garantit :
+// un seul et unique bloc mémoire bien aligné (en .bss),
+// pas de recouvrement de pile entre ISR/tâches,
+// et des performances identiques, puisque l’accès reste direct.
+/*inline*/ static  AES_ctx ctx;
 
 typedef struct {
     uint8_t chksum1;

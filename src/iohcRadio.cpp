@@ -24,36 +24,34 @@
 
 #include "iohcCozyDevice2W.h"
 
-#define LONG_PREAMBLE_MS 206
-#define SHORT_PREAMBLE_MS 52
+// trame typique FSK : preamble (variable) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B).
+// airtime (s) = ( (preamble_bytes + 3 + 2 + payload_bytes + 2) * 8 ) / bitrate
+#define LONG_PREAMBLE_MS 64  // 21.458 ms 23~24 1W
+#define SHORT_PREAMBLE_MS 16 // 11.458 ms
 
 TaskHandle_t IOHC::iohcRadio::txTaskHandle = nullptr;
 
-
 // Structure pour gérer un paquet en transmission
 struct TxPacketWrapper {
-    IOHC::iohcPacket* packet;
+    IOHC::iohcPacket *packet;
     uint8_t repeatsRemaining;
     uint32_t repeatTime;
-    bool ownsMemory; // Indique si on doit libérer la mémoire
 
-    TxPacketWrapper(IOHC::iohcPacket* pkt, bool owns = true)
+    explicit TxPacketWrapper(IOHC::iohcPacket *pkt)
         : packet(pkt),
           repeatsRemaining(pkt ? pkt->repeat : 0),
-          repeatTime(pkt ? pkt->repeatTime : 0),
-          ownsMemory(owns) {}
+          repeatTime(pkt ? pkt->repeatTime : 0)
+          {}
 
     ~TxPacketWrapper() {
-        if (ownsMemory && packet) {
+        if (packet) {
             delete packet;
             packet = nullptr;
         }
     }
 };
 
-
 namespace IOHC {
-
     iohcRadio *iohcRadio::_iohcRadio = nullptr;
     volatile bool iohcRadio::_g_preamble = false;
     volatile bool iohcRadio::_g_payload = false;
@@ -63,25 +61,93 @@ namespace IOHC {
     volatile bool iohcRadio::send_lock = false;
     volatile bool iohcRadio::txMode = false;
     volatile iohcRadio::RadioState iohcRadio::radioState = iohcRadio::RadioState::IDLE;
-    volatile bool iohcRadio::txComplete = false;
 
     static IOHC::iohcPacket last1wPacket;
-    static bool last1wPacketValid = false;
 
     TaskHandle_t handle_interrupt;
+    //
+    struct RadioIrqEvent {
+        uint8_t flags;         // bit0 = preamble, bit1 = payload, autres reserved
+        uint32_t ts_ms;        // timestamp en ms (esp_timer_get_time()/1000)
+    };
 
-    // Ajoutez un mutex/semaphore pour protéger l'accès concurrent
-    static SemaphoreHandle_t fhss_mutex = nullptr;
+    static QueueHandle_t radioIrqQueue = nullptr;
+    static constexpr size_t RADIO_IRQ_QUEUE_LEN = 64;
 
     /**
-     * TWaits for a notification and then calls the `tickerCounter`
+    * Aucune prise de sémaphore / lockFHSS() / updateFHSSActivity() ici.
+    * esp_timer_get_time() est ISR-safe ; millis() n'est pas garanti ISR-safe dans tous les contextes
+    * On utilise donc esp_timer_get_time()/1000.
+    */
+    void IRAM_ATTR handle_interrupt_fromisr() {
+        // Lire seulement les GPIOS (opérations très courtes), pas d'appels bloquants
+        bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
+        bool payload  = digitalRead(RADIO_PACKET_AVAIL);
+
+        // Compose l'événement
+        RadioIrqEvent ev;
+        ev.flags = 0;
+        if (preamble) ev.flags |= 0x01;
+        if (payload)  ev.flags |= 0x02;
+        ev.ts_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000ULL);
+
+        // Envoi dans la queue (FromISR)
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        if (radioIrqQueue) {
+            // On ignore si la queue est pleine — compteur de débordement optionnel
+            if (xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken) != pdTRUE) {
+                // Optionnel : incrémenter un compteur de drops (volatile)
+                // irq_drop_count++;
+            }
+        }
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+
+    /**
+    * Sequentialité : la task lit la queue et traite chaque événement un à un — plus de réentrance ni d’exécution concurrente.
+    * tickerCounter reste proche de ta logique actuelle, mais sans être appelé depuis ISR.
+    */
+    void handle_interrupt_task(void *pvParameters) {
+        IOHC::iohcRadio *radio = static_cast<IOHC::iohcRadio*>(pvParameters);
+        RadioIrqEvent ev;
+        const TickType_t xMaxBlock = pdMS_TO_TICKS(500); // ou portMAX_DELAY si on veux
+
+        while (true) {
+            if (xQueueReceive(radioIrqQueue, &ev, xMaxBlock) == pdTRUE) {
+                // traitons l'événement de façon séquentielle (pas de réentrance possible)
+                bool preamble = ev.flags & 0x01;
+                bool payload  = ev.flags & 0x02;
+
+                if (preamble) {
+                    // Relever timestamp et lock dans un contexte sûr
+                    radio->lockFHSS(IOHC::iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
+                    radio->updateFHSSActivity(); // écriture atomique safe
+                    radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
+                }
+                if (payload) {
+                    // Marquer qu'on est en réception et lock
+                    radio->lockFHSS(IOHC::iohcRadio::FHSSLockReason::RECEIVING);
+                    radio->updateFHSSActivity();
+                    radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
+                    // Appeler tickerCounter (qui fait la lecture SPI, receive(), etc.)
+                    // tickerCounter tourne en contexte task — donc autorisé à utiliser sémaphores, malloc, etc.
+                    radio->tickerCounter(radio);
+                }
+
+                // Il se peut que preamble et payload arrivent ensemble : on les gère séquentiellement
+            }
+            // Boucle continue — pas de busy-wait
+        }
+    }
+
+    /**
+     * Waits for a notification and then calls the `tickerCounter`
      * function if certain conditions are met.
      *
-     * @param pvParameters The `pvParameters` parameter in the `handle_interrupt_task` function is a void
-     * pointer that can be used to pass any data or object to the task when it is created. In this specific
+     * @param pvParameters Pointer that can be used to pass any data or object to the task when it is created. In this specific
      * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
      */
-    void IRAM_ATTR handle_interrupt_task(void *pvParameters) {
+    void IRAM_ATTR handle_interrupt_task_1(void *pvParameters) {
         static uint32_t thread_notification;
         constexpr TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
         while (true) {
@@ -97,22 +163,33 @@ namespace IOHC {
     /**
      * Reads digital inputs and notifies a thread to wake up when
      * the interrupt service routine is complete.
+     * lastIsrTime Évite les double-triggers dus à la latence SPI ou à un flag encore haut.
      */
-    void IRAM_ATTR handle_interrupt_fromisr() {
+        static volatile uint32_t lastIsrTime = 0;
+    void IRAM_ATTR handle_interrupt_fromisr_1() {
+        uint32_t now = micros();
+        if (now - lastIsrTime < 200) return; // ignore bounce <200µs
+        lastIsrTime = now;
+
         bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
         bool payload = digitalRead(RADIO_PACKET_AVAIL);
+        iohcRadio *radio = iohcRadio::getInstance();
         if (preamble) {
             iohcRadio::_g_preamble = true;
+            // iohcRadio::f_lock_hop = true;
             iohcRadio::setRadioState(iohcRadio::RadioState::PREAMBLE);
+            // VERROUILLER dès le préambule
+            radio->updateFHSSActivity();
+            radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
         }
         if (payload) {
             iohcRadio::_g_payload = true;
             iohcRadio::setRadioState(iohcRadio::RadioState::PAYLOAD);
+            // MAINTENIR le verrouillage pour la réception
+            radio->updateFHSSActivity();
+            radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
         }
-        // Set frequency lock/hop flag based on preamble detection
-        iohcRadio::f_lock_hop = preamble;
 
-        iohcRadio::txComplete = true;
         // Notify the thread so it will wake up when the ISR is complete
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
@@ -120,19 +197,19 @@ namespace IOHC {
     }
 
     void FHSSTimer(iohcRadio *iohc_radio) {
-        // Protection contre les accès concurrents
-        if (xSemaphoreTake(fhss_mutex, 0) != pdTRUE) {
-            return; // Ressayer au prochain tick
+        // Vérifier d'abord le timeout
+        iohc_radio->checkFHSSTimeout();
+
+        // Si toujours verrouillé, pas de hop
+        if (iohc_radio->f_lock_hop) {
+            return;
         }
 
-        // Ne pas sauter de fréquence si :
-        // 1. Le hopping est verrouillé
-        // 2. La radio n'est pas en mode RX
-        // 3. La radio est en train de traiter un paquet
-        if (iohc_radio->f_lock_hop || iohcRadio::radioState != iohcRadio::RadioState::RX || iohcRadio::txMode) {
-            xSemaphoreGive(fhss_mutex);
+        // Ne sauter que si on est vraiment en RX idle
+        if (iohcRadio::radioState != iohcRadio::RadioState::RX) {
             return;
-            }
+        }
+
         // Incrémenter l'index de fréquence
         iohc_radio->currentFreqIdx++;
         if (iohc_radio->currentFreqIdx >= iohc_radio->num_freqs) {
@@ -140,10 +217,114 @@ namespace IOHC {
         }
 
         // Changer la fréquence seulement si on est en RX
-        Radio::setCarrier(Radio::Carrier::Frequency,  iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
+        Radio::setCarrier(Radio::Carrier::Frequency, iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
 
-        xSemaphoreGive(fhss_mutex);
+        // ESP_LOGV("IOHC", "FHSS hop to freq[%d]: %d Hz",
+        //  iohc_radio->currentFreqIdx,
+        //  iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
     }
+
+    /**
+         * Verrouille le FHSS avec une raison spécifique
+         */
+    void iohcRadio::lockFHSS(const FHSSLockReason reason) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // Garder la raison la plus "forte"
+            if (reason > fhssLockReason) {
+                fhssLockReason = reason;
+                f_lock_hop = true;
+                lastActivityTime = millis();
+
+                // ets_printf("(D) FHSS locked: %s\n", fhssLockReasonToString(reason));
+            }
+            xSemaphoreGive(fhss_state_mutex);
+        }
+    }
+
+    /**
+     * Déverrouille le FHSS pour une raison spécifique
+     */
+    void iohcRadio::unlockFHSS(const FHSSLockReason reason) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // Déverrouiller seulement si c'est la même raison
+            if (fhssLockReason == reason) {
+                fhssLockReason = FHSSLockReason::NONE;
+                f_lock_hop = false;
+
+                // ets_printf("(D) FHSS unlocked: %s\n", fhssLockReasonToString(reason));
+            }
+            xSemaphoreGive(fhss_state_mutex);
+        }
+    }
+
+    /**
+        * Force le déverrouillage (pour reset manuel)
+        */
+    void iohcRadio::forceUnlockFHSS() {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            fhssLockReason = FHSSLockReason::NONE;
+            f_lock_hop = false;
+            expectingResponse = false;
+
+            // ESP_LOGW("IOHC", "FHSS force unlocked");
+            xSemaphoreGive(fhss_state_mutex);
+        }
+    }
+
+    /**
+     * Vérifie si le verrouillage a expiré (watchdog)
+     */
+    void iohcRadio::checkFHSSTimeout() {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // todo
+            if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
+                uint32_t elapsed = millis() - lastActivityTime;
+
+                // A 38.4 kb/s, un paquet de 32 bytes
+                // ≈ (32 * 8 bits) / 38400 = 6.6 ms de payload + overhead (préambule, sync, CRC…).
+                // Total réel de 10 à 15 ms.
+                uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
+                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 44; // lock_timeout (~2× airtime max).
+                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 22;
+
+                if (elapsed > timeout) {
+                    // ets_printf("(D) FHSS timeout, forcing unlock (reason: %s, elapsed: %dms)\n", fhssLockReasonToString(fhssLockReason), elapsed);
+                    fhssLockReason = FHSSLockReason::NONE;
+                    f_lock_hop = false;
+                    expectingResponse = false;
+                }
+            }
+            xSemaphoreGive(fhss_state_mutex);
+        }
+    }
+
+    /**
+     * Met à jour l'horodatage d'activité
+     * Pas besoin de mutex pour juste mettre à jour un uint32_t
+     */
+    // void iohcRadio::updateFHSSActivity() {
+    //     if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+    //         lastActivityTime = millis();
+    //         xSemaphoreGive(fhss_state_mutex);
+    //     }
+    // }
+    inline void IRAM_ATTR iohcRadio::updateFHSSActivity() {
+        lastActivityTime = static_cast<uint32_t>(esp_timer_get_time() / 1000ULL); // micro→ms
+    }
+    /**
+ * Indique qu'on attend une réponse après un envoi
+ */
+    void iohcRadio::setExpectingResponse(bool expecting, uint32_t timeoutMs = 1000) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            expectingResponse = expecting;
+            responseTimeoutMs = timeoutMs;
+            if (expecting) {
+                lockFHSS(FHSSLockReason::WAITING_RESPONSE);
+            }
+            xSemaphoreGive(fhss_state_mutex);
+        }
+    }
+
 
     iohcRadio::iohcRadio() {
         Radio::initHardware();
@@ -164,34 +345,31 @@ namespace IOHC {
 
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");
-        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192,
-                                                       this, /*tskIDLE_PRIORITY*/4,
-                                                       &handle_interrupt, /*tskNO_AFFINITY*/xPortGetCoreID());
+        // Créer les mutex
+        tx_mutex = xSemaphoreCreateMutex();
+        txQueue_mutex = xSemaphoreCreateMutex();
+        fhss_state_mutex = xSemaphoreCreateMutex();
+
+        // Créer la queue ISR -> task
+        radioIrqQueue = xQueueCreate(RADIO_IRQ_QUEUE_LEN, sizeof(RadioIrqEvent));
+        if (!radioIrqQueue) {
+            ets_printf("ERROR: radioIrqQueue creation failed\n");
+        }
+
+        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 4096,
+                                                       this, 4,
+                                                       &handle_interrupt, xPortGetCoreID());
         if (task_code != pdPASS) {
             ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
-            // sx127x_destroy(device);
             return;
         }
-        // Créer le mutex pour FHSS
-        fhss_mutex = xSemaphoreCreateMutex();
-        if (fhss_mutex == nullptr) {
-            ESP_LOGE("IOHC", "Failed to create FHSS mutex");
-        }
-        // Créer les mutex
-        txQueue_mutex = xSemaphoreCreateMutex();
-        tx_mutex = xSemaphoreCreateMutex();
-
-        if (!txQueue_mutex || !tx_mutex) {
-            ESP_LOGE("IOHC", "Failed to create TX mutexes");
-        }
-
     }
 
     /**
-     * @brief The function `iohcRadio::getInstance()` returns a pointer to a single instance of the `iohcRadio`
+     * @brief Returns a pointer to a single instance of the `iohcRadio`
      * class, creating it if it doesn't already exist.
      *
-     * @return An instance of the `iohcRadio` class is being returned.
+     * @return An instance of the `iohcRadio` class.
      */
     iohcRadio *iohcRadio::getInstance() {
         if (!_iohcRadio)
@@ -199,79 +377,82 @@ namespace IOHC {
         return _iohcRadio;
     }
 
-/**
- * Initializes the radio with specified parameters and sets it to receive mode.
- * 
- * @param num_freqs Number of
- * frequencies to scan. It is of type `uint8_t`. This
- * parameter specifies how many frequencies the radio will scan during operation.
- * @param scan_freqs array of `uint32_t` values that represent the
- * frequencies to be scanned during the radio operation. The `start` function initializes the radio
- * with the provided frequencies for scanning.
- * @param scanTimeUs time interval in microseconds for scanning frequencies. If a specific value is
- * provided for `scanTimeUs`, it will be used as the scan interval. Otherwise, the default scan
- * interval defined as
- * @param rxCallback The `rxCallback` is a delegate or
- * function pointer that will be called when a packet is received by the radio. It is set to `nullptr`
- * by default if not provided during the function call.
- * @param txCallback The `txCallback` is a callback function that will be called when a packet is
- * transmitted by the radio. This callback function can be provided by the user
- */
+    /**
+     * Initializes the radio with specified parameters and sets it to receive mode.
+     *
+     * @param num_freqs Number of
+     * frequencies to scan. It is of type `uint8_t`. This
+     * parameter specifies how many frequencies the radio will scan during operation.
+     * @param scan_freqs array of `uint32_t` values that represent the
+     * frequencies to be scanned during the radio operation. The `start` function initializes the radio
+     * with the provided frequencies for scanning.
+     * @param scanTimeUs time interval in microseconds for scanning frequencies. If a specific value is
+     * provided for `scanTimeUs`, it will be used as the scan interval. Otherwise, the default scan
+     * interval defined as
+     * @param rxCallback The `rxCallback` is a delegate or
+     * function pointer that will be called when a packet is received by the radio. It is set to `nullptr`
+     * by default if not provided during the function call.
+     * @param txCallback The `txCallback` is a callback function that will be called when a packet is
+     * transmitted by the radio. This callback function can be provided by the user
+     */
     void iohcRadio::start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs,
                           CallbackFunction rxCallback = nullptr, CallbackFunction txCallback = nullptr) {
         this->num_freqs = num_freqs;
         this->scan_freqs = scan_freqs;
-        this->scanTimeUs = scanTimeUs ? scanTimeUs : DEFAULT_SCAN_INTERVAL_US;
+        // this->scanTimeUs = scanTimeUs ? scanTimeUs : DEFAULT_SCAN_INTERVAL_US;
         this->rxCB = std::move(rxCallback);
         this->txCB = std::move(txCallback);
+        this->currentFreqIdx = 0;
+        this->expectingResponse = false;
+
+        // CONFIGURATION PAR DÉFAUT RECOMMANDÉE
+        if (scanTimeUs == 0) {
+            // Démarrer en mode fast scan
+            this->scanTimeUs = 15 * 1000; // 15ms par fréquence
+            // ESP_LOGI("FHSS", "Using default adaptive FHSS: 15ms fast scan");
+        } else {
+            this->scanTimeUs = scanTimeUs;
+        }
 
         Radio::clearBuffer();
         Radio::clearFlags();
 
         /* We always start at freq[0], the 1W/2W channel*/
-        Radio::setCarrier(Radio::Carrier::Frequency, CHANNEL2); // scan_freqs[0]); //868950000);
-        Radio::setRx();
+        Radio::setCarrier(Radio::Carrier::Frequency, scan_freqs[0]); // CHANNEL2); // 868950000);
 
         if (this->num_freqs > 1) {
             this->currentFreqIdx = 0;
-            // this->tickCounter = 0;
+
+            // start adaptative
+            adaptiveFHSS = new AdaptiveFHSS(this);
+
             // Start Frequency Hopping Timer
-            printf("Starting FHSSTimer Handler...\n");
-            this->TickTimer.attach_us(this->scanTimeUs, FHSSTimer, this);
+            ets_printf("Starting FHSSTimer Handler...\n");
+            adaptiveFHSS->switchToFastScan();
         }
+        Radio::setRx();
     }
 
+    /**
+     * Handles various radio operations based on different conditions
+     * and configurations for SX127X
+     *
+     * @param radio Pointer to an
+     * instance of the `iohcRadio` class. This pointer is used to access and modify the properties and
+     * methods of the `iohcRadio` object within the function.
+     *
+     * Ne rien faire dans l'ISR qui puisse allouer, prendre mutex/sem, ou appeler des fonctions non-ISR-safe.
+     * Faire en sorte que tickerCounter() ne fasse que le minimum : lire les IRQ, mettre à jour lastActivityTime, écrire un flag / envoyer une notification vers une task (via xTaskNotifyFromISR() ou xQueueSendFromISR()), et retourner.
+     * Tout le traitement (lecture FIFO, allocation, vector insert) doit être fait dans une task FreeRTOS.
+     */
 
-/**
- * Handles various radio operations based on different conditions
- * and configurations for SX127X
- * 
- * @param radio The `radio` parameter in the `iohcRadio::tickerCounter` function is a pointer to an
- * instance of the `iohcRadio` class. This pointer is used to access and modify the properties and
- * methods of the `iohcRadio` object within the function. The function uses this pointer
- */
     void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio *radio) {
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
 
         if (radioState == iohcRadio::RadioState::PREAMBLE) {
-            // Verrouiller le hopping dès qu'un préambule est détecté
-            if (xSemaphoreTake(fhss_mutex, 0) == pdTRUE) {
-                f_lock_hop = true;
-                xSemaphoreGive(fhss_mutex);
-            }
-            // radio->tickCounter = 0;
-            // radio->preambleCounter = radio->preambleCounter + 1;
-
-            // if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) radio->preCounter = 0;
-            // In case of Sync received resets the preamble duration
-            // if ((preambleCounter * SM_GRANULARITY_US) >= SM_PREAMBLE_RECOVERY_TIMEOUT_US) {
-            //     // Avoid hanging on a too long preamble detect
-            //     Radio::clearFlags();
-            //     // radio->preambleCounter = 0;
-            // }
-        } else
-            if (radioState == iohcRadio::RadioState::PAYLOAD) {
-                // if TX ready?
+            // Préambule détecté, déjà verrouillé dans l'ISR
+        } else if (radioState == iohcRadio::RadioState::PAYLOAD) {
+            // if TX ready?
             if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
                 radio->sent(radio->new_packet);
                 Radio::clearFlags();
@@ -279,156 +460,208 @@ namespace IOHC {
                     Radio::setRx();
                     radio->setRadioState(iohcRadio::RadioState::RX);
 
-                    // Déverrouiller seulement si pas en mode TX verrouillé
-                    if (!txMode && xSemaphoreTake(fhss_mutex, 0) == pdTRUE) {
-                        f_lock_hop = false;
-                        xSemaphoreGive(fhss_mutex);
-                    }
+                    // Only when no response expected
+                    //if (/*!radio->expectingResponse &&*/ !txMode) {
+                    //    radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
+                    //}
                 }
                 return;
             }
-            // packet reçu
+            // Réception de payload
+            // maybeCheckHeap("BEFORE RECEIVE IN TICKERCOUNTER");
             radio->receive(false);
+            // maybeCheckHeap("AFTER RECEIVE IN TICKERCOUNTER");
             Radio::clearFlags();
-            radio->tickCounter = 0;
-            return;
+
+            // radio->tickCounter = 0;
+            // Après réception, Only when no response expected
+
+            // if (!radio->expectingResponse) {
+            // Petit délai avant de déverrouiller pour laisser le temps de traiter
+            // et éventuellement envoyer une réponse
+            // vTaskDelay(pdMS_TO_TICKS(50));
+            // radio->forceUnlockFHSS();
+            // }
         }
 
-        // radio->tickCounter = radio->tickCounter + 1;
-        // if (radio->tickCounter * SM_GRANULARITY_US < radio->scanTimeUs) return;
-        //
-        // radio->tickCounter = 0;
     }
-
     /**
-         * Envoie un seul paquet (plus simple pour les réponses)
+         * Crée un wrapper de paquet de manière SÉCURISÉE
+         * Retourne nullptr si allocation échoue (au lieu de crasher)
          */
-    bool iohcRadio::sendSingle(iohcPacket* packet, bool copyPacket = true) {
-        if (!packet) return false;
-
-        if (xSemaphoreTake(txQueue_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-            ESP_LOGE("IOHC", "Failed to acquire txQueue mutex");
-            return false;
+    static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
+        if (!sourcePacket) {
+            ets_printf("createPacketWrapper: sourcePacket is null\n");
+            return nullptr;
         }
 
-        iohcPacket* pktToSend = copyPacket ? new iohcPacket(*packet) : packet;
-        TxPacketWrapper* wrapper = new TxPacketWrapper(pktToSend, copyPacket);
-        txQueue.push(wrapper);
+        // Essayer d'allouer d'abord la copie du paquet
+        iohcPacket* pktToSend = nullptr;
 
-        xSemaphoreGive(txQueue_mutex);
+        pktToSend = new (std::nothrow) iohcPacket(*sourcePacket);
+        if (!pktToSend) {
+            ets_printf("createPacketWrapper: Failed to allocate packet copy\n");
+            return nullptr;  // Fuite zéro - rien n'a été alloué
+        }
 
-        startTransmission();
-        return true;
+        // Ensuite allouer le wrapper
+        auto wrapper = new (std::nothrow) TxPacketWrapper(pktToSend);
+        if (!wrapper) {
+            ets_printf("createPacketWrapper: Failed to allocate wrapper\n");
+            // Libérer le paquet
+            delete pktToSend;
+            return nullptr;  // Fuite zéro
+        }
+
+        return wrapper;
     }
-
     /**
- * Insère un paquet en priorité (au début de la queue)
- * Utile pour les réponses urgentes
+ * Sends packets stored in a vector with a specified repeat time.
+ *
+ * @param TxPackets `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
+*
+ * Envoie un ou plusieurs paquets
+ * Les paquets sont COPIÉS en interne, on garde la propriété des originaux
  */
-    bool iohcRadio::sendPriority(iohcPacket* packet, bool copyPacket = true) {
-        if (!packet) return false;
-
-        if (xSemaphoreTake(txQueue_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-            ESP_LOGE("IOHC", "Failed to acquire txQueue mutex");
-            return false;
-        }
-
-        // Créer une nouvelle queue temporaire
-        std::queue<TxPacketWrapper*> tempQueue;
-
-        // Ajouter le paquet prioritaire
-        iohcPacket* pktToSend = copyPacket ? new iohcPacket(*packet) : packet;
-        TxPacketWrapper* wrapper = new TxPacketWrapper(pktToSend, copyPacket);
-        tempQueue.push(wrapper);
-
-        // Copier le reste de la queue
-        while (!txQueue.empty()) {
-            tempQueue.push(txQueue.front());
-            txQueue.pop();
-        }
-
-        // Remplacer la queue
-        txQueue = tempQueue;
-
-        xSemaphoreGive(txQueue_mutex);
-
-        startTransmission();
-        return true;
-    }
-
-
-
-
-    /**
-     * Sends packets stored in a vector with a specified repeat time.
-     *
-     * @param TxPackets `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
-    *
-     * Envoie un ou plusieurs paquets
-     * Les paquets sont COPIÉS en interne, on garde la propriété des originaux
-     */
     bool iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
         if (TxPackets.empty()) return false;
-        // Prendre le mutex de la queue
-        if (xSemaphoreTake(txQueue_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-            ESP_LOGE("IOHC", "Failed to acquire txQueue mutex");
+
+        // Pas de sémaphore bloquant, simple spinlock
+        uint32_t timeout = millis() + 100;  // Timeout 100ms
+        while (txQueue_busy && millis() < timeout) {
+            vTaskDelay(pdMS_TO_TICKS(1));  // OK ici (pas ISR)
+        }
+
+        if (txQueue_busy) {
+            ets_printf("TX queue timeout");
             return false;
         }
 
-        // packets2send = TxPackets; //std::move(iohcTx); // NO !!
-        // TxPackets.clear();
+        txQueue_busy = true;  // Acquérir le "lock"
+
         txCounter = 0;
         // Ajouter chaque paquet à la queue (en faisant une COPIE)
-        for (auto* pkt : TxPackets) {
-            if (pkt) {
-                // Créer une COPIE du paquet
-                iohcPacket* packetCopy = new iohcPacket(*pkt);
-                TxPacketWrapper* wrapper = new TxPacketWrapper(packetCopy, true);
-                txQueue.push(wrapper);
+        for (auto *pkt: TxPackets) {
+            if (!pkt) continue;
+            // Créer une COPIE du paquet
+            // iohcPacket *packetCopy = new iohcPacket(*pkt);
+            // TxPacketWrapper *wrapper = new TxPacketWrapper(packetCopy, true);
+            // txQueue.push_back(wrapper);
+
+            // Utiliser la factory function
+            TxPacketWrapper* wrapper = createPacketWrapper(pkt);
+            if (wrapper) {
+                txQueue.push_back(wrapper);
+                // packetsAdded++;
+            } else {
+                // Log l'erreur, mais continue avec les autres
+                ets_printf("Failed to add packet to queue (memory issue?)");
             }
         }
-        xSemaphoreGive(txQueue_mutex);
+        TxPackets.clear();
+        txQueue_busy = false;  // Libérer le "lock"
         startTransmission();
         return true;
 
-        // Lancer le timer pour ce paquet
-//        Ticker.attach_ms(packets2send[txCounter]->repeatTime, packetSender, this);
     }
 
-/**
- * Handles the transmission of packets using radio
- * communication, including frequency setting, packet preparation, and handling of repeated
- * transmissions.
- * 
- * @param radio Pointer to an object of type
- * `iohcRadio`. It is used to access and manipulate data and functions within the `iohcRadio` class.
- */
+    /**
+     * Send a single packet, to help reveiced the answer in another frequency
+     */
+    bool iohcRadio::sendSingle(iohcPacket *packet) {
+        if (!packet) return false;
+// todo utiliser mutex vtaskdelay too slow
+        uint32_t timeout = millis() + 100;
+        while (txQueue_busy && millis() < timeout) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+        // if (txQueue_busy) {
+        //     ets_printf("TX queue timeout in sendSingle\n");
+        //     return false;
+        // }
+
+        txQueue_busy = true;
+
+        // iohcPacket *pktToSend = new iohcPacket(*packet) ;
+        // TxPacketWrapper *wrapper = new TxPacketWrapper(pktToSend, true);
+        // txQueue.push_back(wrapper);
+        // Utiliser la factory function
+        TxPacketWrapper* wrapper = createPacketWrapper(packet);
+        if (wrapper) txQueue.push_back(wrapper);
+        else {
+            txQueue_busy = false;
+            ets_printf("sendSingle: Failed to create packet wrapper");
+            return false;
+        }
+
+        txQueue_busy = false;
+        startTransmission();
+        return true;
+    }
+
+    /**
+     * Insère un paquet en priorité (au début de la queue)
+    * Utile pour les réponses urgentes
+    */
+    bool iohcRadio::sendPriority(iohcPacket *packet) {
+        if (!packet) return false;
+
+        uint32_t timeout = millis() + 100;
+        while (txQueue_busy && millis() < timeout) {
+            vTaskDelay(pdMS_TO_TICKS(1));
+        }
+
+        if (txQueue_busy) {
+            ets_printf("TX queue timeout in sendPriority\n");
+            return false;
+        }
+
+        txQueue_busy = true;
+
+        // Ajouter le paquet prioritaire
+        // iohcPacket *pktToSend = new iohcPacket(*packet);
+        // TxPacketWrapper *wrapper = new TxPacketWrapper(pktToSend, true);
+        // Utiliser la factory function
+        TxPacketWrapper* wrapper = createPacketWrapper(packet);
+        // O(1)
+        if (wrapper) txQueue.push_front(wrapper);
+        else {
+            txQueue_busy = false;
+            ets_printf("sendPriority: Failed to create packet wrapper");
+            return false;
+        }
+
+        txQueue_busy = false;
+        startTransmission();
+        return true;
+    }
+
+    /**
+     * Handles the transmission of packets using radio
+     * communication, including frequency setting, packet preparation, and handling of repeated
+     * transmissions.
+     *
+     * @param radio Pointer to an object of type
+     * `iohcRadio`. It is used to access and manipulate data and functions within the `iohcRadio` class.
+     */
     void IRAM_ATTR iohcRadio::packetSender(iohcRadio *radio) {
         if (!radio || !radio->currentTxPacket) {
-            ESP_LOGE("IOHC", "packetSender called with null pointer");
+            ets_printf("packetSender called with null pointer");
             return;
         }
 
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-        // Verrouiller le hopping pendant la transmission
-        if (xSemaphoreTake(fhss_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            f_lock_hop = true; // Avoid Radio put in Rx mode at next packet sent/received
-            txMode = true;
-            xSemaphoreGive(fhss_mutex);
-        }
-        iohcPacket* pkt = radio->currentTxPacket->packet;
+        // Verrouiller pour transmission
+        radio->lockFHSS(FHSSLockReason::TRANSMITTING);
+        // radio->updateFHSSActivity();
+        txMode = true;
 
-        // Using Delayed Packet radio->txCounter
-        // if (radio->packets2send[radio->txCounter] == nullptr) {
-        //     // Plus de Delayed Packet
-        //     if (radio->delayed != nullptr)
-        //         // Use Saved Delayed Packet
-        //             radio->iohc = radio->delayed;
-        // } else
-//            pkt = radio->packets2send[radio->txCounter];
+        iohcPacket *pkt = radio->currentTxPacket->packet;
 
         // Use the frequency of the packet if specified. 1W is always set at CHANNEL2
+        if (pkt->frequency == 0) pkt->frequency = radio->scan_freqs[radio->currentFreqIdx];;
         if (pkt->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
             Radio::setCarrier(Radio::Carrier::Frequency, pkt->frequency);
         } else {
@@ -437,7 +670,8 @@ namespace IOHC {
 
         Radio::setStandby();
         Radio::clearFlags();
-        // Radio::setPreambleLength(pkt->repeat?LONG_PREAMBLE_MS:SHORT_PREAMBLE_MS);
+        // Not needed at start as already done at init
+        // Radio::setPreambleLength(LONG_PREAMBLE_MS); //repeat?LONG_PREAMBLE_MS:SHORT_PREAMBLE_MS);
         Radio::writeBytes(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
         Radio::setTx();
         radio->setRadioState(iohcRadio::RadioState::TX);
@@ -452,6 +686,10 @@ namespace IOHC {
         // iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
         // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
         // cozyDevice2W->memorizeSend.memorizedData = {pkt->payload.buffer+9, pkt->payload.buffer+radio->new_packet->buffer_length};
+        // cozyDevice2W->memorizeSend.memorizedData.assign(pkt->payload.buffer+9, pkt->payload.buffer+pkt->buffer_length);
+        // Vérifier si ce paquet attend une réponse
+        // (vous pouvez ajouter un flag dans iohcPacket pour ça)
+        // bool thisPacketExpectsResponse = pkt->expectsResponse;  // À ajouter dans iohcPacket
 
         if (pkt->repeat > 0) {
             // Only the first frame is LPM (1W)
@@ -460,97 +698,90 @@ namespace IOHC {
         }
         if (pkt->repeat == 0) {
             radio->Ticker.detach();
+
+            // Utiliser spinlock au lieu de sémaphore
+            uint32_t timeout = esp_timer_get_time() + 50000;  // 50ms en microsecondes
+            while (radio->txQueue_busy && esp_timer_get_time() < timeout) {
+                // Spinlock court - OK dans ISR
+            }
+
             // Vérifier s'il y a un délai avant le prochain paquet
             bool hasNextPacket = false;
             uint32_t nextDelay = 0;
 
-            if (xSemaphoreTake(radio->txQueue_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                if (!radio->txQueue.empty()) {
-                    hasNextPacket = true;
-                    nextDelay = radio->txQueue.front()->repeatTime;
-                }
-                xSemaphoreGive(radio->txQueue_mutex);
+            // VÉRIFICATION RAPIDE sans modifier la queue
+            if (!radio->txQueue_busy && !radio->txQueue.empty()) {
+                hasNextPacket = true;
+                nextDelay = radio->txQueue.front()->repeatTime;
             }
+
             if (hasNextPacket && nextDelay > 0) {
                 // Délai avant le prochain paquet
-                radio->Ticker.delay_ms(nextDelay,  processNextPacketCallback, radio);
+                radio->Ticker.delay_ms(nextDelay, processNextPacketCallback, radio);
             } else if (hasNextPacket) {
                 // Pas de délai, traiter immédiatement
                 radio->processNextPacket();
             } else {
+                // Plus de paquets à envoyer
+                txMode = false;
+
+                // Si on attend une réponse, GARDER le verrouillage
+                // if (thisPacketExpectsResponse) {
+                // radio->setExpectingResponse(true, 1000);  // 1 seconde de timeout
+                // } else {
+                // Sinon déverrouiller
+                radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
+                // }
                 // Plus de paquets, arrêter
                 radio->stopTransmission();
             }
-            //
-            // radio->txCounter = radio->txCounter + 1;
-            // if (radio->txCounter < radio->packets2send.size() && radio->packets2send[radio->txCounter] != nullptr) {
-            //
-            //     // if (radio->packets2send[radio->txCounter]->delayed != 0) {
-            //     //     radio->delayed = radio->packets2send[radio->txCounter];
-            //     //     radio->packets2send[radio->txCounter] = nullptr;
-            //          radio->Ticker.delay_ms(radio->packets2send[radio->txCounter]->repeatTime, packetSender, radio);
-            //     // } else {
-            //         // radio->Ticker.attach_ms(radio->packets2send[radio->txCounter]->repeatTime, packetSender, radio);
-            //     // }
-            // } else {
-            //     // In any case, after last packet sent, unlock the radio
-            //     // Déverrouiller après la dernière transmission
-            //     if (xSemaphoreTake(fhss_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            //         txMode = false;
-            //         f_lock_hop = false;
-            //         xSemaphoreGive(fhss_mutex);
-            //     }
-            //     // Radio::setRx(); // Non ! Remet la radio en réception
-            //     // FIX: Deallocate memory from previous packets before clearing the vector to prevent memory leaks.
-            //     for (auto p : radio->packets2send) {
-            //         delete p;
-            //     }
-            //     radio->packets2send.clear();
-            // }
         }
 
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
 
-/**
- * Checks if a callback function `txCB` is set and calls
- * it with a packet as a parameter, returning the result.
- * 
- * @param packet The `packet` parameter is a pointer to an object of type `iohcPacket`.
- * 
- * @return  boolean , which is determined by the result of
- * calling the `txCB` function with the `packet` parameter. If `txCB` is not null, the return value
- * will be the result of calling `txCB(packet)`, otherwise it will be `false`.
- */
-    bool IRAM_ATTR iohcRadio::sent(iohcPacket *packet) const {
+    /**
+     * Checks if a callback function `txCB` is set and calls
+     * it with a packet as a parameter, returning the result.
+     *
+     * @param packet The `packet` parameter is a pointer to an object of type `iohcPacket`.
+     *
+     * @return  boolean , which is determined by the result of
+     * calling the `txCB` function with the `packet` parameter. If `txCB` is not null, the return value
+     * will be the result of calling `txCB(packet)`, otherwise it will be `false`.
+     */
+    bool IRAM_ATTR iohcRadio::sent(iohcPacket *packet) {
         bool ret = false;
         if (txCB) ret = txCB(packet);
         return ret;
     }
 
-    //    static uint8_t RF96lnaMap[] = { 0, 0, 6, 12, 24, 36, 48, 48 };
-/**
- * The `iohcRadio::receive` function toggles an LED, reads radio data, processes it, and
- * triggers a callback function.
- * 
- * @param stats The `stats` boolean used to determine whether to gather additional statistics during the radio reception process. If
- * `stats` is set to `true`, the function will collect and process additional information such as RSSI
- * (Received Signal
- * 
- * @return The function `iohcRadio::receive` is returning a boolean value `true`.
- */
-    bool IRAM_ATTR iohcRadio::receive(bool stats = false) const {
+    // La "mémoire tampon" pour le paquet reçu. Elle existe en permanence.
+    static iohcPacket rxPacketBuffer;
+    /**
+     * Toggles an LED, reads radio data, processes it, and
+     * triggers a callback function.
+     *
+     * @param stats TDetermine whether to gather additional statistics during the radio reception process. If
+     * `stats` is set to `true`, the function will collect and process additional information such as RSSI
+     *
+     * @return Boolean value `true`.
+     */
+    bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-        // Verrouiller le hopping pendant la réception
-        if (xSemaphoreTake(fhss_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            f_lock_hop = true;
-            xSemaphoreGive(fhss_mutex);
-        }
+        // On est déjà verrouillé par l'ISR/tickerCounter
 
         // Create a new packet for this reception. Use a pointer to pass to the callback.
-        auto* currentPacket = new iohcPacket();
-
-        currentPacket->buffer_length = 0;
+        // auto *currentPacket = new iohcPacket();
+        // 1. OBTENIR UN POINTEUR, SANS ALLOCATION
+        // On ne demande pas de nouvelle mémoire. On prend juste l'adresse
+        // de notre buffer qui existe déjà. C'est une opération instantanée.
+        iohcPacket* currentPacket = &rxPacketBuffer;
+        // 2. "NETTOYER L'ASSIETTE" (TRÈS IMPORTANT !)
+        // Comme on réutilise le même paquet, il faut le vider de ses anciennes
+        // données avant de le remplir avec les nouvelles.
+        // Vous devez ajouter cette petite fonction à votre classe iohcPacket.
+        currentPacket->reset();
         currentPacket->frequency = scan_freqs[currentFreqIdx];
 
         _g_payload_millis = esp_timer_get_time();
@@ -574,79 +805,78 @@ namespace IOHC {
             }
         }
 
-        if ( *currentPacket == last1wPacket && currentPacket->is1W() /*&& last1wPacketValid*/) {
+        if (*currentPacket == last1wPacket && currentPacket->is1W()) {
             // ets_printf("Same packet, skipping\n");
         } else {
+            // if (expectingResponse && isResponsePacket(currentPacket)) {
+            //     setExpectingResponse(false);
+            //     unlockFHSS(FHSSLockReason::WAITING_RESPONSE);
+            // }
+
             if (rxCB) rxCB(currentPacket);
             currentPacket->decode(true); //stats);
             // addLogMessage(String(currentPacket->decodeToString(true).c_str()));
 
             // Save the new packet's data for the next comparison
             last1wPacket = *currentPacket;
-            /*last1wPacketValid = true;*/
         }
-
-        delete currentPacket; // The packet is processed or duplicated, we can free it.
-
+        // 3. PAS DE 'DELETE' !
+        // Puisqu'on n'a jamais fait de 'new', il ne faut surtout pas faire de 'delete'.
+        // Il n'y a rien à libérer, le buffer attend simplement le prochain appel.
+        // delete currentPacket; // The packet is processed or duplicated, we can free it.
+        // this->getInstance()->unlockFHSS(FHSSLockReason::RECEIVING);
         // Déverrouiller le hopping après réception
-        if (xSemaphoreTake(fhss_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            f_lock_hop = false;
-            xSemaphoreGive(fhss_mutex);
-        }
 
         digitalWrite(RX_LED, false);
         return true;
     }
 
+    // HELPER : Détecter si un paquet est une réponse
+    bool iohcRadio::isResponsePacket(iohcPacket *packet) {
+        // À adapter
+        // Vérifier si c'est une réponse au dernier cmd envoyé
+        if (!packet) return false;
 
-/**
- * @deprecated The function `i_preamble` sets the value of `f_lock` based on the state of `_g_preamble`
- */
+        // Exemple : si le paquet contient un ACK ou une réponse au dernier cmd
+        return (packet->payload.packet.header.cmd == IOHC::lastCmd + 1) /*||
+               (packet->payload.packet.header.CtrlByte1.asStruct.type == PACKET_TYPE_RESPONSE)*/;
+    }
+
+    /**
+     * @deprecated The function `i_preamble` sets the value of `f_lock` based on the state of `_g_preamble`
+     */
     // void IRAM_ATTR iohcRadio::i_preamble() {
     //     _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
     //     f_lock = _g_preamble;
     //     iohcRadio::setRadioState(_g_preamble ? iohcRadio::RadioState::PREAMBLE : iohcRadio::RadioState::RX);
     // }
 
-/**
- * @deprecated The function `iohcRadio::i_payload()` reads the value of a digital pin and stores it in a variable
- * `_g_payload`
- */
+    /**
+     * @deprecated The function `iohcRadio::i_payload()` reads the value of a digital pin and stores it in a variable
+     * `_g_payload`
+     */
     // void IRAM_ATTR iohcRadio::i_payload() {
     //     _g_payload = digitalRead(RADIO_PACKET_AVAIL);
     //     iohcRadio::setRadioState(_g_payload ? iohcRadio::RadioState::PAYLOAD : iohcRadio::RadioState::RX);
     // }
-
-    const char* iohcRadio::radioStateToString(RadioState state) {
-    switch (state) {
-        case RadioState::IDLE:     return "IDLE";
-        case RadioState::RX:       return "RX";
-        case RadioState::TX:       return "TX";
-        case RadioState::PREAMBLE: return "PREAMBLE";
-        case RadioState::PAYLOAD:  return "PAYLOAD";
-        case RadioState::LOCKED:   return "LOCKED";
-        case RadioState::ERROR:    return "ERROR";
-        default:                   return "UNKNOWN";
-    }
-    }
 
 
     void IRAM_ATTR iohcRadio::setRadioState(const RadioState newState) {
         radioState = newState;
     }
 
-           /**
- * Callback statique pour le délai entre paquets
- */
-           void IRAM_ATTR iohcRadio::processNextPacketCallback(iohcRadio* radio) {
-            if (radio) {
-                radio->processNextPacket();
-            }
+    /**
+* Callback statique pour le délai entre paquets
+*/
+    void IRAM_ATTR iohcRadio::processNextPacketCallback(iohcRadio *radio) {
+        if (radio) {
+            radio->processNextPacket();
         }
+    }
 
-           /**
-     * Démarre la transmission si pas déjà en cours
-     */
+    /**
+* Démarre la transmission si pas déjà en cours
+*/
     void iohcRadio::startTransmission() {
         if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(10)) != pdTRUE) {
             return;
@@ -667,28 +897,31 @@ namespace IOHC {
      * Traite le prochain paquet de la queue
      */
     void iohcRadio::processNextPacket() {
-        // Nettoyer le paquet précédent
-        if (currentTxPacket) {
-            delete currentTxPacket;
-            currentTxPacket = nullptr;
+        // Récupérer le prochain paquet
+        uint32_t timeout = millis() + 100;
+        while (txQueue_busy && millis() < timeout) {
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
 
-        // Récupérer le prochain paquet
-        if (xSemaphoreTake(txQueue_mutex, pdMS_TO_TICKS(100)) != pdTRUE) {
-            ESP_LOGE("IOHC", "Failed to acquire queue mutex in processNext");
+        // Nettoyer le paquet précédent
+        // if (currentTxPacket) {
+        //     delete currentTxPacket;
+        //     currentTxPacket = nullptr;
+        // }
+
+        if (txQueue_busy) {
+            ets_printf("TX queue timeout in processNextPacket()");
             stopTransmission();
             return;
         }
 
         if (txQueue.empty()) {
-            xSemaphoreGive(txQueue_mutex);
             stopTransmission();
             return;
         }
 
         currentTxPacket = txQueue.front();
-        txQueue.pop();
-        xSemaphoreGive(txQueue_mutex);
+        txQueue.pop_front();
 
         // Lancer le timer pour ce paquet
         Ticker.attach_ms(currentTxPacket->repeatTime, packetSender, this);
@@ -709,29 +942,35 @@ namespace IOHC {
             }
 
             // Déverrouiller la radio
-            if (xSemaphoreTake(fhss_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                 txMode = false;
                 f_lock_hop = false;
-                xSemaphoreGive(fhss_mutex);
+                xSemaphoreGive(fhss_state_mutex);
             }
 
             xSemaphoreGive(tx_mutex);
         }
     }
 
-        /**
-         * Vide la queue de transmission
-         */
-        void iohcRadio::clearTxQueue() {
-            if (xSemaphoreTake(txQueue_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
-                while (!txQueue.empty()) {
-                    const TxPacketWrapper* wrapper = txQueue.front();
-                    txQueue.pop();
-                    delete wrapper; // Le destructeur libère la mémoire
-                }
-                xSemaphoreGive(txQueue_mutex);
-            }
+    /**
+     * Vide la queue de transmission
+     */
+    void iohcRadio::clearTxQueue() {
+        uint32_t timeout = millis() + 100;
+        while (txQueue_busy && millis() < timeout) {
+            vTaskDelay(pdMS_TO_TICKS(1));
         }
+
+        txQueue_busy = true;
+
+            while (!txQueue.empty()) {
+                const TxPacketWrapper *wrapper = txQueue.front();
+                txQueue.pop_front();
+                delete wrapper; // Le destructeur libère la mémoire
+            }
+        txQueue_busy = false;
+    }
+
     /**
          * Vérifie si une transmission est en cours
          */

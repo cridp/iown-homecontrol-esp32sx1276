@@ -73,9 +73,7 @@ constexpr FHSSConfig FHSS_CONFIGS[] = {
 namespace IOHC {
     class iohcRadio;
 
-    // ============================================================================
-    // SYSTÈME FHSS ADAPTATIF
-    // ============================================================================
+    // FHSS ADAPTATIF
 
     class AdaptiveFHSS {
         IOHC::iohcRadio *radio;
@@ -87,7 +85,7 @@ namespace IOHC {
             LOCKED // Verrouillé sur une fréquence
         };
 
-        ScanMode currentMode = ScanMode::FAST_SCAN;
+        ScanMode currentMode = ScanMode::LOCKED;
         uint32_t lastPacketTime = 0;
         uint32_t conversationStartTime = 0;
         bool inConversation = false;
@@ -97,9 +95,7 @@ namespace IOHC {
         static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 2000; // Considéré "inactif" après 2s
 
     public:
-        explicit AdaptiveFHSS(iohcRadio *r) : radio(r) {
-            switchToFastScan();
-        }
+        explicit AdaptiveFHSS(iohcRadio *r) : radio(r) { }
 
         /**
          * Appelé quand un paquet est détecté (RX ou TX)
@@ -120,30 +116,16 @@ namespace IOHC {
         }
 
         /**
-     * Appelé régulièrement pour vérifier si on peut repasser en fast scan
-     */
-        void update() {
-            if (!inConversation) return;
-
-            uint32_t now = esp_timer_get_time() / 1000;
-            uint32_t timeSinceActivity = now - lastPacketTime;
-            uint32_t conversationDuration = now - conversationStartTime;
-
-            // Retour en fast scan si :
-            // - Pas d'activité depuis CONVERSATION_TIMEOUT_MS
-            // - ET conversation terminée depuis assez longtemps
-            if (timeSinceActivity > CONVERSATION_TIMEOUT_MS &&
-                conversationDuration > CONVERSATION_TIMEOUT_MS) {
-                inConversation = false;
-                switchToFastScan();
-            }
-        }
+        * Appelé régulièrement pour vérifier si on peut repasser en fast scan
+        */
+        void update();
 
         void switchToSlowScan();
+
         void switchToFastScan();
 
         /**
-         * Force le mode slow scan (avant d'envoyer un paquet important)
+         * Force slow scan
          */
         void prepareForConversation();
     };

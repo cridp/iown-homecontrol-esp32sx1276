@@ -245,9 +245,27 @@ namespace IOHC {
 
         ~iohcPacket() = default;
 
+        // 2. "NETTOYER L'ASSIETTE" (TRÈS IMPORTANT !)
+        // Comme on réutilise le même paquet, il faut le vider de ses anciennes
+        // données avant de le remplir avec les nouvelles.
+        // Vous devez ajouter cette petite fonction à votre classe iohcPacket.
+        void reset() {
+            payload = {};
+            buffer_length = 0;
+            frequency = 0; // = CHANNEL2; // Both 1W & 2W
+            repeatTime = 13L;
+            repeat = 0;
+            lock = false;
+
+            afc = {};  // AFC freq correction applied
+            snr = {}; // in dB
+            rssi = {};  // -RSSI*2 of last packet received
+            lna = {}; // LNA attenuation in dB
+        };
+
         Payload payload{};
         uint8_t buffer_length = 0;
-        uint32_t frequency = CHANNEL2; // Both 1W & 2W
+        uint32_t frequency = 0; // = CHANNEL2; // Both 1W & 2W
         unsigned long repeatTime = 13L;
         uint8_t repeat = 0;
         bool lock = false;
@@ -264,6 +282,7 @@ namespace IOHC {
         bool operator==(const iohcPacket &other) const {
             return (memcmp(this->payload.buffer+2, other.payload.buffer+2, 16) == 0);
         }
+
         bool is1W() const { return this->payload.packet.header.CtrlByte1.asStruct.Protocol; }
         uint8_t cmd() const { return this->payload.packet.header.cmd; }
 

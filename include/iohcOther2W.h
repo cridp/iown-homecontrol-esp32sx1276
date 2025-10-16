@@ -43,7 +43,7 @@ namespace IOHC {
         fake0,
         ack,
         pairMode,
-        checkCmd,
+        scanMode,
     };
 
     class iohcOther2W : public iohcDevice {
@@ -88,7 +88,7 @@ namespace IOHC {
         // bool save() override;
         void initializeValid();
         void scanDump();
-        std::unordered_map<uint8_t, int> mapValid;
+        std::map<uint8_t, int> mapValid;
 //        void scanDump() override {}
         std::map<std::array<uint8_t, 6> /*challengeAsked*/, std::array<uint8_t, 6> /*challengeAnswer*/> mapChallenge;
 

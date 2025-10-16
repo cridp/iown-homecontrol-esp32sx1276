@@ -23,6 +23,7 @@
 #include <iohcRadio.h>
 #include <vector>
 #include <numeric>
+#include <set>
 
 #include "iohcCozyDevice2W.h"
 
@@ -70,7 +71,6 @@ namespace IOHC {
             ets_printf("NO RADIO INSTANCE\n");
             _radioInstance = iohcRadio::getInstance();
         }
-        packets2send.clear();
         iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
 
         // Emulates device button press
@@ -95,25 +95,26 @@ namespace IOHC {
             }
 
             case Other2WButton::getName: {
+                // _radioInstance->adaptiveFHSS->prepareForConversation();
 
                 std::vector<uint8_t> toSend = {}; // {0x0C, 0x60, 0x01, 0xFF};
                 // int value = std::stol(data->at(1).c_str(), nullptr, 16);
 
                 for (const auto &d: devices) {
 
-                    auto packet = new iohcPacket;
+                    // auto packet = new iohcPacket;
+                    packets2send.push_back(new iohcPacket);
+                    forgeAnyWPacket(packets2send.back(), toSend, 0);
+                    packets2send.back()->payload.packet.header.cmd = GET_NAME_0x50;
 
-                    forgeAnyWPacket(packet, toSend, 0);
-                    packet->payload.packet.header.cmd = GET_NAME_0x50;
+                    packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
-                    packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                    memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
+                    memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
 
-                    memcpy(packet->payload.packet.header.source, d._node, 3);
-                    memcpy(packet->payload.packet.header.target, d._dst, 3);
+                    packets2send.back()->repeatTime = 47;
 
-                    packet->repeatTime = 60;
-
-                    packets2send.push_back(packet);
+                    // packets2send.push_back(packet);
                 }
 
                 IOHC::lastCmd = GET_NAME_0x50;
@@ -121,11 +122,6 @@ namespace IOHC {
                 cozyDevice2W->memorizeSend.memorizedData = {};
 
                 _radioInstance->send(packets2send);
-                // Libérer vos paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
-                packets2send.clear();
                 break;
             }
 
@@ -163,7 +159,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
 
-                    packets2send.back()->repeatTime = 50;
+                    packets2send.back()->repeatTime = 47;
                 }
 
                 _radioInstance->send(packets2send);
@@ -179,7 +175,6 @@ namespace IOHC {
 
                 toSend[3] = custom; //custom;
 
-//                packets2send.clear();
                 packets2send.push_back(new iohcPacket);
                 forgeAnyWPacket(packets2send.back(), toSend);
 
@@ -240,13 +235,15 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.target, broadcast, 3);
 
-                    packets2send.back()->repeatTime = 75;
+                    packets2send.back()->repeatTime = 47;
                 }
 
                 _radioInstance->send(packets2send);
                 break;
             }
             case Other2WButton::discover2A: {
+                // _radioInstance->adaptiveFHSS->prepareForConversation();
+
                 // 00003b 5cd68f 2a  9332d618de2a0fa6250e2c7e
                 // std::vector<uint8_t>  toSend = {0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12};
 
@@ -328,17 +325,11 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, somfy, 3);
                     packets2send.back()->repeat = 4;
-                    packets2send.back()->repeatTime = 60;
-                    // packets2send.back()->delayed = 75; // Give enough time for the answer
+                    packets2send.back()->repeatTime = 47;
                     // packets2send.back()->frequency = CHANNEL3;
                 }
-                // Envoyer (les paquets sont copiés, vous pouvez les libérer après)
+                // Envoyer (les paquets sont copiés, il faut les libérer après)
                 _radioInstance->send(packets2send);
-                // Libérer vos paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
-                packets2send.clear();
 
                 break;
             }
@@ -347,40 +338,26 @@ namespace IOHC {
 
                 size_t i = 0;
                 for (const auto &d: devices) {
-                    iohcPacket singlePkt;
-                    // std::vector<iohcPacket*> singlePacket;
-                    // singlePacket.push_back(new iohcPacket);
-                    // packets2send.push_back(new iohcPacket);
-                    forgeAnyWPacket(&singlePkt, toSend);
+                    packets2send.push_back(new iohcPacket);
+                    // iohcPacket singlePkt;
+                    forgeAnyWPacket(packets2send.back(), toSend);
 
-                    singlePkt.payload.packet.header.cmd = 0x03;
+                    packets2send.back()->payload.packet.header.cmd = 0x03;
                     memorizeOther2W.memorizedData = toSend;
                     memorizeOther2W.memorizedCmd = 0x03;
                     IOHC::lastCmd = 0x03;
                     cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
                     cozyDevice2W->memorizeSend.memorizedData = toSend;
 
-                    singlePkt.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                    packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
-                    // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                    // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk1 = 1;
+                    memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
+                    memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
 
-                    memcpy(singlePkt.payload.packet.header.source, d._node, 3);
-                    memcpy(singlePkt.payload.packet.header.target, d._dst, 3);
+                    packets2send.back()->repeatTime = 47;
 
-                    // packets2send.back()->delayed = 120;
-                    // packets2send.back()->repeat = 1;
-                    // packets2send.back()->repeatTime = 120;
-
-                    // Attendre la fin de l'envoi si nécessaire (sinon les paquets risquent d'être ignorés)
-                    // while (_radioInstance->txMode)
-                    //     vTaskDelay(100 / portTICK_PERIOD_MS);
-
-                    _radioInstance->sendSingle(&singlePkt, true);
                 }
-
-                // _radioInstance->send(packets2send);
-
+                _radioInstance->send(packets2send);
                 break;
             }
             case Other2WButton::ack: {
@@ -401,7 +378,9 @@ namespace IOHC {
                 _radioInstance->send(packets2send);
                 break;
             }
-            case Other2WButton::checkCmd: {
+            case Other2WButton::scanMode: {
+                // _radioInstance->adaptiveFHSS->prepareForConversation();
+
                 std::vector<uint8_t> toSend;
                 // = {}; //{0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; //, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12};
                 uint8_t special12[] = {
@@ -421,8 +400,11 @@ namespace IOHC {
                 address broad = {0x00, 0x0d, 0x3b}; //{0x00, 0xFF, 0xFB}; //
 
                 uint8_t counter = 0;
-//                packets2send.clear();
+
                 for (const auto &[CmdSend, Answer]: mapValid) {
+                    // ets_printf("."); //"Command %d", CmdSend);
+                    auto* packet = new iohcPacket();
+
                     if (Answer == 0xFF || (Answer == 5 && CmdSend != 0x19)) {
                         counter++;
 
@@ -462,21 +444,20 @@ namespace IOHC {
                         if (CmdSend == 0x60 || CmdSend == 0x82)
                             toSend.assign(special12, special12 + 21);
 
-                        packets2send.push_back(new iohcPacket);
-                        forgeAnyWPacket(packets2send.back(), toSend);
-                        packets2send.back()->payload.packet.header.cmd = CmdSend;
-                        // memorizeOther2W.memorizedCmd = packets2send.back()->payload.packet.header.cmd;
-                        // memorizeOther2W.memorizedData = toSend;
-                        memorizeOther2W.memorizedCmd = CmdSend;
-                        IOHC::lastCmd = CmdSend;
+                        forgeAnyWPacket(packet, toSend);
+                        packet->payload.packet.header.cmd = CmdSend;
 
+                        IOHC::lastCmd = CmdSend;
+                        // memorizeOther2W.memorizedCmd = CmdSend;
+                        // memorizeOther2W.memorizedData = toSend;
                         // cozyDevice2W->memorizeSend.memorizedCmd = CmdSend;
                         // cozyDevice2W->memorizeSend.memorizedData = toSend;
 
-                        packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
+
+                        packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                        packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
                         // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+                        packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
                         address GW2 = {0x26, 0x94, 0x11};
                         address GW1 = {0x08, 0x42, 0xe3};
                         address BUREAU = {0x90, 0x4c, 0x09}; //{0x94, 0x78, 0x6E};
@@ -487,26 +468,31 @@ namespace IOHC {
                         address UK1 = {0x5B, 0xE4, 0xD0};
                         address UK2 = {0x94, 0x78, 0x6E}; //94786E
 
-                        memcpy(packets2send.back()->payload.packet.header.source, GW1, 3);
+                        memcpy(packet->payload.packet.header.source, GW1, 3);
                         // if (command.first == 0x14 || command.first == 0x19 || command.first == 0x1e || command.first == 0x2a || command.first == 0x34 || command.first == 0x4a) {
                         // memcpy(packets2send.back()->payload.packet.header.target, broad, 3);
                         // } else {
-                        memcpy(packets2send.back()->payload.packet.header.target, GARAGE, 3);
+                        memcpy(packet->payload.packet.header.target, SALONRUE, 3);
                         // }
 
-                        packets2send.back()->repeatTime = 50;
+                        packet->repeatTime = 47;
+                        packets2send.push_back(packet);
                     }
                     toSend.clear();
                 }
                 // ets_printf("valid %u\n", counter);
-
                 _radioInstance->send(packets2send);
-
                 break;
             }
             default: break;
         } // switch (cmd)
         //        save(); // Save Other associated devices
+        // Libérer les paquets originaux
+        for (auto* p : packets2send) {
+            delete p;
+        }
+        packets2send.clear();
+
     }
 
     /* Initialise all valids commands for scanMode(checkCmd), other arent implemented in 2W devices
@@ -518,7 +504,7 @@ namespace IOHC {
         // auto valid = std::vector<uint8_t>(255);
         // std::iota(valid.begin(), valid.end(), 0x00);
 
-        const std::vector valid = {
+        const std::set valid = {
             0x00, 0x01, 0x03, 0x0a, 0x0c, 0x19, 0x1e, 0x20, 0x23, 0x28, 0x2a, 0x2c, 0x38, 0x2e, 0x31, 0x32, 0x36, 0x39,
             0x46, 0x48, 0x4a, 0x4b,
             0x50, 0x52, 0x54, 0x56, 0x60, 0x64, 0x6e, 0x6f, 0x71, 0x73, 0x80, 0x82, 0x84, 0x86, 0x88, 0x8a, 0x8b, 0x8e,

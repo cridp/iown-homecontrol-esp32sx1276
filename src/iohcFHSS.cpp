@@ -20,27 +20,49 @@
 #include "iohcRadio.h"
 
 namespace IOHC {
-
-        void AdaptiveFHSS::switchToFastScan() {
+    /**
+    * fast_dwell: 10–15 ms.
+    Pourquoi : avec 10 ms la probabilité devient ≈ 10/13.33 = 75% (pour P=64).
+    Avec 15 ms, on couvre presque tout le préambule (≈112% i.e. sûr).
+     */
+    void AdaptiveFHSS::switchToFastScan() {
             if (currentMode == ScanMode::FAST_SCAN) return;
 
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = 20 * 1000;  // 20ms
-            this->radio->TickTimer.detach();
-            this->radio->TickTimer.attach_us(this->radio->scanTimeUs, FHSSTimer, this->radio);
+            radio->scanTimeUs = 50 * 1000;
+            radio->TickTimer.detach();
+            radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
-            // ESP_LOGI("FHSS", "Switched to FAST scan (20ms/freq)");
+            ets_printf("FHSS Switched to FAST scan (60ms/freq)\n");
         }
 
         void AdaptiveFHSS::switchToSlowScan() {
             if (currentMode == ScanMode::SLOW_SCAN) return;
 
             currentMode = ScanMode::SLOW_SCAN;
-            radio->scanTimeUs = 150 * 1000;  // 150ms
+            radio->scanTimeUs = 100 * 1000;
             radio->TickTimer.detach();
-            radio->TickTimer.attach_us(this->radio->scanTimeUs, FHSSTimer, this->radio);
+            radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
-            // ESP_LOGI("FHSS", "Switched to SLOW scan (150ms/freq)");
+            ets_printf("FHSS Switched to SLOW scan (120ms/freq)\n");
+        }
+
+        void AdaptiveFHSS::update() {
+            if (!inConversation) return;
+
+            uint32_t now = esp_timer_get_time() / 1000;
+            uint32_t timeSinceActivity = now - lastPacketTime;
+            uint32_t conversationDuration = now - conversationStartTime;
+
+            // Retour en fast scan si :
+            // - Pas d'activité depuis CONVERSATION_TIMEOUT_MS
+            // - ET conversation terminée depuis assez longtemps
+            if (timeSinceActivity > ACTIVITY_TIMEOUT_MS &&
+                conversationDuration > CONVERSATION_TIMEOUT_MS) {
+                inConversation = false;
+                switchToFastScan();
+                }
+
         }
 
         void AdaptiveFHSS::prepareForConversation() {

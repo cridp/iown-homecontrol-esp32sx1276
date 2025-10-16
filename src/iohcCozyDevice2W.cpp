@@ -51,14 +51,14 @@ namespace IOHC {
         memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
         packet->buffer_length = toSend.size() + 9;
 
-        packet->repeatTime = 50;
+        packet->repeatTime = 47;
     }
 
     /**
-    * @brief Checks if this cozy our fake gateway. This is used to detect if we have an IOCHA device that is in charge of the IOCHA and should be woken up.
-    * @param nodeSrc The source node address of the IOCHA.
+    * @brief Checks if is our fake gateway. This is used to detect if we have an IOCA device that is in charge of the IOCH and should be woken up.
+    * @param nodeSrc The source node address
     * @param nodeDst The destination node address of the IOCHA.
-    * @return true if this device is a fake false otherwise. Note that this device is not a fake
+    * @return true if this device is a fake false otherwise.
     */
     bool iohcCozyDevice2W::isFake(address nodeSrc, address nodeDst) {
         this->Fake = false;
@@ -73,6 +73,7 @@ namespace IOHC {
             ets_printf("NO RADIO INSTANCE\n");
             _radioInstance = IOHC::iohcRadio::getInstance();
         }
+
 
         switch (cmd) {
             case DeviceButton::associate: {
@@ -92,6 +93,7 @@ namespace IOHC {
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
+
                 break;
             }
             case DeviceButton::powerOn: {
@@ -134,7 +136,7 @@ namespace IOHC {
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
-                //                mqttClient.publish("iown/Frame", 0, false, message.c_str(), messageSize);
+                // mqttClient.publish("iown/Frame", 0, false, message.c_str(), messageSize);
 
                 break;
             }
@@ -164,18 +166,13 @@ namespace IOHC {
 
                     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     memcpy(packet->payload.packet.header.source, gateway, 3);
-                    memcpy(packet->payload.packet.header.target, addresses.at(dest/*addr*/).data()/* 0 Master_to*/, 3);
+                    memcpy(packet->payload.packet.header.target, addresses.at(dest).data(), 3);
 
                     dest++;
                     packet->repeatTime = 75;
                     packets2send.push_back(packet);
                 }
                 _radioInstance->send(packets2send);
-                // Libérer vos paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
-                packets2send.clear();
                 break;
             }
             case DeviceButton::setPresence: {
@@ -197,6 +194,7 @@ namespace IOHC {
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
+
                 break;
             }
             case DeviceButton::setWindow: {
@@ -217,8 +215,6 @@ namespace IOHC {
                 memorizeSend.memorizedData = toSend;
                 memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
-                // packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
-
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
 
@@ -226,6 +222,7 @@ namespace IOHC {
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
+
                 break;
             }
             case DeviceButton::midnight: {
@@ -253,6 +250,12 @@ namespace IOHC {
         } // switch (cmd)
         IOHC::packetStamp = esp_timer_get_time();
         //        save(); // Save Cozy associated devices
+        // Libérer vos paquets originaux
+        for (auto* p : packets2send) {
+            delete p;
+        }
+        packets2send.clear();
+
     }
 
     /**
@@ -313,7 +316,7 @@ namespace IOHC {
 
         for (const auto &d: devices) {
             std::string key = bytesToHexString(d._node, sizeof(d._node));
-            JsonObject jobj = doc[key.c_str()].to<JsonObject>();
+            auto jobj = doc[key.c_str()].to<JsonObject>();
             jobj["dst"] = bytesToHexString(d._dst, sizeof d._dst);
             jobj["type"] = d._type;
             jobj["description"] = d._description;
