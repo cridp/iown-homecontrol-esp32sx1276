@@ -770,122 +770,13 @@ namespace IOHC {
         return ret;
     }
 
-    // La "mémoire tampon" pour le paquet reçu. Elle existe en permanence.
-    static iohcPacket rxPacketBuffer;
-    // Ajouter des compteurs de performance
-    struct RadioStats {
-        uint32_t packetsReceived;
-        uint32_t packetsSent;
-        uint32_t packetsDropped;
-        uint32_t queueOverflows;
-        uint32_t spiErrors;
-    };
-    /**
-     * Toggles an LED, reads radio data, processes it, and
-     * triggers a callback function.
-     *
-     * @param stats TDetermine whether to gather additional statistics during the radio reception process. If
-     * `stats` is set to `true`, the function will collect and process additional information such as RSSI
-     *
-     * @return Boolean value `true`.
-     */
-    // bool IRAM_ATTR iohcRadio::receive_1(bool stats = false) {
-    //     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-    //     // On est déjà verrouillé par l'ISR/tickerCounter
-    //     // Marquer le buffer comme "en cours d'utilisation"
-    //     static volatile bool bufferInUse = false;
-    //
-    //     if (bufferInUse) {
-    //         ets_printf("ERREUR: Buffer déjà en utilisation!\n");
-    //         return false;
-    //     }
-    //
-    //     bufferInUse = true;
-    //
-    //     // Buffer local temporaire pour la lecture
-    //     iohcPacket currentPacket;
-    //     // tempPacket.reset();
-    //     currentPacket.frequency = scan_freqs[currentFreqIdx];
-    //
-    //     // 1. OBTENIR UN POINTEUR, SANS ALLOCATION
-    //     // On ne demande pas de nouvelle mémoire. On prend juste l'adresse
-    //     // de notre buffer qui existe déjà. C'est une opération instantanée.
-    //     // iohcPacket* currentPacket = &rxPacketBuffer;
-    //     // 2. "NETTOYER" (TRÈS IMPORTANT !)
-    //     // Comme on réutilise le même paquet, il faut le vider de ses anciennes
-    //     // données avant de le remplir avec les nouvelles.
-    //     // Dans la classe iohcPacket.
-    //     // currentPacket->reset();
-    //     // currentPacket->frequency = scan_freqs[currentFreqIdx];
-    //
-    //     _g_payload_millis = esp_timer_get_time();
-    //     packetStamp = _g_payload_millis;
-    //
-    //     if (stats) {
-    //         currentPacket.rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
-    //         int16_t thres = Radio::readByte(REG_RSSITHRESH);
-    //         currentPacket.snr = currentPacket.rssi > thres ? 0 : (thres - currentPacket.rssi);
-    //         int16_t f = static_cast<uint16_t>(Radio::readByte(REG_AFCMSB));
-    //         f = (f << 8) | static_cast<uint16_t>(Radio::readByte(REG_AFCLSB));
-    //         currentPacket.afc = f * 61.0;
-    //     }
-    //
-    //     // Lecture avec limitation physique
-    //     while (Radio::dataAvail()) {
-    //         if (currentPacket.buffer_length < MAX_FRAME_LEN) {
-    //             currentPacket.payload.buffer[currentPacket.buffer_length++] = Radio::readByte(REG_FIFO);
-    //         } else {
-    //             // Prevent buffer overflow, discard extra bytes.
-    //             Radio::readByte(REG_FIFO);
-    //         }
-    //     }
-    //     // CRITIQUE : Copier dans le buffer persistant AVANT tout traitement
-    //     rxPacketBuffer = currentPacket;
-    //
-    //     if (rxPacketBuffer == last1wPacket && rxPacketBuffer.is1W()) {
-    //         // ets_printf("Same packet, skipping\n");
-    //     } else {
-    //         // if (expectingResponse && isResponsePacket(currentPacket)) {
-    //         //     setExpectingResponse(false);
-    //         //     unlockFHSS(FHSSLockReason::WAITING_RESPONSE);
-    //         // }
-    //
-    //         if (rxCB) {
-    //             // Passer une COPIE au callback pour plus de sécurité
-    //             iohcPacket callbackCopy = rxPacketBuffer;
-    //             rxCB(&callbackCopy);
-    //         }
-    //
-    //         rxPacketBuffer.decode(true); //stats);
-    //         // addLogMessage(String(currentPacket->decodeToString(true).c_str()));
-    //
-    //         // Save the new packet's data for the next comparison
-    //         last1wPacket = rxPacketBuffer;
-    //     }
-    //     // 3. PAS DE 'DELETE' !
-    //     // Puisqu'on n'a jamais fait de 'new', il ne faut surtout pas faire de 'delete'.
-    //     // Il n'y a rien à libérer, le buffer attend simplement le prochain appel.
-    //     // delete currentPacket; // The packet is processed or duplicated, we can free it.
-    //     // this->getInstance()->unlockFHSS(FHSSLockReason::RECEIVING);
-    //     // Déverrouiller le hopping après réception
-    //
-    //     digitalWrite(RX_LED, false);
-    //     // Vérifier l'intégrité après lecture
-    //     if (rxPacketBuffer.buffer_length > MAX_FRAME_LEN) {
-    //         ets_printf("ERREUR: Buffer corrompu après lecture!\n");
-    //     }
-    //
-    //     bufferInUse = false;
-    //     return true;
-    // }
-
     void iohcRadio::startPacketProcessor() {
     BaseType_t result = xTaskCreatePinnedToCore(
         packetProcessorTask,   // Function
         "PacketProcessor",     // Name
         4096,                  // Stack size
         this,                  // Parameter
-        3,                     // Priority (au-dessus de la task IRQ)
+        5,                     // Priority (au-dessus de la task IRQ)
         &packetProcessorTaskHandle,
         xPortGetCoreID()
     );
