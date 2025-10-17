@@ -197,7 +197,7 @@ namespace IOHC {
 
         iohcRadio();
 
-        bool receive_1(bool stats);
+        // bool receive_1(bool stats);
 
         void startPacketProcessor();
 
@@ -247,11 +247,27 @@ namespace IOHC {
                 ets_printf("heap ok at %s free:%u\n", tag, heap_caps_get_free_size(MALLOC_CAP_8BIT));
             }
         }
-
-    protected:
+        void printStats() const {
+            if (xSemaphoreTake(statsMutex, pdMS_TO_TICKS(100)) == pdTRUE) {
+                ets_printf("Radio Stats - Received: %lu, Processed: %lu, Dropped: %lu, Max Queue: %lu, Avg Delay: %luµs",
+                        packetsReceived, packetsProcessed, packetsDropped,
+                        maxQueueDepth, totalQueueDelay / (packetsProcessed ? packetsProcessed : 1));
+                xSemaphoreGive(statsMutex);
+            }
+        }
+    private:
         // static void i_preamble();
         // static void i_payload();
         static void packetSender(iohcRadio *radio);
+
+        // Métriques de performance
+        uint32_t packetsReceived = 0;
+        uint32_t packetsProcessed = 0;
+        uint32_t packetsDropped = 0;
+        uint32_t maxQueueDepth = 0;
+        uint32_t totalQueueDelay = 0;
+        SemaphoreHandle_t statsMutex;
+
     };
 }
 

@@ -102,7 +102,7 @@ namespace IOHC {
         if (radioIrqQueue) {
             // On ignore si la queue est pleine — compteur de débordement optionnel
             if (xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken) != pdTRUE) {
-                // Optionnel : incrémenter un compteur de drops (volatile)
+                // Optionnel Compteur de drops (volatile)
                 // irq_drop_count++;
             }
         }
@@ -120,19 +120,19 @@ namespace IOHC {
 
         while (true) {
             if (xQueueReceive(radioIrqQueue, &ev, xMaxBlock) == pdTRUE) {
-                // traitons l'événement de façon séquentielle (pas de réentrance possible)
+                // No reentrance possible, using sequential
                 bool preamble = ev.flags & 0x01;
                 bool payload  = ev.flags & 0x02;
 
                 if (preamble) {
-                    // Relever timestamp et lock dans un contexte sûr
-                    radio->lockFHSS(IOHC::iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
+                    // timestamp and lock
+                    radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
                     radio->updateFHSSActivity(); // écriture atomique safe
                     radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
                 }
                 if (payload) {
                     // Marquer qu'on est en réception et lock
-                    radio->lockFHSS(IOHC::iohcRadio::FHSSLockReason::RECEIVING);
+                    radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
                     radio->updateFHSSActivity();
                     radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
                     // Appeler tickerCounter (qui fait la lecture SPI, receive(), etc.)
@@ -509,10 +509,10 @@ namespace IOHC {
          * Retourne nullptr si allocation échoue (au lieu de crasher)
          */
     static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
-        // if (!sourcePacket) {
+        if (!sourcePacket) {
             // ets_printf("createPacketWrapper: sourcePacket is null\n");
-            // return nullptr;
-        // }
+            return nullptr;
+        }
 
         // Essayer d'allouer d'abord la copie du paquet
         iohcPacket* pktToSend = nullptr;
@@ -550,18 +550,6 @@ namespace IOHC {
         if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
             return false;
         }
-        // // Pas de sémaphore bloquant, simple spinlock
-        // uint32_t timeout = millis() + 50;  // Timeout 100ms
-        // while (txQueue_busy && millis() < timeout) {
-        //     vTaskDelay(pdMS_TO_TICKS(1));  // OK ici (pas ISR)
-        // }
-        //
-        // if (txQueue_busy) {
-        //     ets_printf("TX queue timeout");
-        //     return false;
-        // }
-        //
-        // txQueue_busy = true;  // Acquérir le "lock"
 
         txCounter = 0;
         // Ajouter chaque paquet à la queue (en faisant une COPIE)
@@ -576,7 +564,6 @@ namespace IOHC {
         }
         TxPackets.clear();
 
-        // txQueue_busy = false;  // Libérer le "lock"
         startTransmission();
         xSemaphoreGive(txQueue_binary_sem);
         return true;
@@ -591,21 +578,13 @@ namespace IOHC {
         if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
             return false;
         }
-        // uint32_t timeout = millis() + 50;
-        // while (txQueue_busy && millis() < timeout) {
-        //     vTaskDelay(pdMS_TO_TICKS(1));
-        // }
-
-        // txQueue_busy = true;
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_back(wrapper);
         else {
-            // txQueue_busy = false;
             xSemaphoreGive(txQueue_binary_sem);
             // ets_printf("sendSingle: Failed to create packet wrapper");
             return false;
         }
 
-        // txQueue_busy = false;
         startTransmission();
         xSemaphoreGive(txQueue_binary_sem);
         return true;
@@ -621,24 +600,10 @@ namespace IOHC {
             return false;
         }
 
-        // uint32_t timeout = millis() + 50;
-        // while (txQueue_busy && millis() < timeout) {
-        //     vTaskDelay(pdMS_TO_TICKS(1));
-        // }
-        //
-        // if (txQueue_busy) {
-        //     ets_printf("TX queue timeout in sendPriority\n");
-        //     return false;
-        // }
-
-        // txQueue_busy = true;
-
         // O(1)
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
         else {
             xSemaphoreGive(txQueue_binary_sem);
-        // txQueue_busy = false;
-        //     ets_printf("sendPriority: Failed to create packet wrapper");
         return false;
         }
 
@@ -689,9 +654,6 @@ namespace IOHC {
         txMode = pkt->lock;
 
         packetStamp = esp_timer_get_time();
-        // uint8_t dataLen = pkt->buffer_length - 9;
-        // if ( dataLen > MAX_FRAME_LEN)
-        //     ets_printf("PacketSender Packet overflow %d, max len: %d", pkt->payload.packet.header.CtrlByte1.asStruct.MsgLen, MAX_FRAME_LEN);
 
         pkt->decode(true);
         // Memorize last command sent
@@ -713,7 +675,7 @@ namespace IOHC {
         if (pkt->repeat == 0) {
             radio->Ticker.detach();
 
-            // Utiliser spinlock au lieu de sémaphore
+            // spinlock au lieu de sémaphore
             uint32_t timeout = esp_timer_get_time() + 50000;  // 50ms en microsecondes
             while (radio->txQueue_busy && esp_timer_get_time() < timeout) {
                 // Spinlock court - OK dans ISR
@@ -739,14 +701,7 @@ namespace IOHC {
                 // Plus de paquets à envoyer
                 txMode = false;
 
-                // Si on attend une réponse, GARDER le verrouillage
-                // if (thisPacketExpectsResponse) {
-                // radio->setExpectingResponse(true, 1000);  // 1 seconde de timeout
-                // } else {
-                // Sinon déverrouiller
                 radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
-                // }
-                // Plus de paquets, arrêter
                 radio->stopTransmission();
             }
         }
