@@ -49,7 +49,7 @@ namespace IOHC {
         packet->payload.packet.header.cmd = 0x2A; //0x28; //typn;
         // Common Flags
         packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 0;
-        // packet->payload.packet.header.CtrlByte2.asByte = 0;
+
         packet->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
         packet->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
 

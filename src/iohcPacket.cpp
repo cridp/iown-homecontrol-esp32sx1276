@@ -57,7 +57,6 @@ namespace IOHC {
         else if (!this->payload.packet.header.CtrlByte1.asStruct.StartFrame && this->payload.packet.header.CtrlByte1.asStruct.EndFrame) _dir[0] = '<';
         else _dir[0] = ' ';
 
-
         ets_printf("(%2.2u) %1xW S %s E %s ", this->payload.packet.header.CtrlByte1.asStruct.MsgLen,
                this->is1W() ? 1 : 2,
                this->payload.packet.header.CtrlByte1.asStruct.StartFrame ? "1" : "0",

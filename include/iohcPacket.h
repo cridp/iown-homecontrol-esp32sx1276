@@ -245,15 +245,14 @@ namespace IOHC {
 
         ~iohcPacket() = default;
 
-        // 2. "NETTOYER L'ASSIETTE" (TRÈS IMPORTANT !)
+        // 2. "NETTOYER " (TRÈS IMPORTANT !)
         // Comme on réutilise le même paquet, il faut le vider de ses anciennes
-        // données avant de le remplir avec les nouvelles.
-        // Vous devez ajouter cette petite fonction à votre classe iohcPacket.
+        // données avant de le remplir avec les nouvelles.s
         void reset() {
             payload = {};
             buffer_length = 0;
             frequency = 0; // = CHANNEL2; // Both 1W & 2W
-            repeatTime = 13L;
+            repeatTime = 25;
             repeat = 0;
             lock = false;
 
@@ -261,6 +260,7 @@ namespace IOHC {
             snr = {}; // in dB
             rssi = {};  // -RSSI*2 of last packet received
             lna = {}; // LNA attenuation in dB
+
         };
 
         Payload payload{};

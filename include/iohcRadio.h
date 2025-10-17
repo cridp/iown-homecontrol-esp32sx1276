@@ -197,6 +197,22 @@ namespace IOHC {
 
         iohcRadio();
 
+        bool receive_1(bool stats);
+
+        void startPacketProcessor();
+
+        static void packetProcessorTask(void *parameter);
+
+        // Queue pour les paquets reçus
+        static constexpr size_t PACKET_QUEUE_SIZE = 10;
+        QueueHandle_t packetQueue;
+        TaskHandle_t packetProcessorTaskHandle;
+
+        // Buffer pour la lecture FIFO (toujours local à receive())
+        iohcPacket tempRxPacket;
+
+        // Mutex pour last1wPacket si nécessaire
+        SemaphoreHandle_t lastPacketMutex;
         bool receive(bool stats);
 
         bool isResponsePacket(iohcPacket *packet);
