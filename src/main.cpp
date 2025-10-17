@@ -91,14 +91,14 @@ void setup() {
 
     nvs_init();
     // Initialize network services
-    initWifi();
+    // initWifi();
     // Wait for WiFi to be connected before starting services
-    while (WiFi.status() != WL_CONNECTED) {
-        vTaskDelay(100 / portTICK_PERIOD_MS);
-    }
+    // while (WiFi.status() != WL_CONNECTED) {
+        // vTaskDelay(100 / portTICK_PERIOD_MS);
+    // }
 
     // set WiFi power mode
-    esp_wifi_set_ps(WIFI_PS_NONE);
+    // esp_wifi_set_ps(WIFI_PS_NONE);
 
 #if defined(MQTT)
     initMqtt();
@@ -339,8 +339,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         }
         case iohcDevice::CHALLENGE_REQUEST_0x3C: {
             // Answer only to our fake gateway, not to others real devices
-            if (true) {
-            // if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
+            // if (true) {
+            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
                 // radioInstance->maybeCheckHeap("CREATE RESPONSE 0x3D IN msgRcvd");
                 doc["type"] = "Gateway";
 
@@ -406,7 +406,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
                 response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
 
-                response.repeatTime = 9;
+                response.repeatTime = 11;
 // radioInstance->maybeCheckHeap("just before 'radioInstance->sendPriority(&response);' CREATE RESPONSE 0x3D IN msgRcvd");
                 radioInstance->sendPriority(&response);
 // radioInstance->maybeCheckHeap("EXIT AFTER sendPriority RESPONSE 0x3D IN msgRcvd");

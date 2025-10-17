@@ -140,61 +140,61 @@ namespace IOHC {
         }
     }
 
-    /**
-     * Waits for a notification and then calls the `tickerCounter`
-     * function if certain conditions are met.
-     *
-     * @param pvParameters Pointer that can be used to pass any data or object to the task when it is created. In this specific
-     * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
-     */
-    void IRAM_ATTR handle_interrupt_task_1(void *pvParameters) {
-        static uint32_t thread_notification;
-        constexpr TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
-        while (true) {
-            thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime); // Wait
-            if (thread_notification &&
-                (iohcRadio::radioState == iohcRadio::RadioState::PAYLOAD ||
-                 iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE)) {
-                iohcRadio::tickerCounter(static_cast<iohcRadio *>(pvParameters));
-            }
-        }
-    }
-
-    /**
-     * Reads digital inputs and notifies a thread to wake up when
-     * the interrupt service routine is complete.
-     * lastIsrTime Évite les double-triggers dus à la latence SPI ou à un flag encore haut.
-     */
-        static volatile uint32_t lastIsrTime = 0;
-    void IRAM_ATTR handle_interrupt_fromisr_1() {
-        uint32_t now = micros();
-        if (now - lastIsrTime < 200) return; // ignore bounce <200µs
-        lastIsrTime = now;
-
-        bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
-        bool payload = digitalRead(RADIO_PACKET_AVAIL);
-        iohcRadio *radio = iohcRadio::getInstance();
-        if (preamble) {
-            iohcRadio::_g_preamble = true;
-            // iohcRadio::f_lock_hop = true;
-            iohcRadio::setRadioState(iohcRadio::RadioState::PREAMBLE);
-            // VERROUILLER dès le préambule
-            radio->updateFHSSActivity();
-            radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-        }
-        if (payload) {
-            iohcRadio::_g_payload = true;
-            iohcRadio::setRadioState(iohcRadio::RadioState::PAYLOAD);
-            // MAINTENIR le verrouillage pour la réception
-            radio->updateFHSSActivity();
-            radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
-        }
-
-        // Notify the thread so it will wake up when the ISR is complete
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    }
+    // /**
+    //  * Waits for a notification and then calls the `tickerCounter`
+    //  * function if certain conditions are met.
+    //  *
+    //  * @param pvParameters Pointer that can be used to pass any data or object to the task when it is created. In this specific
+    //  * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
+    //  */
+    // void IRAM_ATTR handle_interrupt_task_1(void *pvParameters) {
+    //     static uint32_t thread_notification;
+    //     constexpr TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
+    //     while (true) {
+    //         thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime); // Wait
+    //         if (thread_notification &&
+    //             (iohcRadio::radioState == iohcRadio::RadioState::PAYLOAD ||
+    //              iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE)) {
+    //             iohcRadio::tickerCounter(static_cast<iohcRadio *>(pvParameters));
+    //         }
+    //     }
+    // }
+    //
+    // /**
+    //  * Reads digital inputs and notifies a thread to wake up when
+    //  * the interrupt service routine is complete.
+    //  * lastIsrTime Évite les double-triggers dus à la latence SPI ou à un flag encore haut.
+    //  */
+    //     static volatile uint32_t lastIsrTime = 0;
+    // void IRAM_ATTR handle_interrupt_fromisr_1() {
+    //     uint32_t now = micros();
+    //     if (now - lastIsrTime < 200) return; // ignore bounce <200µs
+    //     lastIsrTime = now;
+    //
+    //     bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
+    //     bool payload = digitalRead(RADIO_PACKET_AVAIL);
+    //     iohcRadio *radio = iohcRadio::getInstance();
+    //     if (preamble) {
+    //         // iohcRadio::_g_preamble = true;
+    //         // iohcRadio::f_lock_hop = true;
+    //         // iohcRadio::setRadioState(iohcRadio::RadioState::PREAMBLE);
+    //         // VERROUILLER dès le préambule
+    //         // radio->updateFHSSActivity();
+    //         radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
+    //     }
+    //     if (payload) {
+    //         // iohcRadio::_g_payload = true;
+    //         // iohcRadio::setRadioState(iohcRadio::RadioState::PAYLOAD);
+    //         // MAINTENIR le verrouillage pour la réception
+    //         // radio->updateFHSSActivity();
+    //         radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
+    //     }
+    //
+    //     // Notify the thread so it will wake up when the ISR is complete
+    //     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+    //     vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
+    //     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    // }
 
     void FHSSTimer(iohcRadio *iohc_radio) {
         // Vérifier d'abord le timeout
@@ -284,8 +284,8 @@ namespace IOHC {
                 // ≈ (32 * 8 bits) / 38400 = 6.6 ms de payload + overhead (préambule, sync, CRC…).
                 // Total réel de 10 à 15 ms.
                 uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
-                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 44; // lock_timeout (~2× airtime max).
-                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 22;
+                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 48; // lock_timeout (~2× airtime max).
+                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 48;
 
                 if (elapsed > timeout) {
                     // ets_printf("(D) FHSS timeout, forcing unlock (reason: %s, elapsed: %dms)\n", fhssLockReasonToString(fhssLockReason), elapsed);
@@ -352,17 +352,17 @@ namespace IOHC {
 
         // Créer la queue ISR -> task
         radioIrqQueue = xQueueCreate(RADIO_IRQ_QUEUE_LEN, sizeof(RadioIrqEvent));
-        if (!radioIrqQueue) {
-            ets_printf("ERROR: radioIrqQueue creation failed\n");
-        }
+        // if (!radioIrqQueue) {
+        //     ets_printf("ERROR: radioIrqQueue creation failed\n");
+        // }
 
         BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 4096,
                                                        this, 4,
                                                        &handle_interrupt, xPortGetCoreID());
-        if (task_code != pdPASS) {
-            ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
-            return;
-        }
+        // if (task_code != pdPASS) {
+        //     ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
+        //     return;
+        // }
     }
 
     /**
@@ -408,7 +408,7 @@ namespace IOHC {
         // CONFIGURATION PAR DÉFAUT RECOMMANDÉE
         if (scanTimeUs == 0) {
             // Démarrer en mode fast scan
-            this->scanTimeUs = 15 * 1000; // 15ms par fréquence
+            this->scanTimeUs = 23 * 1000; // 15ms par fréquence
             // ESP_LOGI("FHSS", "Using default adaptive FHSS: 15ms fast scan");
         } else {
             this->scanTimeUs = scanTimeUs;
@@ -461,9 +461,9 @@ namespace IOHC {
                     radio->setRadioState(iohcRadio::RadioState::RX);
 
                     // Only when no response expected
-                    //if (/*!radio->expectingResponse &&*/ !txMode) {
-                    //    radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
-                    //}
+                    if (/*!radio->expectingResponse &&*/ !txMode) {
+                        radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
+                    }
                 }
                 return;
             }
@@ -543,11 +543,6 @@ namespace IOHC {
         // Ajouter chaque paquet à la queue (en faisant une COPIE)
         for (auto *pkt: TxPackets) {
             if (!pkt) continue;
-            // Créer une COPIE du paquet
-            // iohcPacket *packetCopy = new iohcPacket(*pkt);
-            // TxPacketWrapper *wrapper = new TxPacketWrapper(packetCopy, true);
-            // txQueue.push_back(wrapper);
-
             // Utiliser la factory function
             TxPacketWrapper* wrapper = createPacketWrapper(pkt);
             if (wrapper) {
