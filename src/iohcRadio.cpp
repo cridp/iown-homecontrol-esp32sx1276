@@ -53,8 +53,8 @@ struct TxPacketWrapper {
 
 namespace IOHC {
     iohcRadio *iohcRadio::_iohcRadio = nullptr;
-    volatile bool iohcRadio::_g_preamble = false;
-    volatile bool iohcRadio::_g_payload = false;
+    // volatile bool iohcRadio::_g_preamble = false;
+    // volatile bool iohcRadio::_g_payload = false;
     volatile uint32_t iohcRadio::_g_payload_millis = 0L;
     uint8_t iohcRadio::_flags[2] = {0, 0};
     volatile bool iohcRadio::f_lock_hop = false;
@@ -72,7 +72,7 @@ namespace IOHC {
     };
 
     static QueueHandle_t radioIrqQueue = nullptr;
-    static constexpr size_t RADIO_IRQ_QUEUE_LEN = 64;
+    static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
 
     /**
     * Aucune prise de sémaphore / lockFHSS() / updateFHSSActivity() ici.
@@ -80,6 +80,12 @@ namespace IOHC {
     * On utilise donc esp_timer_get_time()/1000.
     */
     void IRAM_ATTR handle_interrupt_fromisr() {
+        // Vérification anti-rebond plus robuste
+        static uint32_t lastIsrTime = 0;
+        uint32_t now = esp_timer_get_time();
+        if (now - lastIsrTime < 100) return; // 100µs debounce
+        lastIsrTime = now;
+
         // Lire seulement les GPIOS (opérations très courtes), pas d'appels bloquants
         bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
         bool payload  = digitalRead(RADIO_PACKET_AVAIL);
@@ -89,7 +95,7 @@ namespace IOHC {
         ev.flags = 0;
         if (preamble) ev.flags |= 0x01;
         if (payload)  ev.flags |= 0x02;
-        ev.ts_ms = static_cast<uint32_t>(esp_timer_get_time() / 1000ULL);
+        ev.ts_ms = static_cast<uint32_t>(now / 1000ULL);
 
         // Envoi dans la queue (FromISR)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -299,7 +305,7 @@ namespace IOHC {
     }
 
     /**
-     * Met à jour l'horodatage d'activité
+     * Mettre à jour l'horodatage d'activité
      * Pas besoin de mutex pour juste mettre à jour un uint32_t
      */
     // void iohcRadio::updateFHSSActivity() {
@@ -346,9 +352,10 @@ namespace IOHC {
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");
         // Créer les mutex
-        tx_mutex = xSemaphoreCreateMutex();
-        txQueue_mutex = xSemaphoreCreateMutex();
-        fhss_state_mutex = xSemaphoreCreateMutex();
+        tx_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(tx_mutex);
+        // txQueue_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(txQueue_mutex);
+        txQueue_binary_sem = xSemaphoreCreateBinary(); xSemaphoreGive(txQueue_binary_sem); // Initialement libre
+        fhss_state_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(fhss_state_mutex);
 
         // Créer la queue ISR -> task
         radioIrqQueue = xQueueCreate(RADIO_IRQ_QUEUE_LEN, sizeof(RadioIrqEvent));
@@ -356,13 +363,13 @@ namespace IOHC {
         //     ets_printf("ERROR: radioIrqQueue creation failed\n");
         // }
 
-        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 4096,
+        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192,
                                                        this, 4,
                                                        &handle_interrupt, xPortGetCoreID());
-        // if (task_code != pdPASS) {
-        //     ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
-        //     return;
-        // }
+        if (task_code != pdPASS) {
+            ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
+            return;
+        }
     }
 
     /**
@@ -490,24 +497,24 @@ namespace IOHC {
          * Retourne nullptr si allocation échoue (au lieu de crasher)
          */
     static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
-        if (!sourcePacket) {
-            ets_printf("createPacketWrapper: sourcePacket is null\n");
-            return nullptr;
-        }
+        // if (!sourcePacket) {
+            // ets_printf("createPacketWrapper: sourcePacket is null\n");
+            // return nullptr;
+        // }
 
         // Essayer d'allouer d'abord la copie du paquet
         iohcPacket* pktToSend = nullptr;
 
         pktToSend = new (std::nothrow) iohcPacket(*sourcePacket);
         if (!pktToSend) {
-            ets_printf("createPacketWrapper: Failed to allocate packet copy\n");
+            // ets_printf("createPacketWrapper: Failed to allocate packet copy\n");
             return nullptr;  // Fuite zéro - rien n'a été alloué
         }
 
         // Ensuite allouer le wrapper
         auto wrapper = new (std::nothrow) TxPacketWrapper(pktToSend);
         if (!wrapper) {
-            ets_printf("createPacketWrapper: Failed to allocate wrapper\n");
+            // ets_printf("createPacketWrapper: Failed to allocate wrapper\n");
             // Libérer le paquet
             delete pktToSend;
             return nullptr;  // Fuite zéro
@@ -518,44 +525,48 @@ namespace IOHC {
     /**
  * Sends packets stored in a vector with a specified repeat time.
  *
- * @param TxPackets `iohcTx` is a reference to a vector of pointers to `iohcPacket` objects.
+ * @param TxPackets `Vector of pointers to `iohcPacket` objects.
 *
  * Envoie un ou plusieurs paquets
  * Les paquets sont COPIÉS en interne, on garde la propriété des originaux
  */
     bool iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
-        if (TxPackets.empty()) return false;
-
-        // Pas de sémaphore bloquant, simple spinlock
-        uint32_t timeout = millis() + 100;  // Timeout 100ms
-        while (txQueue_busy && millis() < timeout) {
-            vTaskDelay(pdMS_TO_TICKS(1));  // OK ici (pas ISR)
-        }
-
-        if (txQueue_busy) {
-            ets_printf("TX queue timeout");
+        if (TxPackets.empty()) {
+            ets_printf("Send called with empty packet list");
             return false;
         }
-
-        txQueue_busy = true;  // Acquérir le "lock"
+        if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+            return false;
+        }
+        // // Pas de sémaphore bloquant, simple spinlock
+        // uint32_t timeout = millis() + 50;  // Timeout 100ms
+        // while (txQueue_busy && millis() < timeout) {
+        //     vTaskDelay(pdMS_TO_TICKS(1));  // OK ici (pas ISR)
+        // }
+        //
+        // if (txQueue_busy) {
+        //     ets_printf("TX queue timeout");
+        //     return false;
+        // }
+        //
+        // txQueue_busy = true;  // Acquérir le "lock"
 
         txCounter = 0;
         // Ajouter chaque paquet à la queue (en faisant une COPIE)
         for (auto *pkt: TxPackets) {
-            if (!pkt) continue;
-            // Utiliser la factory function
-            TxPacketWrapper* wrapper = createPacketWrapper(pkt);
-            if (wrapper) {
-                txQueue.push_back(wrapper);
-                // packetsAdded++;
-            } else {
-                // Log l'erreur, mais continue avec les autres
-                ets_printf("Failed to add packet to queue (memory issue?)");
+            if (pkt) {
+                // Utiliser la factory
+                if (TxPacketWrapper* wrapper = createPacketWrapper(pkt)) {
+                    txQueue.push_back(wrapper);
+                    pkt = nullptr; // Transfer ownership
+                }
             }
         }
         TxPackets.clear();
-        txQueue_busy = false;  // Libérer le "lock"
+
+        // txQueue_busy = false;  // Libérer le "lock"
         startTransmission();
+        xSemaphoreGive(txQueue_binary_sem);
         return true;
 
     }
@@ -565,21 +576,26 @@ namespace IOHC {
      */
     bool iohcRadio::sendSingle(iohcPacket *packet) {
         if (!packet) return false;
-        uint32_t timeout = millis() + 100;
-        while (txQueue_busy && millis() < timeout) {
-            vTaskDelay(pdMS_TO_TICKS(1));
+        if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+            return false;
         }
+        // uint32_t timeout = millis() + 50;
+        // while (txQueue_busy && millis() < timeout) {
+        //     vTaskDelay(pdMS_TO_TICKS(1));
+        // }
 
-        txQueue_busy = true;
+        // txQueue_busy = true;
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_back(wrapper);
         else {
-            txQueue_busy = false;
-            ets_printf("sendSingle: Failed to create packet wrapper");
+            // txQueue_busy = false;
+            xSemaphoreGive(txQueue_binary_sem);
+            // ets_printf("sendSingle: Failed to create packet wrapper");
             return false;
         }
 
-        txQueue_busy = false;
+        // txQueue_busy = false;
         startTransmission();
+        xSemaphoreGive(txQueue_binary_sem);
         return true;
     }
 
@@ -589,29 +605,34 @@ namespace IOHC {
     */
     bool iohcRadio::sendPriority(iohcPacket *packet) {
         if (!packet) return false;
-
-        uint32_t timeout = millis() + 100;
-        while (txQueue_busy && millis() < timeout) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-
-        if (txQueue_busy) {
-            ets_printf("TX queue timeout in sendPriority\n");
+        if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
             return false;
         }
 
-        txQueue_busy = true;
+        // uint32_t timeout = millis() + 50;
+        // while (txQueue_busy && millis() < timeout) {
+        //     vTaskDelay(pdMS_TO_TICKS(1));
+        // }
+        //
+        // if (txQueue_busy) {
+        //     ets_printf("TX queue timeout in sendPriority\n");
+        //     return false;
+        // }
+
+        // txQueue_busy = true;
 
         // O(1)
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
         else {
-            txQueue_busy = false;
-            ets_printf("sendPriority: Failed to create packet wrapper");
-            return false;
+            xSemaphoreGive(txQueue_binary_sem);
+        // txQueue_busy = false;
+        //     ets_printf("sendPriority: Failed to create packet wrapper");
+        return false;
         }
 
-        txQueue_busy = false;
+        // txQueue_busy = false;
         startTransmission();
+        xSemaphoreGive(txQueue_binary_sem);
         return true;
     }
 
@@ -735,6 +756,14 @@ namespace IOHC {
 
     // La "mémoire tampon" pour le paquet reçu. Elle existe en permanence.
     static iohcPacket rxPacketBuffer;
+    // Ajouter des compteurs de performance
+    struct RadioStats {
+        uint32_t packetsReceived;
+        uint32_t packetsSent;
+        uint32_t packetsDropped;
+        uint32_t queueOverflows;
+        uint32_t spiErrors;
+    };
     /**
      * Toggles an LED, reads radio data, processes it, and
      * triggers a callback function.
@@ -748,16 +777,14 @@ namespace IOHC {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // On est déjà verrouillé par l'ISR/tickerCounter
 
-        // Create a new packet for this reception. Use a pointer to pass to the callback.
-        // auto *currentPacket = new iohcPacket();
         // 1. OBTENIR UN POINTEUR, SANS ALLOCATION
         // On ne demande pas de nouvelle mémoire. On prend juste l'adresse
         // de notre buffer qui existe déjà. C'est une opération instantanée.
         iohcPacket* currentPacket = &rxPacketBuffer;
-        // 2. "NETTOYER L'ASSIETTE" (TRÈS IMPORTANT !)
+        // 2. "NETTOYER" (TRÈS IMPORTANT !)
         // Comme on réutilise le même paquet, il faut le vider de ses anciennes
         // données avant de le remplir avec les nouvelles.
-        // Vous devez ajouter cette petite fonction à votre classe iohcPacket.
+        // Dans la classe iohcPacket.
         currentPacket->reset();
         currentPacket->frequency = scan_freqs[currentFreqIdx];
 
@@ -777,6 +804,7 @@ namespace IOHC {
             if (currentPacket->buffer_length < MAX_FRAME_LEN) {
                 currentPacket->payload.buffer[currentPacket->buffer_length++] = Radio::readByte(REG_FIFO);
             } else {
+                // ets_printf("Packet overflow %d, max len: %d", currentPacket->buffer_length, MAX_FRAME_LEN);
                 // Prevent buffer overflow, discard extra bytes.
                 Radio::readByte(REG_FIFO);
             }
@@ -873,28 +901,16 @@ namespace IOHC {
     /**
      * Traite le prochain paquet de la queue
      */
-    void iohcRadio::processNextPacket() {
-        // Récupérer le prochain paquet
-        uint32_t timeout = millis() + 100;
-        while (txQueue_busy && millis() < timeout) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-
+    bool iohcRadio::processNextPacket() {
         // Nettoyer le paquet précédent
-        // if (currentTxPacket) {
-        //     delete currentTxPacket;
-        //     currentTxPacket = nullptr;
-        // }
-
-        if (txQueue_busy) {
-            ets_printf("TX queue timeout in processNextPacket()");
-            stopTransmission();
-            return;
+        if (currentTxPacket) {
+            delete currentTxPacket;
+            currentTxPacket = nullptr;
         }
 
         if (txQueue.empty()) {
             stopTransmission();
-            return;
+            return false;
         }
 
         currentTxPacket = txQueue.front();
@@ -902,6 +918,8 @@ namespace IOHC {
 
         // Lancer le timer pour ce paquet
         Ticker.attach_ms(currentTxPacket->repeatTime, packetSender, this);
+
+        return true;
     }
 
     /**
@@ -933,19 +951,19 @@ namespace IOHC {
      * Vide la queue de transmission
      */
     void iohcRadio::clearTxQueue() {
-        uint32_t timeout = millis() + 100;
-        while (txQueue_busy && millis() < timeout) {
-            vTaskDelay(pdMS_TO_TICKS(1));
-        }
-
-        txQueue_busy = true;
+        // uint32_t timeout = millis() + 100;
+        // while (txQueue_busy && millis() < timeout) {
+        //     vTaskDelay(pdMS_TO_TICKS(1));
+        // }
+        //
+        // txQueue_busy = true;
 
             while (!txQueue.empty()) {
                 const TxPacketWrapper *wrapper = txQueue.front();
                 txQueue.pop_front();
                 delete wrapper; // Le destructeur libère la mémoire
             }
-        txQueue_busy = false;
+        // txQueue_busy = false;
     }
 
     /**

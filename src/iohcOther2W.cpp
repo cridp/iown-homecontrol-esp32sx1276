@@ -271,14 +271,14 @@ namespace IOHC {
                         forgeAnyWPacket(packets2send.back(), toSend);
                         packets2send.back()->payload.packet.header.cmd = iohcDevice::DISCOVER_0x28;
                         memcpy(packets2send.back()->payload.packet.header.target, broadcast_3b, 3);
-                    packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
                     }
                     if (i == 4) {
                         std::vector<uint8_t> toSend = {};
                         forgeAnyWPacket(packets2send.back(), toSend);
                         packets2send.back()->payload.packet.header.cmd = iohcDevice::DISCOVER_0x28;
                         memcpy(packets2send.back()->payload.packet.header.target, broadcast_3f, 3);
-                    packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 0;
                     }
                     if (i == 3) {
                         std::vector<uint8_t> toSend = {
@@ -299,7 +299,7 @@ namespace IOHC {
                         forgeAnyWPacket(packets2send.back(), toSend);
                         packets2send.back()->payload.packet.header.cmd = iohcDevice::DISCOVER_REMOTE_0x2A;
                         memcpy(packets2send.back()->payload.packet.header.target, broadcast_3f, 3);
-                    packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                        packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                     }
                     if (i == 1) {
                         std::vector<uint8_t> toSend = {0x00};
@@ -346,8 +346,8 @@ namespace IOHC {
                     memorizeOther2W.memorizedData = toSend;
                     memorizeOther2W.memorizedCmd = 0x03;
                     IOHC::lastCmd = 0x03;
-                    cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
-                    cozyDevice2W->memorizeSend.memorizedData = toSend;
+                    // cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
+                    // cozyDevice2W->memorizeSend.memorizedData = toSend;
 
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 

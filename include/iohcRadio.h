@@ -60,19 +60,21 @@ namespace IOHC {
     void FHSSTimer(iohcRadio *iohc_radio);
 
     class iohcRadio {
-        // friend class AdaptiveFHSS; // Permet à AdaptiveFHSS d'accéder aux membres privés
+        friend class AdaptiveFHSS; // Permet à AdaptiveFHSS d'accéder aux membres privés
     public:
         static iohcRadio *getInstance();
 
         virtual ~iohcRadio() {
             // Nettoyer la queue
             clearTxQueue();
-            if (txQueue_mutex)
-                vSemaphoreDelete(txQueue_mutex);
+            // if (txQueue_mutex)
+            //     vSemaphoreDelete(txQueue_mutex);
             if (tx_mutex)
                 vSemaphoreDelete(tx_mutex);
             if (fhss_state_mutex)
                 vSemaphoreDelete(fhss_state_mutex);
+            if (txQueue_binary_sem)
+                vSemaphoreDelete(txQueue_binary_sem);
         };
 
         enum class RadioState : uint8_t {
@@ -150,7 +152,8 @@ namespace IOHC {
         static void processNextPacketCallback(iohcRadio *radio);
 
         void startTransmission();
-        void processNextPacket();
+
+        bool processNextPacket();
         void stopTransmission();
         void clearTxQueue();
         bool isTransmitting() const;
@@ -160,9 +163,9 @@ namespace IOHC {
 
         volatile static RadioState radioState;
 
-        volatile static bool _g_preamble;
+        // volatile static bool _g_preamble;
         // volatile static uint32_t preambleCounter;
-        volatile static bool _g_payload;
+        // volatile static bool _g_payload;
         volatile static bool f_lock_hop;
 
         static void tickerCounter(iohcRadio *radio);
@@ -179,7 +182,8 @@ namespace IOHC {
 
         // File d'attente thread safe pour les paquets à envoyer
         std::deque<TxPacketWrapper *> txQueue;
-        SemaphoreHandle_t txQueue_mutex = nullptr;
+        // SemaphoreHandle_t txQueue_mutex = nullptr;
+        SemaphoreHandle_t txQueue_binary_sem; // Au lieu de txQueue_busy
         // Paquet actuellement en cours de transmission
         TxPacketWrapper *currentTxPacket = nullptr;
         // Mutex pour protéger l'accès concurrent

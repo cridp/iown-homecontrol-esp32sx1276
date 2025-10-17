@@ -62,7 +62,8 @@ IOHC::iohcRadio *radioInstance;
 IOHC::iohcPacket *radioPackets[IOHC_INBOUND_MAX_PACKETS];
 
 std::vector<IOHC::iohcPacket *> packets2send{};
-std::vector<IOHC::iohcPacket *> packets2send_tmp{};
+
+// std::vector<IOHC::iohcPacket *> packets2send_tmp{};
 
 uint8_t nextPacket = 0;
 
@@ -122,7 +123,7 @@ void setup() {
 #if !defined(MQTT)
 // If MQTT is not defined, txCallback is null
     radioInstance->start(MAX_FREQS, frequencies, 47000, msgRcvd, nullptr); //msgArchive); //, msgRcvd);
-// 2750 Uniquement pour monitoring ultra-passif sans réponses
+
 #else
     radioInstance->start(MAX_FREQS, frequencies, 0, msgRcvd, publishMsg);
 #endif
@@ -133,6 +134,8 @@ void setup() {
     remote1W = IOHC::iohcRemote1W::getInstance();
     cozyDevice2W = IOHC::iohcCozyDevice2W::getInstance();
     otherDevice2W = IOHC::iohcOther2W::getInstance();
+
+    // packets2send.reserve(128);
 
     ets_printf("Startup completed. type help to see what you can do!\n");
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -673,28 +676,28 @@ bool msgArchive(IOHC::iohcPacket *iohc) {
  * 
  * @return nothing (void).
  */
-void txUserBuffer(Tokens *cmd) {
-    if (cmd->size() < 2) {
-        ets_printf("No packet to be sent!\n");
-        return;
-    }
-    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-    if (!packets2send[0])
-        packets2send[0] = new IOHC::iohcPacket;
-
-    if (cmd->size() == 3)
-        packets2send[0]->frequency = frequencies[atoi(cmd->at(2).c_str()) - 1];
-    else
-        packets2send[0]->frequency = 0;
-
-    packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);
-    packets2send[0]->repeatTime = 35;
-    packets2send[0]->repeat = 1;
-    // packets2send[1] = nullptr; // Not needed with std::vector and push_back
-
-    radioInstance->send(packets2send);
-    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-}
+// void txUserBuffer(Tokens *cmd) {
+//     if (cmd->size() < 2) {
+//         ets_printf("No packet to be sent!\n");
+//         return;
+//     }
+//     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+//     if (!packets2send[0])
+//         packets2send[0] = new IOHC::iohcPacket;
+//
+//     if (cmd->size() == 3)
+//         packets2send[0]->frequency = frequencies[atoi(cmd->at(2).c_str()) - 1];
+//     else
+//         packets2send[0]->frequency = 0;
+//
+//     packets2send[0]->buffer_length = hexStringToBytes(cmd->at(1), packets2send[0]->payload.buffer);
+//     packets2send[0]->repeatTime = 35;
+//     packets2send[0]->repeat = 1;
+//     // packets2send[1] = nullptr; // Not needed with std::vector and push_back
+//
+//     radioInstance->send(packets2send);
+//     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+// }
 
 void loop() {
     // loopWebServer(); // For ESPAsyncWebServer, this is typically not needed.
