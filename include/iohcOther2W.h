@@ -40,7 +40,7 @@ namespace IOHC {
         custom60,
         discover28,
         discover2A,
-        fake0,
+        checkState,
         ack,
         pairMode,
         scanMode,

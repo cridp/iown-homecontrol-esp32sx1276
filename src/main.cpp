@@ -481,7 +481,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                 IOHC::lastCmd = 0x03;
                 otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
                 cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                // cozyDevice2W->memorizeSend.memorizedData.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+23);
+                cozyDevice2W->memorizeSend.memorizedData.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
             }
             break;
         }

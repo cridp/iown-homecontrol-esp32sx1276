@@ -333,7 +333,7 @@ namespace IOHC {
 
                 break;
             }
-            case Other2WButton::fake0: {
+            case Other2WButton::checkState: {
                 std::vector<uint8_t> toSend ={0x03, 0x00, 0x00}; //{0x03, 0xe7, 0x32, 0x00, 0x00, 0x00};
 
                 size_t i = 0;
