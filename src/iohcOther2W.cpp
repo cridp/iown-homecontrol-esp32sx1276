@@ -388,6 +388,7 @@ namespace IOHC {
                         memcpy(discover.payload.packet.header.source, real, 3);
                         memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
+                        discover.frequency = CHANNEL2;
                         discover.repeatTime = 47;
                         _radioInstance->sendSingle(&discover);
                 }
