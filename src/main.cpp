@@ -166,6 +166,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         otherDevice2W->memorizeOther2W = {};
         otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->cmd();
     }
+    otherDevice2W->stopDiscover = false;
     // IOHC::lastCmd = receivedPacket->cmd();
     // Used for the AUTH replies in main
     // iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
@@ -175,6 +176,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
     switch (receivedPacket->cmd()) {
         case iohcDevice::DISCOVER_0x28: {
             if (!Cmd::pairMode) break;
+
             // Node type and subtype (2 bytes): type on 10 bits and subtype on the remainer
             // Node type = (field >> 6) & 1023
             // Node subtype = field & 63
@@ -207,6 +209,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             break;
         }
         case iohcDevice::DISCOVER_ANSWER_0x29: {
+            otherDevice2W->stopDiscover = true;
             // ets_printf("2W Device want to be paired Waiting for 0x2C\n");
             //
             // std::vector<uint8_t> deviceAsked;
@@ -244,6 +247,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             break;
         }
         case iohcDevice::DISCOVER_REMOTE_ANSWER_0x2B: {
+            otherDevice2W->stopDiscover = true;
             // sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
             //                     iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
             //                     iohc->payload.packet.msg.p0x2b.info);

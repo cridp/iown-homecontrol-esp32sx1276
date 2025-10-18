@@ -180,7 +180,7 @@ namespace IOHC {
     * Verrouille le FHSS avec une raison spécifique
     */
     void iohcRadio::lockFHSS(const FHSSLockReason reason) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             // Garder la raison la plus "forte"
             if (reason > fhssLockReason) {
                 fhssLockReason = reason;
@@ -197,7 +197,7 @@ namespace IOHC {
      * Déverrouille le FHSS pour une raison spécifique
      */
     void iohcRadio::unlockFHSS(const FHSSLockReason reason) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             // Déverrouiller seulement si c'est la même raison
             if (fhssLockReason == reason) {
                 fhssLockReason = FHSSLockReason::NONE;
@@ -238,7 +238,8 @@ namespace IOHC {
                 if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 18;
 
                 if (elapsed >= timeout) {
-                    ets_printf("(D) FHSS timeout(%d), forcing unlock (reason: %s, elapsed: %dms)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
+                    if (fhssLockReason != FHSSLockReason::PREAMBLE_DETECTED)
+                        ets_printf("(D) FHSS timeout(%d), forcing unlock (reason: %s, elapsed: %dms)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
                     fhssLockReason = FHSSLockReason::NONE;
                     f_lock_hop = false;
                     expectingResponse = false;
@@ -429,7 +430,7 @@ namespace IOHC {
                 if (radioState != iohcRadio::RadioState::TX) {
                     Radio::setRx();
                     radio->setRadioState(iohcRadio::RadioState::RX);
-
+                    // radio->unlockFHSS(FHSSLockReason::RECEIVING);
                     // Only when no response expected
                     if (/*!radio->expectingResponse &&*/ !txMode) {
                         radio->unlockFHSS(FHSSLockReason::TRANSMITTING);

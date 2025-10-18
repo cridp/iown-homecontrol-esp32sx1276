@@ -184,11 +184,10 @@ namespace Cmd {
         Cmd::addHandler("fake0", "fake0", [](Tokens *cmd)-> void {
             IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::checkState, nullptr);
         });
-        /*
-        Cmd::addHandler((char *) "ack", (char *) "ack33", [](Tokens *cmd)-> void {
-            IOHC::iohcCozyDevice2W::getInstance()->cmd(IOHC::DeviceButton::ack, nullptr);
+
+        Cmd::addHandler("dynamite", "ack33", [](Tokens *cmd)-> void {
+            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::dynamite, nullptr);
         });
-    */
     }
 
     bool addHandler(const char *cmd, const char *description, void (*handler)(Tokens*)) {

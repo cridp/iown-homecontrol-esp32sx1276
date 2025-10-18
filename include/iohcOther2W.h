@@ -41,7 +41,7 @@ namespace IOHC {
         discover28,
         discover2A,
         checkState,
-        ack,
+        dynamite,
         pairMode,
         scanMode,
     };
@@ -79,6 +79,7 @@ namespace IOHC {
         address slave_to/*[3]*/ = {0x8C, 0xCB, 0x31}; // It's the new heater kitchen Address To
 
         Memorize memorizeOther2W; //2W only
+        volatile bool stopDiscover;
 
         //            bool isFake(address nodeSrc, address nodeDst) override;
         void cmd(Other2WButton cmd, Tokens *data);

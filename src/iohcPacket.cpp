@@ -348,7 +348,7 @@ namespace IOHC {
                 }
 
             } else {
-                if (this->cmd() == iohcDevice::DISCOVER_0x28) {ets_printf("2W Pairing Asked Waiting for 0x29");}
+                if (this->cmd() == iohcDevice::DISCOVER_0x28) {ets_printf("2W Pairing Asked Waiting for 0x29/0x2A");}
                 if (this->cmd() == iohcDevice::DISCOVER_ACTUATOR_0x2C) {ets_printf("2W Actuator Ack Asked Waiting for 0x2D");}
                 if (this->cmd() == iohcDevice::LAUNCH_KEY_TRANSFERT_0x38) {ets_printf("2W Key Transfert Asked after Command %2.2X Waiting for 0x32", this->payload.packet.header.cmd);}
 

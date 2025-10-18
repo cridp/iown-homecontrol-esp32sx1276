@@ -25,6 +25,7 @@
 #include <numeric>
 #include <set>
 
+#include "interact.h"
 #include "iohcCozyDevice2W.h"
 
 namespace IOHC {
@@ -37,6 +38,7 @@ namespace IOHC {
             _iohcOtherDevice2W = new iohcOther2W();
             _iohcOtherDevice2W->load();
             _iohcOtherDevice2W->initializeValid();
+            _iohcOtherDevice2W->stopDiscover = false;
         }
         return _iohcOtherDevice2W;
     }
@@ -360,22 +362,32 @@ namespace IOHC {
                 _radioInstance->send(packets2send);
                 break;
             }
-            case Other2WButton::ack: {
+            case Other2WButton::dynamite: {
+                Cmd::pairMode = true;
+                // ets_printf("stopDiscover %d", this->stopDiscover);
                 std::vector<uint8_t> toSend = {};
+                for (int i=0; i < 64; i++) {
+                    if (this->stopDiscover) break;
+                    // while (!this->stopDiscover) {
+                        iohcPacket discover;
+                        forgeAnyWPacket(&discover, toSend);
 
-                packets2send.push_back(new iohcPacket);
-                forgeAnyWPacket(packets2send.back(), toSend);
+                        discover.payload.packet.header.cmd = DISCOVER_0x28;
+                        memorizeOther2W.memorizedCmd = DISCOVER_0x28;
+                        memorizeOther2W.memorizedData = toSend;
 
-                packets2send.back()->payload.packet.header.cmd = iohcDevice::KEY_TRANSFERT_ACK_0x33;
-                memorizeOther2W.memorizedCmd = iohcDevice::KEY_TRANSFERT_ACK_0x33;
-                memorizeOther2W.memorizedData = toSend;
+                        discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                        discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                        discover.payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
-                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                        address somfy = {0xe0, 0x98, 0x48}; // Somfy Remote (E09848)
+                        address broadcast_3b = {0x00, 0x00, 0x3b};
+                        memcpy(discover.payload.packet.header.source, somfy, 3);
+                        memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
-                memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
-                memcpy(packets2send.back()->payload.packet.header.target, master_from, 3);
-
-                _radioInstance->send(packets2send);
+                        discover.repeatTime = 47;
+                        _radioInstance->sendSingle(&discover);
+                }
                 break;
             }
             case Other2WButton::scanMode: {
