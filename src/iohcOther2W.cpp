@@ -364,11 +364,10 @@ namespace IOHC {
             }
             case Other2WButton::dynamite: {
                 Cmd::pairMode = true;
-                // ets_printf("stopDiscover %d", this->stopDiscover);
                 std::vector<uint8_t> toSend = {};
                 for (int i=0; i < 64; i++) {
                     if (this->stopDiscover) break;
-                    // while (!this->stopDiscover) {
+
                         iohcPacket discover;
                         forgeAnyWPacket(&discover, toSend);
 
