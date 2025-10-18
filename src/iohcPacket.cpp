@@ -269,7 +269,6 @@ namespace IOHC {
                     std::vector<uint8_t> deviceAsked;
                     deviceAsked.assign(this->payload.buffer + 9, this->payload.buffer + 18);
                     int type= ((deviceAsked[0] << 8) | deviceAsked[1]); type = (type >> 6) & 0x3FF;int subtype = type & 0x3F;
-
                     ets_printf("Type %03X Subtype %d Manu %02X Addr ", type, subtype, deviceAsked[6]);
                     for (uint8_t i = 2; i < 5; i++) { ets_printf("%02X", deviceAsked[i]); }
 
@@ -278,7 +277,11 @@ namespace IOHC {
                 if (this->cmd() == iohcDevice::DISCOVER_REMOTE_ANSWER_0x2B) {ets_printf("2W Remote want to be paired ");
                     std::vector<uint8_t> deviceAsked;
                     deviceAsked.assign(this->payload.buffer + 9, this->payload.buffer + 18);
-                    for (unsigned char i: deviceAsked) ets_printf("%02X ", i);
+                    int type= ((deviceAsked[0] << 8) | deviceAsked[1]); type = (type >> 6) & 0x3FF;int subtype = type & 0x3F;
+                    ets_printf("Type %03X Subtype %d Manu %02X Addr ", type, subtype, deviceAsked[6]);
+                    for (uint8_t i = 2; i < 5; i++) { ets_printf("%02X", deviceAsked[i]); }
+
+                    // for (unsigned char i: deviceAsked) ets_printf("%02X ", i);
                     // sysTable->addObject(iohc->payload.packet.header.source, iohc->payload.packet.msg.p0x2b.backbone,
                     //                     iohc->payload.packet.msg.p0x2b.actuator, iohc->payload.packet.msg.p0x2b.manufacturer,
                     //                     iohc->payload.packet.msg.p0x2b.info);

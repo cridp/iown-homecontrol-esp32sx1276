@@ -75,32 +75,31 @@ namespace IOHC {
     static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
 
     /**
-    * Aucune prise de sémaphore / lockFHSS() / updateFHSSActivity() ici.
-    * esp_timer_get_time() est ISR-safe ; millis() n'est pas garanti ISR-safe dans tous les contextes
-    * On utilise donc esp_timer_get_time()/1000.
+    * No semaphore / lockFHSS() / updateFHSSActivity() here.
+    * esp_timer_get_time() is ISR-safe ; millis() never sure.
     */
     void IRAM_ATTR handle_interrupt_fromisr() {
-        // Vérification anti-rebond plus robuste
+        // Debounce
         static uint32_t lastIsrTime = 0;
         uint32_t now = esp_timer_get_time();
         if (now - lastIsrTime < 100) return; // 100µs debounce
         lastIsrTime = now;
 
-        // Lire seulement les GPIOS (opérations très courtes), pas d'appels bloquants
+        // Only GPIOS (opérations très courtes), pas d'appels bloquants
         bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
         bool payload  = digitalRead(RADIO_PACKET_AVAIL);
 
-        // Compose l'événement
+        // Create an event
         RadioIrqEvent ev;
         ev.flags = 0;
         if (preamble) ev.flags |= 0x01;
         if (payload)  ev.flags |= 0x02;
         ev.ts_ms = static_cast<uint32_t>(now / 1000ULL);
 
-        // Envoi dans la queue (FromISR)
+        // Send it to queue (FromISR)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         if (radioIrqQueue) {
-            // On ignore si la queue est pleine — compteur de débordement optionnel
+            // Ignored if queue empty
             if (xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken) != pdTRUE) {
                 // Optionnel Compteur de drops (volatile)
                 // irq_drop_count++;
@@ -110,8 +109,8 @@ namespace IOHC {
     }
 
     /**
-    * Sequentialité : la task lit la queue et traite chaque événement un à un — plus de réentrance ni d’exécution concurrente.
-    * tickerCounter reste proche de ta logique actuelle, mais sans être appelé depuis ISR.
+    * Sequential : Read queue — no concurrencies possible.
+    * tickerCounter isn't called by the ISR.
     */
     void handle_interrupt_task(void *pvParameters) {
         IOHC::iohcRadio *radio = static_cast<IOHC::iohcRadio*>(pvParameters);
@@ -127,83 +126,25 @@ namespace IOHC {
                 if (preamble) {
                     // timestamp and lock
                     radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-                    radio->updateFHSSActivity(); // écriture atomique safe
+                    radio->updateFHSSActivity(); // Write atomic safe
                     radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
                 }
                 if (payload) {
-                    // Marquer qu'on est en réception et lock
+                    // timestamp - Reception and lock
                     radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
                     radio->updateFHSSActivity();
                     radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
-                    // Appeler tickerCounter (qui fait la lecture SPI, receive(), etc.)
-                    // tickerCounter tourne en contexte task — donc autorisé à utiliser sémaphores, malloc, etc.
+                    // Call tickerCounter (read SPI, receive(), etc.)
+                    // tickerCounter is in task — can use semaphores, malloc, etc. Not the ISR is able to do that
                     radio->tickerCounter(radio);
                 }
-
-                // Il se peut que preamble et payload arrivent ensemble : on les gère séquentiellement
             }
-            // Boucle continue — pas de busy-wait
+            // No busy-wait
         }
     }
 
-    // /**
-    //  * Waits for a notification and then calls the `tickerCounter`
-    //  * function if certain conditions are met.
-    //  *
-    //  * @param pvParameters Pointer that can be used to pass any data or object to the task when it is created. In this specific
-    //  * function, it is being cast to a pointer of type `iohcRadio` and then passed to the
-    //  */
-    // void IRAM_ATTR handle_interrupt_task_1(void *pvParameters) {
-    //     static uint32_t thread_notification;
-    //     constexpr TickType_t xMaxBlockTime = pdMS_TO_TICKS(655 * 4); // 218.4 );
-    //     while (true) {
-    //         thread_notification = ulTaskNotifyTake(pdTRUE, xMaxBlockTime); // Wait
-    //         if (thread_notification &&
-    //             (iohcRadio::radioState == iohcRadio::RadioState::PAYLOAD ||
-    //              iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE)) {
-    //             iohcRadio::tickerCounter(static_cast<iohcRadio *>(pvParameters));
-    //         }
-    //     }
-    // }
-    //
-    // /**
-    //  * Reads digital inputs and notifies a thread to wake up when
-    //  * the interrupt service routine is complete.
-    //  * lastIsrTime Évite les double-triggers dus à la latence SPI ou à un flag encore haut.
-    //  */
-    //     static volatile uint32_t lastIsrTime = 0;
-    // void IRAM_ATTR handle_interrupt_fromisr_1() {
-    //     uint32_t now = micros();
-    //     if (now - lastIsrTime < 200) return; // ignore bounce <200µs
-    //     lastIsrTime = now;
-    //
-    //     bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
-    //     bool payload = digitalRead(RADIO_PACKET_AVAIL);
-    //     iohcRadio *radio = iohcRadio::getInstance();
-    //     if (preamble) {
-    //         // iohcRadio::_g_preamble = true;
-    //         // iohcRadio::f_lock_hop = true;
-    //         // iohcRadio::setRadioState(iohcRadio::RadioState::PREAMBLE);
-    //         // VERROUILLER dès le préambule
-    //         // radio->updateFHSSActivity();
-    //         radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-    //     }
-    //     if (payload) {
-    //         // iohcRadio::_g_payload = true;
-    //         // iohcRadio::setRadioState(iohcRadio::RadioState::PAYLOAD);
-    //         // MAINTENIR le verrouillage pour la réception
-    //         // radio->updateFHSSActivity();
-    //         radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
-    //     }
-    //
-    //     // Notify the thread so it will wake up when the ISR is complete
-    //     BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-    //     vTaskNotifyGiveFromISR(handle_interrupt/*_task*/, &xHigherPriorityTaskWoken);
-    //     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    // }
-
     void FHSSTimer(iohcRadio *iohc_radio) {
-        // Vérifier d'abord le timeout
+        // Check timeout
         iohc_radio->checkFHSSTimeout();
 
         // Si toujours verrouillé, pas de hop
@@ -231,8 +172,8 @@ namespace IOHC {
     }
 
     /**
-         * Verrouille le FHSS avec une raison spécifique
-         */
+    * Verrouille le FHSS avec une raison spécifique
+    */
     void iohcRadio::lockFHSS(const FHSSLockReason reason) {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             // Garder la raison la plus "forte"
@@ -278,7 +219,7 @@ namespace IOHC {
     }
 
     /**
-     * Vérifie si le verrouillage a expiré (watchdog)
+     * FHSS Watchdog
      */
     void iohcRadio::checkFHSSTimeout() {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
@@ -286,12 +227,15 @@ namespace IOHC {
             if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
                 uint32_t elapsed = millis() - lastActivityTime;
 
-                // A 38.4 kb/s, un paquet de 32 bytes
-                // ≈ (32 * 8 bits) / 38400 = 6.6 ms de payload + overhead (préambule, sync, CRC…).
-                // Total réel de 10 à 15 ms.
-                uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
-                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 48; // lock_timeout (~2× airtime max).
-                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 48;
+                // Timeouts adaptatifs basés sur le débit
+                const uint32_t bitrate = 38400; // 38.4 kbps
+                const uint32_t maxPacketBits = (MAX_FRAME_LEN + 8) * 8; // + overhead
+                const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~7ms
+
+                uint32_t timeout = minAirTimeMs * 3; // 3x margin
+                // uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
+                // if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 48; // lock_timeout (~2× airtime max).
+                // if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 48;
 
                 if (elapsed > timeout) {
                     // ets_printf("(D) FHSS timeout, forcing unlock (reason: %s, elapsed: %dms)\n", fhssLockReasonToString(fhssLockReason), elapsed);
