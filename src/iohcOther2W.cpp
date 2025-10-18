@@ -376,6 +376,8 @@ namespace IOHC {
                         memorizeOther2W.memorizedData = toSend;
 
                         discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+                        discover.payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
+
                         discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                         discover.payload.packet.header.CtrlByte2.asStruct.Prio = 1;
 
