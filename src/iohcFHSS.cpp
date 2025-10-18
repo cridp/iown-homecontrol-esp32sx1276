@@ -29,7 +29,7 @@ namespace IOHC {
             if (currentMode == ScanMode::FAST_SCAN) return;
 
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = 35 * 1000;
+            radio->scanTimeUs = 36 * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 

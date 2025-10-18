@@ -234,10 +234,10 @@ namespace IOHC {
 
                 uint32_t timeout = 3 * minAirTimeMs; // 3x margin
                 // uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
-                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 15; // lock_timeout (~2× airtime max).
-                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 35;
+                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 18; // lock_timeout (~2× airtime max).
+                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 18;
 
-                if (elapsed > timeout) {
+                if (elapsed >= timeout) {
                     ets_printf("(D) FHSS timeout(%d), forcing unlock (reason: %s, elapsed: %dms)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
                     fhssLockReason = FHSSLockReason::NONE;
                     f_lock_hop = false;
