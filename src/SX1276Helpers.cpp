@@ -228,7 +228,7 @@ void setPreambleLength(uint16_t preambleLen) {
         while ((readByte(REG_IMAGECAL) & RF_IMAGECAL_IMAGECAL_RUNNING) == RF_IMAGECAL_IMAGECAL_RUNNING) {
         }
         // Set a Frequency in HF band
-        Radio::setCarrier(Radio::Carrier::Frequency, 868000000);
+        Radio::setCarrier(Radio::Carrier::Frequency, CHANNEL2);
         // Start image and RSSI calibration
         writeByte(
             REG_IMAGECAL, (RF_IMAGECAL_AUTOIMAGECAL_MASK & RF_IMAGECAL_IMAGECAL_MASK) | RF_IMAGECAL_IMAGECAL_START);

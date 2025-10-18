@@ -29,11 +29,11 @@ namespace IOHC {
             if (currentMode == ScanMode::FAST_SCAN) return;
 
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = 23 * 1000;
+            radio->scanTimeUs = 15 * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
-            ets_printf("FHSS Switched to FAST scan (60ms/freq)\n");
+            ets_printf("FHSS Switched to FAST scan (15ms/freq)\n");
         }
 
         void AdaptiveFHSS::switchToSlowScan() {

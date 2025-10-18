@@ -228,11 +228,12 @@ namespace IOHC {
                 uint32_t elapsed = millis() - lastActivityTime;
 
                 // Timeouts adaptatifs basés sur le débit
+                // airtime (s) = ( (preamble_bytes + 3SYNC + 2HEAD + payload_bytes + 2CRC) * 8 ) / bitrate
                 const uint32_t bitrate = 38400; // 38.4 kbps
-                const uint32_t maxPacketBits = (MAX_FRAME_LEN + 8) * 8; // + overhead
-                const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~7ms
+                const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 - 2 - MAX_FRAME_LEN + 2) * 8;
+                const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
 
-                uint32_t timeout = minAirTimeMs * 3; // 3x margin
+                uint32_t timeout = 3 * minAirTimeMs; // 3x margin
                 // uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
                 // if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 48; // lock_timeout (~2× airtime max).
                 // if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 48;
@@ -371,7 +372,7 @@ namespace IOHC {
         // CONFIGURATION PAR DÉFAUT RECOMMANDÉE
         if (scanTimeUs == 0) {
             // Démarrer en mode fast scan
-            this->scanTimeUs = 23 * 1000; // 15ms par fréquence
+            this->scanTimeUs = 15 * 1000; // 15ms par fréquence
             // ESP_LOGI("FHSS", "Using default adaptive FHSS: 15ms fast scan");
         } else {
             this->scanTimeUs = scanTimeUs;
@@ -695,37 +696,63 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     while (true) {
         // Attendre un paquet (bloquant)
         if (xQueueReceive(radio->packetQueue, &receivedPacket, portMAX_DELAY) == pdTRUE) {
-            // Vérifier l'intégrité du paquet
-            if (receivedPacket.buffer_length == 0 || receivedPacket.buffer_length > MAX_FRAME_LEN) {
-                ets_printf("Invalid packet length: %d\n", receivedPacket.buffer_length);
-                continue;
+            // **VALIDATION SANS INTERRUPTION DU FLUX**
+            bool shouldDecode = true;
+            std::string rejectReason;
+
+            // Critères de rejet (mais on maintient le flux)
+            if (receivedPacket.buffer_length == 0) {
+                shouldDecode = false;
+                rejectReason = "Empty packet";
             }
+            else if (receivedPacket.buffer_length < 9/*MIN_PACKET_LENGTH*/) {
+                shouldDecode = false;
+                rejectReason = "Too short";
+            }
+
+            // Vérifier l'intégrité du paquet
+            // if (receivedPacket.buffer_length == 0 || receivedPacket.buffer_length > MAX_FRAME_LEN) {
+            //     ets_printf("Invalid packet length: %d\n", receivedPacket.buffer_length);
+            //     continue;
+            // }
 
             // Vérifier les doublons
             bool isDuplicate = false;
-            if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
-                    isDuplicate = true;
-//                    ets_printf("Duplicate packet skipped\n");
-                } else {
-                    // Sauvegarder le nouveau paquet
-                    last1wPacket = receivedPacket;
+            if (shouldDecode)
+                if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
+                        isDuplicate = true;
+                        rejectReason = "Duplicate";
+                        shouldDecode = false;
+                    } else {
+                        // Sauvegarder le nouveau paquet
+                        last1wPacket = receivedPacket;
+                    }
+                    xSemaphoreGive(radio->lastPacketMutex);
                 }
-                xSemaphoreGive(radio->lastPacketMutex);
-            }
 
             // Traiter le paquet
-            if (!isDuplicate) {
-                // Appeler le callback
+            // **TOUJOURS logger, même les rejets**
+            if (!shouldDecode) {
+                ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
+                // Option: callback pour paquets rejetés
+                // if (radio->rxCB) {
+                    // Peut-être un callback différent pour les erreurs?
+                    // radio->rxErrorCB(&receivedPacket, rejectReason);
+                // }
+            } else {
+            // Appeler le callback
                 if (radio->rxCB) {
                     radio->rxCB(&receivedPacket);
                 }
 
                 // Décoder le paquet
                 receivedPacket.decode(true);
-
-//                ets_printf("Packet processed: len=%d, freq=%lu\n", receivedPacket.buffer_length, receivedPacket.frequency);
+                //ets_printf("Packet processed: len=%d, freq=%lu\n", receivedPacket.buffer_length, receivedPacket.frequency);
             }
+            // **MAINTENIR L'ÉTAT FHSS**
+            // S'assurer que le FHSS n'est pas bloqué
+            radio->checkFHSSTimeout(); // Force un check après traitement
         }
     }
 }
@@ -760,13 +787,20 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             }
         }
 
-        // Vérifier que nous avons un paquet valide
-        if (tempRxPacket.buffer_length == 0) {
-            digitalWrite(RX_LED, false);
-            return false;
-        }
 
-        // Envoyer une COPIE dans la queue (opération thread-safe)
+        // **CRITIQUE: Toujours compléter le cycle FHSS même pour les paquets rejetés**
+        // Marquer la fin de la réception pour le FHSS
+        // bool shouldProcess = true;
+
+        // Vérifier que nous avons un paquet valide
+        // if (tempRxPacket.buffer_length == 0) {
+            // digitalWrite(RX_LED, false);
+            // shouldProcess = false;
+        // }
+
+        // **TOUJOURS envoyer à la queue, même les paquets "invalides"**
+        // Les décisions de rejet se font dans le processor, pas ici
+        // Envoyer une COPIE dans la queue (thread-safe)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         BaseType_t queueResult = xQueueSendFromISR(packetQueue, &tempRxPacket, &xHigherPriorityTaskWoken);
 
@@ -779,6 +813,14 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         if (xHigherPriorityTaskWoken) {
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
+
+        // **DÉVERROUILLAGE FHSS - TOUJOURS faire après réception**
+        // Même pour les paquets vides/invalides, on doit déverrouiller
+        // if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED ||
+        //     fhssLockReason == FHSSLockReason::RECEIVING) {
+        //     unlockFHSS(fhssLockReason);
+        //     }
+        unlockFHSS(fhssLockReason);
 
         digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
