@@ -28,6 +28,11 @@
 // airtime (s) = ( (preamble_bytes + 3 + 2 + payload_bytes + 2) * 8 ) / bitrate
 #define LONG_PREAMBLE_MS 64  // 21.458 ms 23~24 1W
 #define SHORT_PREAMBLE_MS 16 // 11.458 ms
+// Timeouts adaptatifs basés sur le débit
+// airtime (s) = ( (preamble_bytes + 3SYNC + 2HEAD + payload_bytes + 2CRC) * 8 ) / bitrate
+const uint32_t bitrate = 38400; // 38.4 kbps
+const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 + 2 + MAX_FRAME_LEN + 2) * 8;
+const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
 
 TaskHandle_t IOHC::iohcRadio::txTaskHandle = nullptr;
 
@@ -222,27 +227,28 @@ namespace IOHC {
      * FHSS Watchdog
      */
     void iohcRadio::checkFHSSTimeout() {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            // todo
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
+
             if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
                 uint32_t elapsed = millis() - lastActivityTime;
 
-                // Timeouts adaptatifs basés sur le débit
-                // airtime (s) = ( (preamble_bytes + 3SYNC + 2HEAD + payload_bytes + 2CRC) * 8 ) / bitrate
-                const uint32_t bitrate = 38400; // 38.4 kbps
-                const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 - 2 - MAX_FRAME_LEN + 2) * 8;
-                const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
-
                 uint32_t timeout = 3 * minAirTimeMs; // 3x margin
                 // uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS / 3;
-                // if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 48; // lock_timeout (~2× airtime max).
-                // if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 48;
+                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 15; // lock_timeout (~2× airtime max).
+                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 35;
 
                 if (elapsed > timeout) {
-                    // ets_printf("(D) FHSS timeout, forcing unlock (reason: %s, elapsed: %dms)\n", fhssLockReasonToString(fhssLockReason), elapsed);
+                    ets_printf("(D) FHSS timeout(%d), forcing unlock (reason: %s, elapsed: %dms)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
                     fhssLockReason = FHSSLockReason::NONE;
                     f_lock_hop = false;
                     expectingResponse = false;
+
+                    // Remettre la radio en état RX
+                    if (radioState != RadioState::TX) {
+                        Radio::setRx();
+                        setRadioState(RadioState::RX);
+                        unlockFHSS(fhssLockReason);
+                    }
                 }
             }
             xSemaphoreGive(fhss_state_mutex);
@@ -552,7 +558,6 @@ namespace IOHC {
         return false;
         }
 
-        // txQueue_busy = false;
         startTransmission();
         xSemaphoreGive(txQueue_binary_sem);
         return true;
@@ -716,12 +721,10 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             //     continue;
             // }
 
-            // Vérifier les doublons
-            bool isDuplicate = false;
             if (shouldDecode)
                 if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+                    // Vérifier les doublons
                     if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
-                        isDuplicate = true;
                         rejectReason = "Duplicate";
                         shouldDecode = false;
                     } else {
