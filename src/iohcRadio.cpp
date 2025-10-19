@@ -467,9 +467,9 @@ namespace IOHC {
             if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
                 radio->sent(radio->new_packet);
                 Radio::clearFlags();
-                if (radioState != iohcRadio::RadioState::TX) {
+                if (radioState != RadioState::TX) {
                     Radio::setRx();
-                    radio->setRadioState(iohcRadio::RadioState::RX);
+                    radio->setRadioState(RadioState::RX);
                     // radio->unlockFHSS(FHSSLockReason::RECEIVING);
                     // Only when no response expected
                     if (/*!radio->expectingResponse &&*/ !txMode) {
@@ -484,7 +484,7 @@ namespace IOHC {
             // maybeCheckHeap("AFTER RECEIVE IN TICKERCOUNTER");
             Radio::clearFlags();
 
-            // radio->tickCounter = 0;
+            radio->tickCounter = 0;
             // Après réception, Only when no response expected
 
             // if (!radio->expectingResponse) {
@@ -536,7 +536,6 @@ namespace IOHC {
  */
     bool iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
         if (TxPackets.empty()) {
-            ets_printf("Send called with empty packet list");
             return false;
         }
         if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
@@ -544,20 +543,27 @@ namespace IOHC {
         }
 
         txCounter = 0;
+        size_t packetsAdded = 0;
         // Ajouter chaque paquet à la queue (en faisant une COPIE)
         for (auto *pkt: TxPackets) {
             if (pkt) {
                 // Utiliser la factory
                 if (TxPacketWrapper* wrapper = createPacketWrapper(pkt)) {
                     txQueue.push_back(wrapper);
-                    pkt = nullptr; // Transfer ownership
+                    //pkt = nullptr; // Transfer ownership
+                    packetsAdded++;
                 }
             }
         }
         TxPackets.clear();
+        xSemaphoreGive(txQueue_binary_sem);
+
+        if (packetsAdded == 0) {
+            ets_printf("send(): no packets added");
+            return false;
+        }
 
         startTransmission();
-        xSemaphoreGive(txQueue_binary_sem);
         return true;
 
     }
@@ -567,18 +573,25 @@ namespace IOHC {
      */
     bool iohcRadio::sendSingle(iohcPacket *packet) {
         if (!packet) return false;
-        if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-            return false;
-        }
-        if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_back(wrapper);
+        // DIAGNOSTIC: Vérifier l'état AVANT
+        // if (isSending) {
+        //     ets_printf("sendSingle(): Already sending, adding to queue\n");
+        //     // C'est OK, on ajoute à la queue
+        // }
+
+        // if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+        //     return false;
+        // }
+        if (TxPacketWrapper* wrapper = createPacketWrapper(packet))
+            txQueue.push_back(wrapper);
         else {
-            xSemaphoreGive(txQueue_binary_sem);
+            // xSemaphoreGive(txQueue_binary_sem);
             // ets_printf("sendSingle: Failed to create packet wrapper");
             return false;
         }
+        // xSemaphoreGive(txQueue_binary_sem);
 
         startTransmission();
-        xSemaphoreGive(txQueue_binary_sem);
         return true;
     }
 
@@ -588,19 +601,24 @@ namespace IOHC {
     */
     bool iohcRadio::sendPriority(iohcPacket *packet) {
         if (!packet) return false;
-        if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-            return false;
-        }
+        // DIAGNOSTIC: Vérifier l'état AVANT
+        // if (isSending) {
+        //     ets_printf("sendPriority(): Already sending, inserting at front\n");
+        // }
+
+        // if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
+        //     return false;
+        // }
 
         // O(1)
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
         else {
-            xSemaphoreGive(txQueue_binary_sem);
-        return false;
+            // xSemaphoreGive(txQueue_binary_sem);
+            return false;
         }
+        // xSemaphoreGive(txQueue_binary_sem);
 
         startTransmission();
-        xSemaphoreGive(txQueue_binary_sem);
         return true;
     }
 
@@ -691,7 +709,6 @@ namespace IOHC {
             } else {
                 // Plus de paquets à envoyer
                 txMode = false;
-
                 radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
                 radio->stopTransmission();
             }
@@ -784,6 +801,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             // Traiter le paquet
             // **TOUJOURS logger, même les rejets**
             if (!shouldDecode) {
+                if (rejectReason != "Duplicate")
                 ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
                 // Option: callback pour paquets rejetés
                 // if (radio->rxCB) {
@@ -876,7 +894,14 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         // **DÉVERROUILLAGE FHSS - TOUJOURS faire après réception**
         // Même pour les paquets vides/invalides, on doit déverrouiller
-        unlockFHSS(fhssLockReason);
+
+        // Dyn Ensure the state machine returns to idle receive so FHSS can hop again
+        // if (radioState != RadioState::TX) {
+        // if (!isSending) {
+            unlockFHSS(fhssLockReason);
+            // Radio::setRx();
+            setRadioState(RadioState::RX);
+        // }
 
         digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
@@ -960,9 +985,19 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         currentTxPacket = txQueue.front();
         txQueue.pop_front();
+        // Vérifier que le paquet est valide
+        if (!currentTxPacket || !currentTxPacket->packet) {
+            ets_printf("processNextPacket(): Invalid packet!\n");
+            stopTransmission();
+            return false;
+        }
 
         // Lancer le timer pour ce paquet
-        Ticker.attach_ms(currentTxPacket->repeatTime, packetSender, this);
+        uint32_t repeatTime = currentTxPacket->repeatTime;
+        if (repeatTime == 0) repeatTime = 100;  // Défaut si non spécifié
+
+        // Lancer le timer pour ce paquet
+        Ticker.attach_ms(repeatTime, packetSender, this);
 
         return true;
     }
@@ -980,14 +1015,22 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 delete currentTxPacket;
                 currentTxPacket = nullptr;
             }
+            // Marquer comme non-envoi
+            isSending = false;
 
             // Déverrouiller la radio
-            if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            // if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                 txMode = false;
-                f_lock_hop = false;
-                xSemaphoreGive(fhss_state_mutex);
-            }
+                // f_lock_hop = false;
+                unlockFHSS(FHSSLockReason::TRANSMITTING);
+                // xSemaphoreGive(fhss_state_mutex);
+            // }
 
+            // Remettre en RX
+            if (radioState != RadioState::RX) {
+                // Radio::setRx();
+                // setRadioState(RadioState::RX);
+            }
             xSemaphoreGive(tx_mutex);
         }
     }

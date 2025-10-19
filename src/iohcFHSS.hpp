@@ -21,10 +21,8 @@
 #include <cstdint>
 #include <esp_timer.h>
 
-// ============================================================================
 // CONFIGURATIONS FHSS POSSIBLES
-// ============================================================================
-
+/*
 struct FHSSConfig {
     std::uint32_t dwellTimeMs; // Temps par fréquence
     const char *description;
@@ -70,11 +68,9 @@ constexpr FHSSConfig FHSS_CONFIGS[] = {
         .recommendedForConversation = true
         }
         };
-
+*/
 namespace IOHC {
     class iohcRadio;
-
-    // FHSS ADAPTATIF
 
     class AdaptiveFHSS {
         IOHC::iohcRadio *radio;

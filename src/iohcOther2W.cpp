@@ -227,7 +227,7 @@ namespace IOHC {
                     address tahoma = {0xEF, 0x37, 0x12};
                     address real = {0x5c, 0xd6, 0x8f}; // Discovery Session from 2W KLR200 (5cd68f)
 
-                    memcpy(packets2send.back()->payload.packet.header.source, real, 3);
+                    memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     // format b00000000 xxxxxxxx 111111
                     uint16_t bcast = (type<<6) + 0b111011;
                     broadcast[0] = (bcast >> 16) & 0xFF;  // Partie haute (sera 0, car bcast est sur 16 bits)
@@ -325,7 +325,7 @@ namespace IOHC {
                     packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 0;
                     // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Unk3 = 1;
 
-                    memcpy(packets2send.back()->payload.packet.header.source, real, 3);
+                    memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     packets2send.back()->repeat = 4;
                     packets2send.back()->repeatTime = 47;
                     packets2send.back()->frequency = CHANNEL2;
@@ -388,7 +388,7 @@ namespace IOHC {
                         address somfy = {0xe0, 0x98, 0x48}; // Somfy Remote (E09848)
                         address real = {0x5c, 0xd6, 0x8f}; // Discovery Session from 2W KLR200 (5cd68f)
                         address broadcast_3b = {0x00, 0x00, 0x3b};
-                        memcpy(discover.payload.packet.header.source, real, 3);
+                        memcpy(discover.payload.packet.header.source, gateway, 3);
                         memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
                         discover.frequency = CHANNEL2;

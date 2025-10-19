@@ -65,10 +65,10 @@ std::vector<IOHC::iohcPacket *> packets2send{};
 
 uint8_t nextPacket = 0;
 
-// IOHC::iohcSystemTable *sysTable;
 IOHC::iohcRemote1W *remote1W;
 IOHC::iohcCozyDevice2W *cozyDevice2W;
 IOHC::iohcOther2W *otherDevice2W;
+// IOHC::iohcSystemTable *sysTable;
 // IOHC::iohcRemoteMap *remoteMap;
 
 uint32_t frequencies[] = FREQS2SCAN;
