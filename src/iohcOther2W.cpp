@@ -74,6 +74,7 @@ namespace IOHC {
             _radioInstance = iohcRadio::getInstance();
         }
         iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
+        _radioInstance->adaptiveFHSS->prepareForConversation();
 
         // Emulates device button press
         switch (cmd) {
@@ -115,8 +116,6 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
 
                     packets2send.back()->repeatTime = 47;
-
-                    // packets2send.push_back(packet);
                 }
 
                 IOHC::lastCmd = GET_NAME_0x50;
@@ -388,7 +387,7 @@ namespace IOHC {
                         memcpy(discover.payload.packet.header.source, real, 3);
                         memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
-                        discover.frequency = CHANNEL2;
+                        // discover.frequency = CHANNEL2;
                         discover.repeatTime = 47;
                         _radioInstance->sendSingle(&discover);
                 }

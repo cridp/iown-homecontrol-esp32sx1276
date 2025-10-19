@@ -73,7 +73,7 @@ namespace IOHC {
             ets_printf("NO RADIO INSTANCE\n");
             _radioInstance = IOHC::iohcRadio::getInstance();
         }
-
+        _radioInstance->adaptiveFHSS->prepareForConversation();
 
         switch (cmd) {
             case DeviceButton::associate: {
