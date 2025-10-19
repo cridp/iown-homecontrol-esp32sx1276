@@ -21,7 +21,7 @@
 
 namespace IOHC {
     /**
-    * fast_dwell: 10–15 ms.
+    * fast_dwell: 10–20 ms.
     * Pourquoi : avec 10 ms la probabilité devient ≈ 10/13.33 = 75% (pour P=64).
     * Avec 15 ms, on couvre presque tout le préambule (≈112% i.e. sûr).
     */

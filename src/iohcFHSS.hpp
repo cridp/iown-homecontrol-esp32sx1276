@@ -82,7 +82,7 @@ namespace IOHC {
         // Modes de scanning
         enum class ScanMode {
             FAST_SCAN, // Scan rapide : 20ms/freq (monitoring passif)
-            SLOW_SCAN, // Scan lent : 150ms/freq (conversation possible)
+            SLOW_SCAN, // Scan lent : 120ms/freq (conversation possible)
             LOCKED // Verrouillé sur une fréquence
         };
 
@@ -92,10 +92,8 @@ namespace IOHC {
         bool inConversation = false;
 
         // Timeouts
-        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 150; // Retour en fast après 500ms
-        static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 1000; // Considéré "inactif" après 2s
-
-
+        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 300; // Retour en fast après 300ms
+        static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 1000; // Considéré "inactif" après 1s
 
     public:
         explicit AdaptiveFHSS(iohcRadio *r) : radio(r) { }
