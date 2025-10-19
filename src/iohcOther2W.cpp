@@ -328,7 +328,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, real, 3);
                     packets2send.back()->repeat = 4;
                     packets2send.back()->repeatTime = 47;
-                    // packets2send.back()->frequency = CHANNEL3;
+                    packets2send.back()->frequency = CHANNEL2;
                 }
                 // Envoyer (les paquets sont copiés, il faut les libérer après)
                 _radioInstance->send(packets2send);
@@ -365,7 +365,7 @@ namespace IOHC {
             case Other2WButton::dynamite: {
                 Cmd::pairMode = true;
                 std::vector<uint8_t> toSend = {};
-                for (int i=0; i < 64; i++) {
+                for (int i=0; i < 16; i++) {
                     if (this->stopDiscover) break;
 
                         iohcPacket discover;
@@ -373,13 +373,17 @@ namespace IOHC {
 
                         discover.payload.packet.header.cmd = DISCOVER_0x28;
                         memorizeOther2W.memorizedCmd = DISCOVER_0x28;
+                        if (i>=8) {
+                            discover.payload.packet.header.cmd = DISCOVER_REMOTE_0x2A;
+                            memorizeOther2W.memorizedCmd = DISCOVER_REMOTE_0x2A;
+                        }
                         memorizeOther2W.memorizedData = toSend;
 
                         discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                         discover.payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
 
-                        discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                        discover.payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+                        // discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                        discover.payload.packet.header.CtrlByte2.asStruct.Prio = 0;
 
                         address somfy = {0xe0, 0x98, 0x48}; // Somfy Remote (E09848)
                         address real = {0x5c, 0xd6, 0x8f}; // Discovery Session from 2W KLR200 (5cd68f)
@@ -387,7 +391,8 @@ namespace IOHC {
                         memcpy(discover.payload.packet.header.source, real, 3);
                         memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
-                        // discover.frequency = CHANNEL2;
+                        discover.frequency = CHANNEL2;
+                        discover.repeat = 4;
                         discover.repeatTime = 47;
                         _radioInstance->sendSingle(&discover);
                 }
