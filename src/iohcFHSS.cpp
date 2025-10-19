@@ -22,14 +22,14 @@
 namespace IOHC {
     /**
     * fast_dwell: 10–15 ms.
-    Pourquoi : avec 10 ms la probabilité devient ≈ 10/13.33 = 75% (pour P=64).
-    Avec 15 ms, on couvre presque tout le préambule (≈112% i.e. sûr).
-     */
+    * Pourquoi : avec 10 ms la probabilité devient ≈ 10/13.33 = 75% (pour P=64).
+    * Avec 15 ms, on couvre presque tout le préambule (≈112% i.e. sûr).
+    */
     void AdaptiveFHSS::switchToFastScan() {
             if (currentMode == ScanMode::FAST_SCAN) return;
 
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = 36 * 1000;
+            radio->scanTimeUs = 20 * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
@@ -40,7 +40,7 @@ namespace IOHC {
             if (currentMode == ScanMode::SLOW_SCAN) return;
 
             currentMode = ScanMode::SLOW_SCAN;
-            radio->scanTimeUs = 100 * 1000;
+            radio->scanTimeUs = 120 * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
@@ -70,4 +70,5 @@ namespace IOHC {
             inConversation = true;
             switchToSlowScan();
         }
+
 }

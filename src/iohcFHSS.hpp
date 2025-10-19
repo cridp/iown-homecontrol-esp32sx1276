@@ -20,6 +20,7 @@
 #define IOHCFHSS_HPP
 #include <cstdint>
 #include <esp_timer.h>
+
 // ============================================================================
 // CONFIGURATIONS FHSS POSSIBLES
 // ============================================================================
@@ -91,8 +92,10 @@ namespace IOHC {
         bool inConversation = false;
 
         // Timeouts
-        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 500; // Retour en fast après 500ms
-        static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 2000; // Considéré "inactif" après 2s
+        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 150; // Retour en fast après 500ms
+        static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 1000; // Considéré "inactif" après 2s
+
+
 
     public:
         explicit AdaptiveFHSS(iohcRadio *r) : radio(r) { }
