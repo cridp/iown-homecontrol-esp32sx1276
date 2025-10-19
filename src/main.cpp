@@ -63,8 +63,6 @@ IOHC::iohcPacket *radioPackets[IOHC_INBOUND_MAX_PACKETS];
 
 std::vector<IOHC::iohcPacket *> packets2send{};
 
-// std::vector<IOHC::iohcPacket *> packets2send_tmp{};
-
 uint8_t nextPacket = 0;
 
 // IOHC::iohcSystemTable *sysTable;
@@ -80,7 +78,7 @@ using namespace IOHC;
 
 void setup() {
     esp_log_level_set("*", ESP_LOG_VERBOSE);    // Or VERBOSE for ESP_LOGV
-    Serial.begin(115200);       //Start serial connection for debug and manual input
+    Serial.begin(115200);    //Start serial connection for debug and manual input
     pinMode(RX_LED, OUTPUT); // Blink this LED
     digitalWrite(RX_LED, 1);
     Cmd::createCommands();
@@ -122,7 +120,7 @@ void setup() {
     radioInstance = IOHC::iohcRadio::getInstance();
 #if !defined(MQTT)
 // If MQTT is not defined, txCallback is null
-    radioInstance->start(MAX_FREQS, frequencies, 47000, msgRcvd, nullptr); //msgArchive); //, msgRcvd);
+    radioInstance->start(MAX_FREQS, frequencies, 0, msgRcvd, nullptr); //msgArchive); //, msgRcvd);
 
 #else
     radioInstance->start(MAX_FREQS, frequencies, 0, msgRcvd, publishMsg);
@@ -134,8 +132,6 @@ void setup() {
     remote1W = IOHC::iohcRemote1W::getInstance();
     cozyDevice2W = IOHC::iohcCozyDevice2W::getInstance();
     otherDevice2W = IOHC::iohcOther2W::getInstance();
-
-    // packets2send.reserve(128);
 
     ets_printf("Startup completed. type help to see what you can do!\n");
     digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
@@ -203,7 +199,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
             response.repeatTime = 50;
 
-            // packets2send.push_back(packet);
+            response.frequency = receivedPacket->frequency;
             radioInstance->sendPriority(&response);
 
             break;
@@ -241,7 +237,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
             memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            // packets2send.push_back(packet);
+            response.frequency = receivedPacket->frequency;
             radioInstance->sendPriority(&response);
 
             break;
@@ -270,6 +266,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
             response.repeatTime = 50;
+            response.frequency = receivedPacket->frequency;
 
             radioInstance->sendPriority(&response);
 
@@ -322,6 +319,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
             memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
+            response.frequency = receivedPacket->frequency;
             radioInstance->sendPriority(&response);
             break;
         }
@@ -412,7 +410,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                 memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
                 response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
-
+                response.frequency = receivedPacket->frequency;
                 response.repeatTime = 11;
 // radioInstance->maybeCheckHeap("just before 'radioInstance->sendPriority(&response);' CREATE RESPONSE 0x3D IN msgRcvd");
                 radioInstance->sendPriority(&response);
@@ -437,6 +435,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
             response.repeatTime = 50;
+            response.frequency = receivedPacket->frequency;
 
             radioInstance->sendPriority(&response);
 
