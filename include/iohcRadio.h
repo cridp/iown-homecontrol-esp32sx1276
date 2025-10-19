@@ -28,22 +28,23 @@
 #include <iohcPacket.h>
 #include <queue>
 
-#include "../src/iohcFHSS.hpp"
+#include "iohcFHSS.hpp"
+#include "FHSSCalibration.hpp"
 
 #if defined(RADIO_SX127X)
 #include <SX1276Helpers.h>
 #endif
 // #if defined(RADIO_SX126X)
-//         #include <SX126xHelpers.h>
+// #include <SX126xHelpers.h>
 // #endif
 #if defined(ESP32)
 #include <TickerUsESP32.h>
 #endif
 
 #define SM_GRANULARITY_US               130ULL  // Ticker function frequency in uS (100 minimum) 4 x 26µs = 104
-#define SM_GRANULARITY_MS               1       // Ticker function frequency in uS
+#define SM_GRANULARITY_MS               2       // Ticker function frequency in mS
 #define SM_PREAMBLE_RECOVERY_TIMEOUT_US 1378 // 12500   // SM_GRANULARITY_US * PREAMBLE_LSB //12500   // Maximum duration in uS of Preamble before reset of receiver
-// Frequency Hopping with ~2,75ms per Channel (Patent: 3ms)
+// Frequency Hopping
 #define DEFAULT_SCAN_INTERVAL_US        13520   // Default uS between frequency changes
 
 struct TxPacketWrapper;
@@ -54,6 +55,7 @@ struct TxPacketWrapper;
     IOHC timings, async sending and receiving through callbacks, ...
 */
 namespace IOHC {
+
     using CallbackFunction = Delegate<bool(iohcPacket *iohc)>;
 
     // Déclaration de la fonction FHSSTimer (utilisée par AdaptiveFHSS)
@@ -61,6 +63,7 @@ namespace IOHC {
 
     class iohcRadio {
         friend class AdaptiveFHSS; // Permet à AdaptiveFHSS d'accéder aux membres privés
+        friend class FHSSCalibration;
     public:
         static iohcRadio *getInstance();
 
@@ -121,6 +124,20 @@ namespace IOHC {
                 default: return "UNKNOWN";
             }
         }
+        enum class FHSSState {
+            SCANNING,      // En train de scanner les fréquences
+            PREAMBLE_DETECTED, // Préambule détecté, verrouillé sur fréquence
+            RECEIVING,     // En train de recevoir un payload
+            PROCESSING,    // Traitement du paquet (ne bloque pas FHSS)
+            TRANSMITTING   // En transmission
+        };
+
+        volatile FHSSState fhssState = FHSSState::SCANNING;
+        // Méthodes pour gérer l'état FHSS
+        void setFHSSState(FHSSState newState);
+        FHSSState getFHSSState();
+
+        const char *fhssStateToString(FHSSState state);
 
         void lockFHSS(FHSSLockReason reason);
         void unlockFHSS(FHSSLockReason reason);
@@ -133,14 +150,14 @@ namespace IOHC {
         // Flag pour indiquer qu'on attend une réponse après envoi
         volatile bool expectingResponse = false;
         // Timeout pour déverrouiller automatiquement si pas d'activité
-        volatile uint32_t lastActivityTime = 0;
+        volatile int64_t lastActivityTime = 0;
         volatile uint32_t responseTimeoutMs = 0;
         // Queue : utiliser une queue atomique simple (pas de sémaphore)
         volatile bool txQueue_busy = false;  // Simple spinlock
 
         SemaphoreHandle_t fhss_state_mutex = nullptr;
 
-        static constexpr uint32_t FHSS_UNLOCK_TIMEOUT_MS = 6 * 47; // 500ms sans activité = unlock
+        static constexpr uint32_t FHSS_UNLOCK_TIMEOUT_MS = 6 * 47; // Sans activité = unlock
 
 
         void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, CallbackFunction rxCallback, CallbackFunction txCallback);
@@ -194,6 +211,7 @@ namespace IOHC {
         void setExpectingResponse(bool expecting, uint32_t timeoutMs);
 
         AdaptiveFHSS *adaptiveFHSS = nullptr;
+        // FHSSCalibration *calibration = nullptr;
 
         iohcRadio();
 
