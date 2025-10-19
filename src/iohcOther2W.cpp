@@ -371,8 +371,8 @@ namespace IOHC {
                         iohcPacket discover;
                         forgeAnyWPacket(&discover, toSend);
 
-                        discover.payload.packet.header.cmd = DISCOVER_REMOTE_0x2A;
-                        memorizeOther2W.memorizedCmd = DISCOVER_REMOTE_0x2A;
+                        discover.payload.packet.header.cmd = DISCOVER_0x28;
+                        memorizeOther2W.memorizedCmd = DISCOVER_0x28;
                         memorizeOther2W.memorizedData = toSend;
 
                         discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
