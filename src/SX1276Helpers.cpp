@@ -179,7 +179,7 @@ void setPreambleLength(uint16_t preambleLen) {
         writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US); //_0012_US); //_0031_US); //
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
-        writeByte(REG_PREAMBLELSB, PREAMBLE_LSB);
+        writeByte(REG_PREAMBLELSB, 0x80); //PREAMBLE_LSB);
         // FIFO Threshold - currently useless
         writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
 
