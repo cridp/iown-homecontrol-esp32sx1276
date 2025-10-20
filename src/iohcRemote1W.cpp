@@ -90,6 +90,8 @@ namespace IOHC {
 
     void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
         if (data->size() == 1) {return; }
+        _radioInstance->adaptiveFHSS->prepareForConversation();
+
         std::string description = data->at(1).c_str();
 
         auto it = std::ranges::find_if(remotes,  [&] ( const remote &r  ) {

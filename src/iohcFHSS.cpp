@@ -25,26 +25,26 @@ namespace IOHC {
     * Pourquoi : avec 10 ms la probabilité devient ≈ 10/13.33 = 75% (pour P=64).
     * Avec 15 ms, on couvre presque tout le préambule (≈112% i.e. sûr).
     */
-    void AdaptiveFHSS::switchToFastScan() {
+    void AdaptiveFHSS::switchToFastScan(int ms) {
             if (currentMode == ScanMode::FAST_SCAN) return;
-
+;
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = 20 * 1000;
+            radio->scanTimeUs = ms != fast_dwell? ms * 1000: fast_dwell * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
-            ets_printf("FHSS Switched to FAST scan (15ms/freq)\n");
+            ets_printf("FHSS Switched to FAST scan (%dms/freq)\n", ms);
         }
 
-        void AdaptiveFHSS::switchToSlowScan() {
+        void AdaptiveFHSS::switchToSlowScan(int ms) {
             if (currentMode == ScanMode::SLOW_SCAN) return;
-
+;
             currentMode = ScanMode::SLOW_SCAN;
-            radio->scanTimeUs = 120 * 1000;
+            radio->scanTimeUs = ms != slow_dwell? ms * 1000: slow_dwell * 1000;
             radio->TickTimer.detach();
             radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
 
-            ets_printf("FHSS Switched to SLOW scan (120ms/freq)\n");
+            ets_printf("FHSS Switched to SLOW scan (%dms/freq)\n", ms);
         }
 
         void AdaptiveFHSS::update() {

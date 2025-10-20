@@ -465,6 +465,7 @@ namespace IOHC {
         } else if (radioState == iohcRadio::RadioState::PAYLOAD) {
             // if TX ready?
             if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
+
                 radio->sent(radio->new_packet);
                 Radio::clearFlags();
                 if (radioState != RadioState::TX) {
@@ -829,6 +830,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             // radio->checkFHSSTimeout(); // Force un check après traitement
             // radio->forceUnlockFHSS();
             radio->setFHSSState(FHSSState::SCANNING);
+
         }
     }
 }
@@ -836,6 +838,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // **CRITIQUE: Toujours commencer par mettre à jour l'état FHSS**
+        adaptiveFHSS->onPacketActivity();
         setFHSSState(FHSSState::RECEIVING);
 
         // Utiliser un buffer TEMPORAIRE local
@@ -899,8 +902,9 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         // if (radioState != RadioState::TX) {
         // if (!isSending) {
             unlockFHSS(fhssLockReason);
-            // Radio::setRx();
+            Radio::setRx();
             setRadioState(RadioState::RX);
+            adaptiveFHSS->update();
         // }
 
         digitalWrite(RX_LED, false);

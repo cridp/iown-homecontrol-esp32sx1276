@@ -75,6 +75,8 @@ namespace IOHC {
     class AdaptiveFHSS {
         IOHC::iohcRadio *radio;
 
+        int fast_dwell = 20;
+        int slow_dwell = 120;
         // Modes de scanning
         enum class ScanMode {
             FAST_SCAN, // Scan rapide : 20ms/freq (monitoring passif)
@@ -117,9 +119,9 @@ namespace IOHC {
         */
         void update();
 
-        void switchToSlowScan();
+        void switchToSlowScan(int ms = 20);
 
-        void switchToFastScan();
+        void switchToFastScan(int ms = 120);
 
         /**
          * Force slow scan
