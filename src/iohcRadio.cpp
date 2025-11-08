@@ -498,7 +498,7 @@ namespace IOHC {
 
             // Start Frequency Hopping Timer
             adaptiveFHSS->switchToFastScan(adaptiveFHSS->fast_dwell);
-            ets_printf("Starting FHSSTimer (%d) Handler...\n", adaptiveFHSS->fast_dwell);
+            ets_printf("FHSSTimer Handler Started...\n");
         }
         Radio::setRx();
     }
@@ -507,13 +507,12 @@ namespace IOHC {
     */
     void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio *radio) {
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
-        uint32_t now = esp_timer_get_time();
+        // uint32_t now = esp_timer_get_time();
         // Sync = preamble end
-        if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) {
-        }
-        if (radioState == RadioState::PREAMBLE) {
-
-        } else if (radioState == RadioState::PAYLOAD) {
+        if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) { }
+        if (radioState == RadioState::PREAMBLE) { }
+        else if (radioState == RadioState::PAYLOAD) {
+            // Payload ready
             radio->receive(false);
             Radio::clearFlags();
             radio->tickCounter = 0;
