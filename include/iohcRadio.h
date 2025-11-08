@@ -134,11 +134,11 @@ namespace IOHC {
         volatile FHSSState fhssState = FHSSState::SCANNING;
         // Méthodes pour gérer l'état FHSS
         void setFHSSState(FHSSState newState);
-        FHSSState getFHSSState();
+        FHSSState getFHSSState() const;
 
-        const char *fhssStateToString(FHSSState state);
+        static const char *fhssStateToString(FHSSState state);
 
-        uint64_t getAdaptiveTimeout(FHSSLockReason reason);
+        uint64_t getAdaptiveTimeout(FHSSLockReason reason) const;
 
         void lockFHSS(FHSSLockReason reason);
         void unlockFHSS(FHSSLockReason reason);

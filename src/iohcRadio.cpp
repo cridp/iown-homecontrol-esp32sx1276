@@ -96,14 +96,10 @@ namespace IOHC {
 
         // Changer la fréquence seulement si on est en RX
         Radio::setCarrier(Radio::Carrier::Frequency, iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
-
-        // ESP_LOGV("IOHC", "FHSS hop to freq[%d]: %d Hz",
-        //  iohc_radio->currentFreqIdx,
-        //  iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
     }
 
     /**
-    * Verrouille le FHSS avec une raison spécifique
+    * Lock Fhss for a specific reason
     */
     void iohcRadio::lockFHSS(const FHSSLockReason reason) {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -120,7 +116,7 @@ namespace IOHC {
     }
 
     /**
-     * Déverrouille le FHSS pour une raison spécifique
+     * Unlock FHSS for a specific reason
      */
     void iohcRadio::unlockFHSS(const FHSSLockReason reason) {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
@@ -136,19 +132,20 @@ namespace IOHC {
     }
 
     /**
-    * Force le déverrouillage (pour reset manuel)
+    * Force Unlock FHSS
     */
     void iohcRadio::forceUnlockFHSS() {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             fhssLockReason = FHSSLockReason::NONE;
             f_lock_hop = false;
-            // fhss.fhss_lock = false;
             expectingResponse = false;
-
-            // ESP_LOGW("IOHC", "FHSS force unlocked");
             xSemaphoreGive(fhss_state_mutex);
         }
     }
+
+    /**
+     * Set/Get FHSS State
+     */
     void iohcRadio::setFHSSState(FHSSState newState) {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             FHSSState oldState = fhssState;
@@ -158,7 +155,6 @@ namespace IOHC {
             switch (newState) {
                 case FHSSState::SCANNING:
                     f_lock_hop = false; // Autoriser le hopping
-                    // fhss.fhss_lock = false;
                     break;
                 case FHSSState::PREAMBLE_DETECTED:
                 case FHSSState::RECEIVING:
@@ -169,16 +165,11 @@ namespace IOHC {
             }
 
             xSemaphoreGive(fhss_state_mutex);
-
-            // Log des transitions d'état importantes
-            if (oldState != newState) {
-//                ets_printf("FHSS State transition: %s -> %s\n", fhssStateToString(oldState), fhssStateToString(newState));
-            }
-
         }
     }
-    iohcRadio::FHSSState iohcRadio::getFHSSState() {
-        FHSSState state = FHSSState::SCANNING;
+
+    iohcRadio::FHSSState iohcRadio::getFHSSState() const {
+        auto state = FHSSState::SCANNING;
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             state = fhssState;
             xSemaphoreGive(fhss_state_mutex);
@@ -196,7 +187,8 @@ namespace IOHC {
             default: return "UNKNOWN";
         }
     }
-    uint64_t iohcRadio::getAdaptiveTimeout(FHSSLockReason reason) {
+
+    uint64_t iohcRadio::getAdaptiveTimeout(FHSSLockReason reason) const {
         switch (reason) {
             case FHSSLockReason::PREAMBLE_DETECTED:
                 return 8750; // 42 bytes
@@ -890,7 +882,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     // HELPER : Détecter si un paquet est une réponse
     bool iohcRadio::isResponsePacket(iohcPacket *packet) {
         if (!packet) return false;
-
         return (packet->payload.packet.header.cmd == IOHC::lastCmd + 1);
     }
 
