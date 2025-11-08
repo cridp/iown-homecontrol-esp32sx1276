@@ -101,14 +101,6 @@ namespace IOHC {
         //  iohc_radio->currentFreqIdx,
         //  iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
     }
-    //
-    // AdaptiveFHSS::FHSSContext fhss = {
-    //     .fhss_lock = false,
-    //     .channel = 0,
-    //     .last_applied_channel = -1,
-    //     .fhss_count = 3,
-    //     .period_us = AdaptiveFHSS::HOP_PERIOD_MS * 1000UL
-    // };
 
     /**
     * Verrouille le FHSS avec une raison spécifique
@@ -173,7 +165,6 @@ namespace IOHC {
                 case FHSSState::PROCESSING:
                 case FHSSState::TRANSMITTING:
                     f_lock_hop = true; // Bloquer le hopping
-                    // fhss.fhss_lock = true;
                     break;
             }
 
@@ -221,7 +212,6 @@ namespace IOHC {
         FHSSLockReason oldReason = fhssLockReason;
         fhssLockReason = FHSSLockReason::NONE;
         f_lock_hop = false;
-        // fhss.fhss_lock = false;
         expectingResponse = false;
 
         // Remettre en RX
@@ -238,17 +228,12 @@ namespace IOHC {
      */
     void iohcRadio::checkFHSSTimeout() {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-
-            if ((/*fhss.fhss_lock ||*/ f_lock_hop) && fhssLockReason != FHSSLockReason::TRANSMITTING) {
+            if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
                 uint64_t elapsed = esp_timer_get_time() - lastActivityTime;
                 uint64_t timeout = getAdaptiveTimeout(fhssLockReason);
 
                 if (elapsed >= timeout) {
-                    // if (fhssLockReason != FHSSLockReason::PREAMBLE_DETECTED)
                         ets_printf("(D) FHSS timeout(%lld), forcing unlock (reason: %s, elapsed: %lldµs)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
-                    // fhssLockReason = FHSSLockReason::NONE;
-                    // f_lock_hop = false;
-                    // expectingResponse = false;
                     handleFHSSTimeout();
                 }
             }
@@ -358,21 +343,13 @@ namespace IOHC {
     }
     void handlePayloadReady(iohcRadio* radio, uint32_t timestamp) {
         timestamp_payload_ready = timestamp;
-        // float current_rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
-        // uint32_t durationS = timestamp - timestamp_sync_detected; uint32_t durationP = timestamp - timestamp_preamble_detected;
-        // ets_printf("IRQ Payload ready @ P%luµs (%d), S%luµs (%d)\n", durationP, static_cast<int>(durationP / 208.25f), durationS, static_cast<int>(durationS / 208.25f));
-        // Vérifier que c'est bien un payload valide (pas un faux positif)
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
-            // radio->calibration->onPayloadStart(durationS, durationP, radio->currentFreqIdx);
             radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
             radio->updateFHSSActivity();
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
-            // Call tickerCounter (read SPI, receive(), etc.)
-            // tickerCounter is in task — can use semaphores, malloc, etc. Not the ISR is able to do that
             radio->tickerCounter(radio);
             }
     }
-
 
     void handlePreambleLost(iohcRadio* radio, uint32_t timestamp) {
         // Seulement si on était en train de recevoir un préambule
@@ -394,9 +371,6 @@ namespace IOHC {
         Radio::setRx();
         radio->setRadioState(iohcRadio::RadioState::RX);
         radio->unlockFHSS(iohcRadio::FHSSLockReason::TRANSMITTING);
-
-        // Appeler le callback de transmission si nécessaire
-
     }
     /**
     * Sequential : Read queue — no concurrencies possible.
@@ -519,21 +493,6 @@ namespace IOHC {
     }
     /**
      * Initializes the radio with specified parameters and sets it to receive mode.
-     *
-     * @param num_freqs Number of
-     * frequencies to scan. It is of type `uint8_t`. This
-     * parameter specifies how many frequencies the radio will scan during operation.
-     * @param scan_freqs array of `uint32_t` values that represent the
-     * frequencies to be scanned during the radio operation. The `start` function initializes the radio
-     * with the provided frequencies for scanning.
-     * @param scanTimeUs time interval in microseconds for scanning frequencies. If a specific value is
-     * provided for `scanTimeUs`, it will be used as the scan interval. Otherwise, the default scan
-     * interval defined as
-     * @param rxCallback The `rxCallback` is a delegate or
-     * function pointer that will be called when a packet is received by the radio. It is set to `nullptr`
-     * by default if not provided during the function call.
-     * @param txCallback The `txCallback` is a callback function that will be called when a packet is
-     * transmitted by the radio. This callback function can be provided by the user
      */
     void iohcRadio::start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs,
                           CallbackFunction rxCallback = nullptr, CallbackFunction txCallback = nullptr) {
@@ -545,7 +504,7 @@ namespace IOHC {
         this->currentFreqIdx = 0;
         this->expectingResponse = false;
 
-        // CONFIGURATION PAR DÉFAUT RECOMMANDÉE
+        // CONFIGURATION PAR DÉFAUT
         if (scanTimeUs == 0) {
             // Démarrer en mode fast scan
             this->scanTimeUs = 30 * 1000; // 15ms par fréquence
@@ -574,15 +533,8 @@ namespace IOHC {
     }
 
     /**
-     * Handles various radio operations based on different conditions and configurations for SX127X
-     *
-     * @param radio  Used to access and modify the properties and
-     * methods of the `iohcRadio` object within the function.
-     *
-     * Ne rien faire dans l'ISR qui puisse allouer, prendre mutex/sem, ou appeler des fonctions non-ISR-safe.
-     * Faire en sorte que tickerCounter() ne fasse que le minimum : lire les IRQ, mettre à jour lastActivityTime, écrire un flag / envoyer une notification vers une task (via xTaskNotifyFromISR() ou xQueueSendFromISR()), et retourner.
-     * Tout le traitement (lecture FIFO, allocation, vector insert) doit être fait dans une task FreeRTOS.
-     */
+
+    */
 
     void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio *radio) {
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
@@ -591,20 +543,11 @@ namespace IOHC {
         if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) {
         }
         if (radioState == RadioState::PREAMBLE) {
-            // Préambule détecté, déjà verrouillé dans l'ISR
-            // ets_printf("STATE Preamble state - Flags: 0x%02X\n", _flags[0]);
 
         } else if (radioState == RadioState::PAYLOAD) {
-            // radio+>debugRadioFlags(_flags[0], _flags[1]);
-            // Réception de payload
-            // maybeCheckHeap("BEFORE RECEIVE IN TICKERCOUNTER");
             radio->receive(false);
-            // maybeCheckHeap("AFTER RECEIVE IN TICKERCOUNTER");
             Radio::clearFlags();
             radio->tickCounter = 0;
-            // Après réception, Only when no response expected
-
-            // Seulement si on n'est pas en mode TX
             if (!txMode) {
                 radio->unlockFHSS(FHSSLockReason::RECEIVING); // ← Bonne raison!
             }
@@ -612,12 +555,10 @@ namespace IOHC {
     }
 
     /**
-     * Crée un wrapper de paquet de manière SÉCURISÉE
-     * Retourne nullptr si allocation échoue (au lieu de crasher)
-     */
+
+    */
     static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
         if (!sourcePacket) {
-            // ets_printf("createPacketWrapper: sourcePacket is null\n");
             return nullptr;
         }
 
@@ -688,24 +629,11 @@ namespace IOHC {
      */
     bool iohcRadio::sendSingle(iohcPacket *packet) {
         if (!packet) return false;
-        // DIAGNOSTIC: Vérifier l'état AVANT
-        // if (isSending) {
-        //     ets_printf("sendSingle(): Already sending, adding to queue\n");
-        //     // C'est OK, on ajoute à la queue
-        // }
-
-        // if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-        //     return false;
-        // }
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet))
             txQueue.push_back(wrapper);
         else {
-            // xSemaphoreGive(txQueue_binary_sem);
-            // ets_printf("sendSingle: Failed to create packet wrapper");
             return false;
         }
-        // xSemaphoreGive(txQueue_binary_sem);
-
         startTransmission();
         return true;
     }
@@ -716,35 +644,18 @@ namespace IOHC {
     */
     bool iohcRadio::sendPriority(iohcPacket *packet) {
         if (!packet) return false;
-        // DIAGNOSTIC: Vérifier l'état AVANT
-        // if (isSending) {
-        //     ets_printf("sendPriority(): Already sending, inserting at front\n");
-        // }
-
-        // if (xSemaphoreTake(txQueue_binary_sem, pdMS_TO_TICKS(100)) != pdTRUE) {
-        //     return false;
-        // }
-
         // O(1)
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
         else {
-            // xSemaphoreGive(txQueue_binary_sem);
             return false;
         }
-        // xSemaphoreGive(txQueue_binary_sem);
-
         startTransmission();
         return true;
     }
 
     /**
-     * Handles the transmission of packets using radio
-     * communication, including frequency setting, packet preparation, and handling of repeated
-     * transmissions.
-     *
-     * @param radio Pointer to an object of type
-     * `iohcRadio`. It is used to access and manipulate data and functions within the `iohcRadio` class.
-     */
+
+    */
     void IRAM_ATTR iohcRadio::packetSender(iohcRadio *radio) {
         if (!radio || !radio->currentTxPacket) {
             ets_printf("packetSender called with null pointer\n");
@@ -782,14 +693,6 @@ namespace IOHC {
         pkt->decode(true);
         // Memorize last command sent
         IOHC::lastCmd = pkt->cmd();
-        // Used for replies in main
-        // iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
-        // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-        // cozyDevice2W->memorizeSend.memorizedData = {pkt->payload.buffer+9, pkt->payload.buffer+radio->new_packet->buffer_length};
-        // cozyDevice2W->memorizeSend.memorizedData.assign(pkt->payload.buffer+9, pkt->payload.buffer+pkt->buffer_length);
-        // Vérifier si ce paquet attend une réponse
-        // (vous pouvez ajouter un flag dans iohcPacket pour ça)
-        // bool thisPacketExpectsResponse = pkt->expectsResponse;  // À ajouter dans iohcPacket
 
         if (pkt->repeat > 0) {
             // Only the first frame is LPM (1W)
@@ -833,15 +736,8 @@ namespace IOHC {
     }
 
     /**
-     * Checks if a callback function `txCB` is set and calls
-     * it with a packet as a parameter, returning the result.
-     *
-     * @param packet The `packet` parameter is a pointer to an object of type `iohcPacket`.
-     *
-     * @return  boolean , which is determined by the result of
-     * calling the `txCB` function with the `packet` parameter. If `txCB` is not null, the return value
-     * will be the result of calling `txCB(packet)`, otherwise it will be `false`.
-     */
+
+    */
     bool IRAM_ATTR iohcRadio::sent(iohcPacket *packet) {
         bool ret = false;
         if (txCB) ret = txCB(packet);
@@ -894,12 +790,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 rejectReason = "Too short";
             }
 
-            // Vérifier l'intégrité du paquet
-            // if (receivedPacket.buffer_length == 0 || receivedPacket.buffer_length > MAX_FRAME_LEN) {
-            //     ets_printf("Invalid packet length: %d\n", receivedPacket.buffer_length);
-            //     continue;
-            // }
-
             if (shouldDecode)
                 if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
                     // Vérifier les doublons
@@ -918,17 +808,8 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             if (!shouldDecode) {
                 if (rejectReason != "Duplicate")
                 ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
-                // Option: callback pour paquets rejetés
-                // if (radio->rxCB) {
-                    // Peut-être un callback différent pour les erreurs?
-                    // radio->rxErrorCB(&receivedPacket, rejectReason);
-                // }
-                // **FORCER le retour au scanning après un paquet invalide**
-                // Sauf si on attend spécifiquement une réponse
-                // if (!radio->expectingResponse) {
-                    radio->setFHSSState(FHSSState::SCANNING);
-                    radio->forceUnlockFHSS();
-                // }
+                radio->setFHSSState(FHSSState::SCANNING);
+                radio->forceUnlockFHSS();
             } else {
 
             // Appeler le callback
@@ -938,12 +819,9 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
                 // Décoder le paquet
                 receivedPacket.decode(true);
-                //ets_printf("Packet processed: len=%d, freq=%lu\n", receivedPacket.buffer_length, receivedPacket.frequency);
             }
             // **MAINTENIR L'ÉTAT FHSS**
             // S'assurer que le FHSS n'est pas bloqué
-            // radio->checkFHSSTimeout(); // Force un check après traitement
-            // radio->forceUnlockFHSS();
             radio->setFHSSState(FHSSState::SCANNING);
 
         }
@@ -1011,11 +889,8 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
     // HELPER : Détecter si un paquet est une réponse
     bool iohcRadio::isResponsePacket(iohcPacket *packet) {
-        // À adapter
-        // Vérifier si c'est une réponse au dernier cmd envoyé
         if (!packet) return false;
 
-        // Exemple : si le paquet contient un ACK ou une réponse au dernier cmd
         return (packet->payload.packet.header.cmd == IOHC::lastCmd + 1);
     }
 
@@ -1119,19 +994,9 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             // Marquer comme non-envoi
             isSending = false;
 
-            // Déverrouiller la radio
-            // if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                txMode = false;
-                // f_lock_hop = false;
-                unlockFHSS(FHSSLockReason::TRANSMITTING);
-                // xSemaphoreGive(fhss_state_mutex);
-            // }
+            txMode = false;
+            unlockFHSS(FHSSLockReason::TRANSMITTING);
 
-            // Remettre en RX
-            if (radioState != RadioState::RX) {
-                // Radio::setRx();
-                // setRadioState(RadioState::RX);
-            }
             xSemaphoreGive(tx_mutex);
         }
     }
