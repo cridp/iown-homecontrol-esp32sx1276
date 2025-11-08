@@ -29,7 +29,6 @@
 #include <queue>
 
 #include "iohcFHSS.hpp"
-// #include "FHSSCalibration.hpp"
 
 #if defined(RADIO_SX127X)
 #include <SX1276Helpers.h>
@@ -139,9 +138,14 @@ namespace IOHC {
 
         const char *fhssStateToString(FHSSState state);
 
+        uint64_t getAdaptiveTimeout(FHSSLockReason reason);
+
         void lockFHSS(FHSSLockReason reason);
         void unlockFHSS(FHSSLockReason reason);
         void forceUnlockFHSS();
+
+        void handleFHSSTimeout();
+
         void checkFHSSTimeout();
         void updateFHSSActivity();
 
@@ -211,7 +215,6 @@ namespace IOHC {
         void setExpectingResponse(bool expecting, uint32_t timeoutMs);
 
         AdaptiveFHSS *adaptiveFHSS = nullptr;
-        // FHSSCalibration *calibration = nullptr;
 
         iohcRadio();
 
@@ -273,6 +276,30 @@ namespace IOHC {
                 xSemaphoreGive(statsMutex);
             }
         }
+        void debugRadioFlags() {
+            Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
+
+            const char* flags1_str[] = {
+                "SYNCADDRESSMATCH", "PREAMBLEDETECT", "TIMEOUT", "RSSI",
+                "PLLLOCK", "TXREADY", "RXREADY", "MODEREADY"
+            };
+
+            const char* flags2_str[] = {
+                "LOWBAT", "CRCOK", "PAYLOADREADY", "PACKETSENT",
+                "FIFOOVERRUN", "FIFOLEVEL", "FIFOEMPTY", "FIFOFULL"
+            };
+
+            ets_printf("IRQFLAGS1: 0x%02X - ", _flags[0]);
+            for (int i = 0; i < 8; i++) {
+                if (_flags[0] & (1 << i)) ets_printf("%s ", flags1_str[i]);
+            }
+            ets_printf(" IRQFLAGS2: 0x%02X - ", _flags[1]);
+            for (int i = 0; i < 8; i++) {
+                if (_flags[1] & (1 << i)) ets_printf("%s ", flags2_str[i]);
+            }
+            ets_printf("\n");
+        }
+
     private:
         // static void i_preamble();
         // static void i_payload();

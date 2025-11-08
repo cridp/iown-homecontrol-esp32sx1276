@@ -21,6 +21,9 @@
 #include <cstdint>
 #include <esp_timer.h>
 
+#include "SX1276Helpers.h"
+#include "ArduinoJson/Variant/VariantRefBase.hpp"
+
 // CONFIGURATIONS FHSS POSSIBLES
 /*
 struct FHSSConfig {
@@ -73,10 +76,7 @@ namespace IOHC {
     class iohcRadio;
 
     class AdaptiveFHSS {
-        IOHC::iohcRadio *radio;
 
-        int fast_dwell = 20;
-        int slow_dwell = 120;
         // Modes de scanning
         enum class ScanMode {
             FAST_SCAN, // Scan rapide : 20ms/freq (monitoring passif)
@@ -90,43 +90,74 @@ namespace IOHC {
         bool inConversation = false;
 
         // Timeouts
-        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 300; // Retour en fast après 300ms
+        static constexpr uint32_t CONVERSATION_TIMEOUT_MS = 35; // Retour en fast après 300ms
         static constexpr uint32_t ACTIVITY_TIMEOUT_MS = 1000; // Considéré "inactif" après 1s
 
+
+
     public:
-        explicit AdaptiveFHSS(iohcRadio *r) : radio(r) { }
+        iohcRadio *radio;
+
+        int fast_dwell = 15;
+        int slow_dwell = 120;
+
+        explicit AdaptiveFHSS(iohcRadio *r) : radio(r) {
+
+        }
+        struct FHSSContext {
+            volatile bool fhss_lock;
+            volatile int channel;
+            volatile int last_applied_channel;
+            volatile int fhss_count;
+            volatile bool invertIQ;
+            uint32_t period_us;
+        };
 
         /**
          * Appelé quand un paquet est détecté (RX ou TX)
          */
-        void onPacketActivity(bool expectsResponse = false) {
-            uint32_t now = esp_timer_get_time() / 1000;
-            lastPacketTime = now;
+        // void onPacketActivity(bool expectsResponse = false) {
+        //     uint32_t now = esp_timer_get_time() / 1000;
+        //     lastPacketTime = now;
+        //
+        //     // Si on attend une réponse ou qu'on est en conversation
+        //     if (expectsResponse ||
+        //         (now - conversationStartTime) < CONVERSATION_TIMEOUT_MS) {
+        //         if (!inConversation) {
+        //             conversationStartTime = now;
+        //             inConversation = true;
+        //             switchToSlowScan(slow_dwell);
+        //         }
+        //     }
+        // }
 
-            // Si on attend une réponse ou qu'on est en conversation
-            if (expectsResponse ||
-                (now - conversationStartTime) < CONVERSATION_TIMEOUT_MS) {
-                if (!inConversation) {
-                    conversationStartTime = now;
-                    inConversation = true;
-                    switchToSlowScan();
-                }
-            }
-        }
+        static constexpr uint32_t HOP_PERIOD_MS = 50;       // period between hops (ms)
+        static constexpr uint32_t SPIN_THRESHOLD_US = 2000;  // when to switch from vTaskDelay to busy-spin (adjustable)
+        static constexpr uint32_t CRITICAL_OFFSET_US = 0;    // additional offset if you need pre/post adjust
+        static constexpr BaseType_t FHSS_TASK_PRIORITY = tskIDLE_PRIORITY + 5;
+        static constexpr int FHSS_TASK_STACK = 4096;
+        static constexpr BaseType_t FHSS_TASK_CORE = 1;      // pin to core 1 for determinism (adjust if needed)
+
+
+
+
 
         /**
         * Appelé régulièrement pour vérifier si on peut repasser en fast scan
         */
         void update();
 
-        void switchToSlowScan(int ms = 20);
+        void switchToFastScan(int ms);
+        void switchToSlowScan(int ms) {};
 
-        void switchToFastScan(int ms = 120);
+
 
         /**
          * Force slow scan
          */
-        void prepareForConversation();
+        void prepareForConversation() {};
+
+        void onCollisionDetected() {};
     };
 }
 #endif //IOHCFHSS_HPP

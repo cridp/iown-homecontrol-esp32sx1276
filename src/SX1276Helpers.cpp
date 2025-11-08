@@ -44,6 +44,9 @@ namespace Radio {
         {250, {0x00, 0x01}} // 250KHz
     };
 
+    // digitalWrite() prend entre 1.3 et 4.2 µs selon contention.
+#define NSS_LOW  (GPIO.out_w1tc = (1<<RADIO_NSS))
+#define NSS_HIGH (GPIO.out_w1ts = (1<<RADIO_NSS))
 /**
  * The function `SPI_beginTransaction` begins a SPI transaction and sets the RADIO_NSS pin to LOW.
  */
@@ -68,11 +71,9 @@ namespace Radio {
         printf("\nSPI Init");
 
         //gpio_pullup_en((gpio_num_t) RADIO_MISO);
-
         pinMode(RADIO_MISO, INPUT_PULLUP);
 
         // SPI pins configuration
-
         pinMode(RADIO_RESET, INPUT); // Connected to Reset; floating for POR
 
         // Check the availability of the Radio
@@ -80,18 +81,17 @@ namespace Radio {
 #if defined(ESP32)
             esp_task_wdt_reset();
 #endif
-            delayMicroseconds(1);
+            ets_delay_us(1);
         }
-        delayMicroseconds(BOARD_READY_AFTER_POR);
+        ets_delay_us(BOARD_READY_AFTER_POR);
 
         // Initialize SPI bus
-#if defined(ESP32)
+        SPI.setHwCs(true); // Enable hardware CS Before SPI.begin() !!
         SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
-#endif
+
         // SPI.setFrequency(SPI_CLK_FRQ);
         // SPI.setDataMode(SPI_MODE0);
         // SPI.setBitOrder(MSBFIRST);
-        SPI.setHwCs(true);
 
         // Disable SPI device
         // Disable device NRESET pin
@@ -144,34 +144,33 @@ void setPreambleLength(uint16_t preambleLen) {
             RF_PACKETCONFIG1_ADDRSFILTERING_OFF);
         writeByte(
             REG_PACKETCONFIG2,
-            RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
-        // Is IoHomePowerFrame useful ?
+            RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME); // | RF_PACKETCONFIG2_WMBUS_CRC_ENABLE);
+            // Is IoHomePowerFrame useful ? What that wmbus CRC ? sx127x is able to do wmbus ??
 
         // Preamble shall be set to AA for packets to be received by appliances. Sync word shall be set with different values if Rx or Tx
+        // NOT RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON
         writeByte(
             REG_SYNCCONFIG,
             RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_OFF | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
-        //0x51); // 0x91); // TODOVERIFY 0x92
-        //RF_SYNCCONFIG_AUTORESTARTRXMODE_WAITPLL_ON | RF_SYNCCONFIG_PREAMBLEPOLARITY_AA | RF_SYNCCONFIG_SYNC_ON);
+                //0x51); // 0x91); // TODOVERIFY 0x92
 
         // Set Sync word to 0xff33 both for rx and tx
         writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
         writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
 
-        // Mapping of pins DIO0 to DIO3
-        // DIO0: PayloadReady|PacketSent    DIO1: FIFO empty    DIO2: Sync   | DIO3: TxReady
-        // Mapping of pins DIO4 and DIO5
-        // DIO4: PreambleDetect  DIO5: Data
-        // DIO Mapping Data Packet Table 30 Page 69
-        writeByte(
-            REG_DIOMAPPING1,
-            RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_11 | RF_DIOMAPPING1_DIO3_01); // Org
-        //        writeByte(REG_DIOMAPPING1, RF_DIOMAPPING1_DIO0_00 | RF_DIOMAPPING1_DIO1_01 | RF_DIOMAPPING1_DIO2_10 | RF_DIOMAPPING1_DIO3_01); // timeout on DIO2 for test
-        writeByte(REG_DIOMAPPING2, RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_DIO4_11 | RF_DIOMAPPING2_DIO5_10);
-        // Preamble on DIO4
+        // Optimiser la configuration des registres
+        writeByte(REG_DIOMAPPING1,
+            RF_DIOMAPPING1_DIO0_00 | // PayloadReady sur DIO0
+            RF_DIOMAPPING1_DIO2_11 | // PreambleDetect sur DIO2
+            RF_DIOMAPPING1_DIO1_01 |
+            RF_DIOMAPPING1_DIO3_01);
+
+        writeByte(REG_DIOMAPPING2,
+       RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_MAP_RSSI |
+            RF_DIOMAPPING2_DIO4_11 |
+            RF_DIOMAPPING2_DIO5_10);
 
         // Enable Fast Hoping (frequency change) // Not needed all the time
-        // Not using that, as it miss a lot of frames
         if (MAX_FREQS != 1)
             writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON);
 
@@ -180,6 +179,7 @@ void setPreambleLength(uint16_t preambleLen) {
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
         writeByte(REG_PREAMBLELSB, 0x80); //PREAMBLE_LSB);
+
         // FIFO Threshold - currently useless
         writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
 
@@ -190,18 +190,20 @@ void setPreambleLength(uint16_t preambleLen) {
         // RSSI precision +-2dBm
         writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_8); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
-        writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON);
+        writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON);
         // 250KHz BW with AFC
         writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
 
         writeByte(REG_AFCFEI, 0x01);
         // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G1); // 0xC3) ;
+        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // 0xC3) ;
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
             REG_PREAMBLEDETECT,
             RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
+
+        writeByte(REG_RSSITHRESH, RF_RSSITHRESH_THRESHOLD);
 
         // PA boost maximum power
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
@@ -282,8 +284,7 @@ void setPreambleLength(uint16_t preambleLen) {
     }
 
     void IRAM_ATTR setTx() {
-        // Uncommon and incompatible settings
-        // Enabling Sync word - Size must be set to SYNCSIZE_2 (0x01 in header file)
+        // Enabling Sync word - Size must be set to SYNCSIZE_2
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
 
@@ -291,7 +292,7 @@ void setPreambleLength(uint16_t preambleLen) {
     }
 
     void IRAM_ATTR setRx() {
-        // Uncommon and incompatible settings
+        // Enabling Sync word - Size must be set to SYNCSIZE_3
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
 
@@ -354,45 +355,55 @@ void setPreambleLength(uint16_t preambleLen) {
     uint8_t IRAM_ATTR readByte(uint8_t regAddr) {
         uint8_t getByte;
         readBytes(regAddr, &getByte, 1);
-
-        return (getByte);
+        return getByte;
     }
 
     void IRAM_ATTR readBytes(uint8_t regAddr, uint8_t *out, uint8_t len) {
-        SPI_beginTransaction();
+        NSS_LOW; //SPI_beginTransaction();
         SPI.transfer(regAddr); // Send Address
         for (uint8_t idx = 0; idx < len; ++idx) {
             out[idx] = SPI.transfer(regAddr); // Get data
         }
-        SPI_endTransaction();
+        NSS_HIGH; //SPI_endTransaction();
     }
 
-    bool IRAM_ATTR writeByte(uint8_t regAddr, uint8_t data, bool check) {
-        return writeBytes(regAddr, &data, 1, check);
+    void IRAM_ATTR writeByte(uint8_t regAddr, uint8_t data) {//, bool check) {
+        // return writeBurst(regAddr, &data, 1);//, check);
+        NSS_LOW;
+        SPI.write(regAddr | 0x80);
+        // ets_delay_us(SPI_RW_DELAY);
+        SPI.write/*transfer*/(data);
+        NSS_HIGH;
     }
 
-    auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check) -> bool {
-        SPI_beginTransaction();
-        SPI.write(regAddr | SPI_Write); // Send Address with Write flag
-        for (uint8_t idx = 0; idx < len; ++idx) {
-            SPI.write(in[idx]); // Send data
-        }
-        SPI_endTransaction();
-
-        if (check) {
-            SPI_beginTransaction();
-            SPI.transfer(regAddr); // Send Address
-            for (uint8_t idx = 0; idx < len; ++idx) {
-                uint8_t getByte = SPI.transfer(regAddr); // Get data
-                if (in[idx] != getByte) {
-                    SPI_endTransaction();
-                    return false;
-                }
-            }
-            SPI_endTransaction();
-        }
-
-        return true;
+    // auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check) -> bool {
+    //     NSS_LOW; //SPI_beginTransaction();
+    //     SPI.write(regAddr | SPI_Write); // Send Address with Write flag
+    //     for (uint8_t idx = 0; idx < len; ++idx) {
+    //         SPI.write(in[idx]); // Send data
+    //     }
+    //     NSS_HIGH; //SPI_endTransaction();
+    //
+    //     if (check) {
+    //         NSS_LOW; //SPI_beginTransaction();
+    //         SPI.transfer(regAddr); // Send Address
+    //         for (uint8_t idx = 0; idx < len; ++idx) {
+    //             uint8_t getByte = SPI.transfer(regAddr); // Get data
+    //             if (in[idx] != getByte) {
+    //                 SPI_endTransaction();
+    //                 return false;
+    //             }
+    //         }
+    //         NSS_HIGH; //SPI_endTransaction();
+    //     }
+    //
+    //     return true;
+    // }
+    void writeBurst(uint8_t addr, uint8_t *data, uint8_t len) {
+        NSS_LOW;
+        SPI.write(addr | 0x80);
+        SPI.transferBytes((uint8_t*)data, nullptr, len);
+        NSS_HIGH;
     }
 
     uint16_t IRAM_ATTR readWord(uint8_t regAddr) {
@@ -414,10 +425,10 @@ void setPreambleLength(uint16_t preambleLen) {
 
         return false;
     }
-
+    uint8_t /*IRAM_ATTR*/ out[4] __attribute__((aligned(4))) = {0x00, 0x00, 0x00, 0x00};
     bool IRAM_ATTR setCarrier(Carrier param, uint32_t value) {
         uint32_t tmpVal;
-        uint8_t out[4];
+        // uint8_t out[4];
         regBandWidth bw{};
 
         //  Change of Frequency can be done while the radio is working thanks to Freq Hopping
@@ -432,7 +443,7 @@ void setPreambleLength(uint16_t preambleLen) {
                 out[0] = (tmpVal & 0x00ff0000) >> 16;
                 out[1] = (tmpVal & 0x0000ff00) >> 8;
                 out[2] = (tmpVal & 0x000000ff); // If Radio is active, writing LSB triggers frequency change
-                writeBytes(REG_FRFMSB, out, 3);
+                writeBurst(REG_FRFMSB, out, 3);
                 break;
             case Carrier::Bandwidth:
                 bw = bwRegs(value);
@@ -443,7 +454,7 @@ void setPreambleLength(uint16_t preambleLen) {
                 tmpVal = static_cast<uint32_t>((static_cast<float_t>(value) / FXOSC) * (1 << 19));
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
-                writeBytes(REG_FDEVMSB, out, 2);
+                writeBurst(REG_FDEVMSB, out, 2);
             //                writeByte(REG_BITRATEFRAC, 5); // Little more precision
                 break;
             case Carrier::Modulation:
@@ -469,7 +480,7 @@ void setPreambleLength(uint16_t preambleLen) {
                 tmpVal = FXOSC / value;
                 out[0] = (tmpVal & 0x0000ff00) >> 8;
                 out[1] = (tmpVal & 0x000000ff);
-                writeBytes(REG_BITRATEMSB, out, 2);
+                writeBurst(REG_BITRATEMSB, out, 2);
                 break;
         }
 

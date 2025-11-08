@@ -21,9 +21,13 @@
 #include <iohcRadio.h>
 #include <log_buffer.h>
 #include <utility>
-
-// #include "FHSSCalibration.hpp"
 #include "iohcCozyDevice2W.h"
+
+// Timestamps pour mesures précises
+volatile uint32_t timestamp_preamble_detected = 0;
+volatile uint32_t timestamp_sync_detected = 0;
+volatile uint32_t timestamp_payload_ready = 0;
+
 
 // trame typique FSK : preamble (variable) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B).
 // airtime (s) = ( (preamble_bytes + 3 + 2 + payload_bytes + 2) * 8 ) / bitrate
@@ -70,85 +74,6 @@ namespace IOHC {
 
     static IOHC::iohcPacket last1wPacket;
 
-    TaskHandle_t handle_interrupt;
-    //
-    struct RadioIrqEvent {
-        uint8_t flags;         // bit0 = preamble, bit1 = payload, autres reserved
-        uint32_t ts_ms;        // timestamp en ms (esp_timer_get_time()/1000)
-    };
-
-    static QueueHandle_t radioIrqQueue = nullptr;
-    static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
-
-    /**
-    * No semaphore / lockFHSS() / updateFHSSActivity() here.
-    * esp_timer_get_time() is ISR-safe ; millis() never sure.
-    */
-    void IRAM_ATTR handle_interrupt_fromisr() {
-        // Debounce
-        static uint32_t lastIsrTime = 0;
-        uint32_t now = esp_timer_get_time();
-        if (now - lastIsrTime < 100) return; // 100µs debounce
-        lastIsrTime = now;
-
-        // Only GPIOS (opérations très courtes), pas d'appels bloquants
-        bool preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
-        bool payload  = digitalRead(RADIO_PACKET_AVAIL);
-
-        // Create an event
-        RadioIrqEvent ev;
-        ev.flags = 0;
-        if (preamble) ev.flags |= 0x01;
-        if (payload)  ev.flags |= 0x02;
-        ev.ts_ms = static_cast<uint32_t>(now / 1000ULL);
-
-        // Send it to queue (FromISR)
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        if (radioIrqQueue) {
-            // Ignored if queue empty
-            if (xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken) != pdTRUE) {
-                // Optionnel Compteur de drops (volatile)
-                // irq_drop_count++;
-            }
-        }
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
-    }
-
-    /**
-    * Sequential : Read queue — no concurrencies possible.
-    * tickerCounter isn't called by the ISR.
-    */
-    void handle_interrupt_task(void *pvParameters) {
-        IOHC::iohcRadio *radio = static_cast<IOHC::iohcRadio*>(pvParameters);
-        RadioIrqEvent ev;
-        const TickType_t xMaxBlock = pdMS_TO_TICKS(500); // ou portMAX_DELAY si on veux
-
-        while (true) {
-            if (xQueueReceive(radioIrqQueue, &ev, xMaxBlock) == pdTRUE) {
-                // No reentrance possible, using sequential
-                bool preamble = ev.flags & 0x01;
-                bool payload  = ev.flags & 0x02;
-
-                if (preamble) {
-                    // timestamp and lock
-                    radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-                    radio->updateFHSSActivity(); // Write atomic safe
-                    radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
-                }
-                if (payload) {
-                    // timestamp - Reception and lock
-                    radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
-                    radio->updateFHSSActivity();
-                    radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
-                    // Call tickerCounter (read SPI, receive(), etc.)
-                    // tickerCounter is in task — can use semaphores, malloc, etc. Not the ISR is able to do that
-                    radio->tickerCounter(radio);
-                }
-            }
-            // No busy-wait
-        }
-    }
-
     void FHSSTimer(iohcRadio *iohc_radio) {
         // Check timeout
         iohc_radio->checkFHSSTimeout();
@@ -176,6 +101,14 @@ namespace IOHC {
         //  iohc_radio->currentFreqIdx,
         //  iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
     }
+    //
+    // AdaptiveFHSS::FHSSContext fhss = {
+    //     .fhss_lock = false,
+    //     .channel = 0,
+    //     .last_applied_channel = -1,
+    //     .fhss_count = 3,
+    //     .period_us = AdaptiveFHSS::HOP_PERIOD_MS * 1000UL
+    // };
 
     /**
     * Verrouille le FHSS avec une raison spécifique
@@ -186,8 +119,8 @@ namespace IOHC {
             if (reason > fhssLockReason) {
                 fhssLockReason = reason;
                 f_lock_hop = true;
+                // fhss.fhss_lock = true;
                 lastActivityTime = esp_timer_get_time();
-
                 // ets_printf("(D) FHSS locked: %s\n", fhssLockReasonToString(reason));
             }
             xSemaphoreGive(fhss_state_mutex);
@@ -203,7 +136,7 @@ namespace IOHC {
             if (fhssLockReason == reason) {
                 fhssLockReason = FHSSLockReason::NONE;
                 f_lock_hop = false;
-
+                // fhss.fhss_lock = false;
                 // ets_printf("(D) FHSS unlocked: %s\n", fhssLockReasonToString(reason));
             }
             xSemaphoreGive(fhss_state_mutex);
@@ -211,12 +144,13 @@ namespace IOHC {
     }
 
     /**
-        * Force le déverrouillage (pour reset manuel)
-        */
+    * Force le déverrouillage (pour reset manuel)
+    */
     void iohcRadio::forceUnlockFHSS() {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             fhssLockReason = FHSSLockReason::NONE;
             f_lock_hop = false;
+            // fhss.fhss_lock = false;
             expectingResponse = false;
 
             // ESP_LOGW("IOHC", "FHSS force unlocked");
@@ -228,30 +162,33 @@ namespace IOHC {
             FHSSState oldState = fhssState;
             fhssState = newState;
 
-            // Log des transitions d'état importantes
-            if (oldState != newState) {
-                // ets_printf("FHSS State transition: %s -> %s\n", fhssStateToString(oldState), fhssStateToString(newState));
-            }
-
             // Actions spécifiques selon le nouvel état
             switch (newState) {
                 case FHSSState::SCANNING:
                     f_lock_hop = false; // Autoriser le hopping
+                    // fhss.fhss_lock = false;
                     break;
-                case FHSSState::PREAMBLE_DETECTED: //{calibration->onPreambleDetected();}
-                case FHSSState::RECEIVING: //{calibration->onPayloadStart(false, this->currentFreqIdx);}
-                case FHSSState::PROCESSING: //{calibration->onPayloadComplete(0.0, 0);}
+                case FHSSState::PREAMBLE_DETECTED:
+                case FHSSState::RECEIVING:
+                case FHSSState::PROCESSING:
                 case FHSSState::TRANSMITTING:
                     f_lock_hop = true; // Bloquer le hopping
+                    // fhss.fhss_lock = true;
                     break;
             }
 
             xSemaphoreGive(fhss_state_mutex);
+
+            // Log des transitions d'état importantes
+            if (oldState != newState) {
+//                ets_printf("FHSS State transition: %s -> %s\n", fhssStateToString(oldState), fhssStateToString(newState));
+            }
+
         }
     }
     iohcRadio::FHSSState iohcRadio::getFHSSState() {
         FHSSState state = FHSSState::SCANNING;
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             state = fhssState;
             xSemaphoreGive(fhss_state_mutex);
         }
@@ -268,39 +205,56 @@ namespace IOHC {
             default: return "UNKNOWN";
         }
     }
-    /**
+    uint64_t iohcRadio::getAdaptiveTimeout(FHSSLockReason reason) {
+        switch (reason) {
+            case FHSSLockReason::PREAMBLE_DETECTED:
+                return 8750; // 42 bytes
+            case FHSSLockReason::RECEIVING:
+                return 10413;  // 50 bytes
+            case FHSSLockReason::WAITING_RESPONSE:
+                return responseTimeoutMs * 1000;
+            default:
+                return 100000; // 100ms par défaut
+        }
+    }
+    void iohcRadio::handleFHSSTimeout() {
+        FHSSLockReason oldReason = fhssLockReason;
+        fhssLockReason = FHSSLockReason::NONE;
+        f_lock_hop = false;
+        // fhss.fhss_lock = false;
+        expectingResponse = false;
+
+        // Remettre en RX
+        if (radioState != RadioState::TX) {
+            Radio::setRx();
+            setRadioState(RadioState::RX);
+            unlockFHSS(oldReason);
+            adaptiveFHSS->update();
+        }
+
+        ets_printf("FHSS Unlocked due to timeout (was: %s)\n", fhssLockReasonToString(oldReason));
+    }/**
      * FHSS Watchdog
      */
     void iohcRadio::checkFHSSTimeout() {
         if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
 
-            if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
+            if ((/*fhss.fhss_lock ||*/ f_lock_hop) && fhssLockReason != FHSSLockReason::TRANSMITTING) {
                 uint64_t elapsed = esp_timer_get_time() - lastActivityTime;
-                uint64_t timeout = 3 * minAirTimeMs; // 3x margin
-                // uint32_t timeout = 48; // = expectingResponse ? responseTimeoutMs : FHSS_UNLOCK_TIMEOUT_MS ;
-                if (fhssLockReason == FHSSLockReason::PREAMBLE_DETECTED) timeout = 256000;  // PreambleTimeout
-                if (fhssLockReason == FHSSLockReason::RECEIVING) timeout = 15000;  // PayloadTimeout
+                uint64_t timeout = getAdaptiveTimeout(fhssLockReason);
 
                 if (elapsed >= timeout) {
-                    if (fhssLockReason != FHSSLockReason::PREAMBLE_DETECTED)
-                        // ets_printf("(D) FHSS timeout(%lld), forcing unlock (reason: %s, elapsed: %lldµs)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
-                    fhssLockReason = FHSSLockReason::NONE;
-                    f_lock_hop = false;
-                    expectingResponse = false;
-
-                    // Remettre la radio en état RX
-                    if (radioState != RadioState::TX) {
-                        Radio::setRx();
-                        setRadioState(RadioState::RX);
-                        unlockFHSS(fhssLockReason);
-                        adaptiveFHSS->update();
-                    }
+                    // if (fhssLockReason != FHSSLockReason::PREAMBLE_DETECTED)
+                        ets_printf("(D) FHSS timeout(%lld), forcing unlock (reason: %s, elapsed: %lldµs)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
+                    // fhssLockReason = FHSSLockReason::NONE;
+                    // f_lock_hop = false;
+                    // expectingResponse = false;
+                    handleFHSSTimeout();
                 }
             }
             xSemaphoreGive(fhss_state_mutex);
         }
     }
-
     /**
      * Mettre à jour l'horodatage d'activité
      * Pas besoin de mutex pour juste mettre à jour un uint32_t
@@ -312,7 +266,7 @@ namespace IOHC {
     * Indique qu'on attend une réponse après un envoi
     */
     void iohcRadio::setExpectingResponse(bool expecting, uint32_t timeoutMs = 1000) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
             expectingResponse = expecting;
             responseTimeoutMs = timeoutMs;
             if (expecting) {
@@ -322,6 +276,167 @@ namespace IOHC {
         }
     }
 
+    TaskHandle_t handle_interrupt;
+    struct RadioIrqEvent {
+        uint8_t source;  // 0 = DIO0 (payload), 1 = DIO2 (preamble)
+        uint8_t edge;    // 0 = falling, 1 = rising
+        uint32_t timestamp_us;
+    };
+
+    static QueueHandle_t radioIrqQueue = nullptr;
+    static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
+
+    void optimizeRadioSensitivity(iohcRadio* radio, bool reduceFalsePositives) {
+        if (reduceFalsePositives) {
+            // Réduire la sensibilité pour moins de faux positifs
+            Radio::writeByte(REG_RSSITHRESH, 0xFF); // Seuil RSSI plus élevé
+            Radio::writeByte(REG_RXTIMEOUT2, 0x00); // Timeout plus court
+
+            ets_printf("RADIO Optimized for reduced false positives\n");
+        } else {
+            // Augmenter la sensibilité pour plus de portée
+            // Radio::writeByte(REG_RSSITHRESH, 0xE0); // Seuil RSSI plus bas
+            // Radio::writeByte(REG_RXTIMEOUT2, 0x80); // Timeout plus long
+
+            ets_printf("RADIO Optimized for maximum sensitivity\n");
+        }
+    }
+
+    /**
+    * No semaphore / lockFHSS() / updateFHSSActivity() here.
+    * esp_timer_get_time() is ISR-safe ; millis() never sure.
+    */
+    void IRAM_ATTR handle_interrupt_fromDIO0(/*void* arg*/) {
+        // static uint32_t lastIsrTime = 0;
+        uint32_t now = esp_timer_get_time();
+        // Debounce hardware + software
+        // if (now - lastIsrTime < 50) return; // 50µs debounce
+        // lastIsrTime = now;
+
+        // Only GPIOS (opérations très courtes), pas d'appels bloquants
+        RadioIrqEvent ev;
+        ev.source = 0; // DIO0
+        ev.edge = digitalRead(RADIO_PACKET_AVAIL) ? 1 : 0;
+        ev.timestamp_us = now;
+
+        // Send it to queue (FromISR)
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+    /**
+    * No semaphore / lockFHSS() / updateFHSSActivity() here.
+    * esp_timer_get_time() is ISR-safe ; millis() never sure.
+    */
+    void IRAM_ATTR handle_interrupt_fromDIO2(/*void* arg*/) {
+
+        // static uint32_t lastIsrTime = 0;
+        uint32_t now = esp_timer_get_time();
+        // if (now - lastIsrTime < 50) return;
+        // lastIsrTime = now;
+
+        RadioIrqEvent ev;
+        ev.source = 1; // DIO2
+        ev.edge = digitalRead(RADIO_PREAMBLE_DETECTED) ? 1 : 0;
+        ev.timestamp_us = now;
+
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+
+    void handlePreambleDetected(iohcRadio* radio, uint32_t timestamp) {
+        timestamp_preamble_detected = timestamp;
+
+        radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
+        radio->updateFHSSActivity();
+        radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
+        radio->setFHSSState(iohcRadio::FHSSState::PREAMBLE_DETECTED);
+
+        // Logger pour debug
+        // ets_printf("IRQ Preamble detected @ %luµs\n", timestamp);
+    }
+    void handlePayloadReady(iohcRadio* radio, uint32_t timestamp) {
+        timestamp_payload_ready = timestamp;
+        // float current_rssi = static_cast<float>(Radio::readByte(REG_RSSIVALUE)) / -2.0f;
+        // uint32_t durationS = timestamp - timestamp_sync_detected; uint32_t durationP = timestamp - timestamp_preamble_detected;
+        // ets_printf("IRQ Payload ready @ P%luµs (%d), S%luµs (%d)\n", durationP, static_cast<int>(durationP / 208.25f), durationS, static_cast<int>(durationS / 208.25f));
+        // Vérifier que c'est bien un payload valide (pas un faux positif)
+        if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
+            // radio->calibration->onPayloadStart(durationS, durationP, radio->currentFreqIdx);
+            radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
+            radio->updateFHSSActivity();
+            radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
+            // Call tickerCounter (read SPI, receive(), etc.)
+            // tickerCounter is in task — can use semaphores, malloc, etc. Not the ISR is able to do that
+            radio->tickerCounter(radio);
+            }
+    }
+
+
+    void handlePreambleLost(iohcRadio* radio, uint32_t timestamp) {
+        // Seulement si on était en train de recevoir un préambule
+        if (radio->getFHSSState() == iohcRadio::FHSSState::PREAMBLE_DETECTED) {
+            // C'est probablement une fausse détection ou un signal trop faible
+            radio->unlockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
+            radio->setFHSSState(iohcRadio::FHSSState::SCANNING);
+            radio->setRadioState(iohcRadio::RadioState::RX);
+
+            // Remettre la radio en état normal
+            Radio::setRx();
+        }
+    }
+    void handlePacketSent(iohcRadio* radio, uint32_t timestamp) {
+        // ets_printf("TX Packet sent @ %lu\n", timestamp);
+        Radio::clearFlags();
+
+        // Remettre la radio en mode RX
+        Radio::setRx();
+        radio->setRadioState(iohcRadio::RadioState::RX);
+        radio->unlockFHSS(iohcRadio::FHSSLockReason::TRANSMITTING);
+
+        // Appeler le callback de transmission si nécessaire
+
+    }
+    /**
+    * Sequential : Read queue — no concurrencies possible.
+    * tickerCounter isn't called by the ISR.
+    */
+    void handle_interrupt_task(void *pvParameters) {
+        iohcRadio *radio = static_cast<iohcRadio*>(pvParameters);
+        RadioIrqEvent evt;
+        // RF_IRQFLAGS1_0xDB -> MODEREADY RXREADY PLLLOCK RSSI PREAMBLEDETECT SYNCADDRESSMATCH
+        // RF_IRQFLAGS2_0x26 -> FIFOLEVEL PAYLOADREADY CRCOK
+        // RF_IRQFLAGS1_0xB0 -> MODEREADY TXREADY PLLLOCK
+        // RF_IRQFLAGS2_0x48 -> FIFOEMPTY PACKETSENT
+
+        while (true) {
+            if (xQueueReceive(radioIrqQueue, &evt, portMAX_DELAY) == pdTRUE) {
+                switch (evt.source) {
+                    case 1: // DIO2 - Préambule
+                        // radio->debugRadioFlags();
+                        if (evt.edge == 1) { // Rising edge = préambule détecté
+                            handlePreambleDetected(radio, evt.timestamp_us);
+                        } else {
+                            handlePreambleLost(radio, evt.timestamp_us);
+                        }
+                        break;
+
+                    case 0: // DIO0 - Payload
+                        // Lire IRQFLAGS2 pour déterminer la cause
+                        uint8_t irqflags2 = Radio::readByte(REG_IRQFLAGS2);
+                        if (irqflags2 & RF_IRQFLAGS2_PACKETSENT) {
+                            // Événement de fin d'émission
+                            handlePacketSent(radio, evt.timestamp_us);
+                        } else if (irqflags2 & RF_IRQFLAGS2_PAYLOADREADY) {
+                            // Événement de réception
+                            handlePayloadReady(radio, evt.timestamp_us);
+                        }
+                        break;
+                }
+            }
+        }
+    }
 
     iohcRadio::iohcRadio() {
         Radio::initHardware();
@@ -333,12 +448,27 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Bandwidth, 250);
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
-        // Attach interrupts to Preamble detected and end of packet sent/received
-        //        attachInterrupt(RADIO_PACKET_AVAIL, i_payload, CHANGE); //
-        //        attachInterrupt(RADIO_PREAMBLE_DETECTED, i_preamble, CHANGE); //
-        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
-        //        attachInterrupt(RADIO_DIO1_PIN, handle_interrupt_fromisr, RISING); // CHANGE); //
-        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromisr, RISING); //CHANGE); //
+        // Configurer les interruptions avec pull-down pour éviter les faux déclenchements
+        pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
+        pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
+        // Attacher les interruptions avec debounce matériel
+        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, RISING);
+        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, CHANGE);
+        // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
+        // gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+        // gpio_config_t io_conf = {};
+        // io_conf.intr_type = GPIO_INTR_POSEDGE;
+        // io_conf.mode = GPIO_MODE_INPUT;
+        // io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
+        // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+        // gpio_config(&io_conf);
+        // gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
+        // // gpio_isr_handler_add(GPIO_NUM_35 , handle_interrupt_fromDIO1, nullptr);
+        // io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
+        // io_conf.intr_type = GPIO_INTR_ANYEDGE;
+        // gpio_config(&io_conf);
+        // gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
 
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");
@@ -366,9 +496,10 @@ namespace IOHC {
         // Démarrer la task de traitement des paquets
         startPacketProcessor();
 
-        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task, "handle_interrupt_task", 8192,
-                                                       this, 4,
-                                                       &handle_interrupt, xPortGetCoreID());
+        BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task,
+            "handle_interrupt_task", 8192,
+            this, 4,
+             &handle_interrupt, xPortGetCoreID());
         if (task_code != pdPASS) {
             ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
             return;
@@ -386,7 +517,6 @@ namespace IOHC {
             _iohcRadio = new iohcRadio();
         return _iohcRadio;
     }
-
     /**
      * Initializes the radio with specified parameters and sets it to receive mode.
      *
@@ -437,19 +567,16 @@ namespace IOHC {
             adaptiveFHSS = new AdaptiveFHSS(this);
 
             // Start Frequency Hopping Timer
-            ets_printf("Starting FHSSTimer Handler...\n");
-            adaptiveFHSS->switchToFastScan();
+            adaptiveFHSS->switchToFastScan(adaptiveFHSS->fast_dwell);
+            ets_printf("Starting FHSSTimer (%d) Handler...\n", adaptiveFHSS->fast_dwell);
         }
         Radio::setRx();
-        // calibration = new FHSSCalibration(this);
     }
 
     /**
-     * Handles various radio operations based on different conditions
-     * and configurations for SX127X
+     * Handles various radio operations based on different conditions and configurations for SX127X
      *
-     * @param radio Pointer to an
-     * instance of the `iohcRadio` class. This pointer is used to access and modify the properties and
+     * @param radio  Used to access and modify the properties and
      * methods of the `iohcRadio` object within the function.
      *
      * Ne rien faire dans l'ISR qui puisse allouer, prendre mutex/sem, ou appeler des fonctions non-ISR-safe.
@@ -459,48 +586,35 @@ namespace IOHC {
 
     void IRAM_ATTR iohcRadio::tickerCounter(iohcRadio *radio) {
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
-
-        if (radioState == iohcRadio::RadioState::PREAMBLE) {
+        uint32_t now = esp_timer_get_time();
+        // Si sync détecté, c'est la fin du préambule
+        if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) {
+        }
+        if (radioState == RadioState::PREAMBLE) {
             // Préambule détecté, déjà verrouillé dans l'ISR
-        } else if (radioState == iohcRadio::RadioState::PAYLOAD) {
-            // if TX ready?
-            if (_flags[0] & RF_IRQFLAGS1_TXREADY) {
+            // ets_printf("STATE Preamble state - Flags: 0x%02X\n", _flags[0]);
 
-                radio->sent(radio->new_packet);
-                Radio::clearFlags();
-                if (radioState != RadioState::TX) {
-                    Radio::setRx();
-                    radio->setRadioState(RadioState::RX);
-                    // radio->unlockFHSS(FHSSLockReason::RECEIVING);
-                    // Only when no response expected
-                    if (/*!radio->expectingResponse &&*/ !txMode) {
-                        radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
-                    }
-                }
-                return;
-            }
+        } else if (radioState == RadioState::PAYLOAD) {
+            // radio+>debugRadioFlags(_flags[0], _flags[1]);
             // Réception de payload
             // maybeCheckHeap("BEFORE RECEIVE IN TICKERCOUNTER");
             radio->receive(false);
             // maybeCheckHeap("AFTER RECEIVE IN TICKERCOUNTER");
             Radio::clearFlags();
-
             radio->tickCounter = 0;
             // Après réception, Only when no response expected
 
-            // if (!radio->expectingResponse) {
-            // Petit délai avant de déverrouiller pour laisser le temps de traiter
-            // et éventuellement envoyer une réponse
-            // vTaskDelay(pdMS_TO_TICKS(50));
-            // radio->forceUnlockFHSS();
-            // }
+            // Seulement si on n'est pas en mode TX
+            if (!txMode) {
+                radio->unlockFHSS(FHSSLockReason::RECEIVING); // ← Bonne raison!
+            }
         }
-
     }
+
     /**
-         * Crée un wrapper de paquet de manière SÉCURISÉE
-         * Retourne nullptr si allocation échoue (au lieu de crasher)
-         */
+     * Crée un wrapper de paquet de manière SÉCURISÉE
+     * Retourne nullptr si allocation échoue (au lieu de crasher)
+     */
     static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
         if (!sourcePacket) {
             // ets_printf("createPacketWrapper: sourcePacket is null\n");
@@ -633,7 +747,7 @@ namespace IOHC {
      */
     void IRAM_ATTR iohcRadio::packetSender(iohcRadio *radio) {
         if (!radio || !radio->currentTxPacket) {
-            ets_printf("packetSender called with null pointer");
+            ets_printf("packetSender called with null pointer\n");
             return;
         }
 
@@ -657,7 +771,7 @@ namespace IOHC {
         Radio::clearFlags();
         // Not needed at start as already done at init
         // Radio::setPreambleLength(LONG_PREAMBLE_MS); //repeat?LONG_PREAMBLE_MS:SHORT_PREAMBLE_MS);
-        Radio::writeBytes(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
+        Radio::writeBurst(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
         Radio::setTx();
         radio->setRadioState(iohcRadio::RadioState::TX);
         // There is no need to maintain radio locked between packets transmission unless clearly asked
@@ -746,7 +860,7 @@ namespace IOHC {
     );
 
     if (result != pdPASS) {
-        ets_printf("Failed to create packet processor task");
+        ets_printf("Failed to create packet processor task\n");
     }
 }
 
@@ -761,9 +875,9 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         // Attendre un paquet (bloquant)
         if (xQueueReceive(radio->packetQueue, &receivedPacket, portMAX_DELAY) == pdTRUE) {
             // **CRITIQUE: Vérifier que le FHSS est dans l'état approprié**
-            if (radio->getFHSSState() != FHSSState::PROCESSING &&
-                radio->getFHSSState() != FHSSState::RECEIVING) {
-                ets_printf("Packet received in wrong FHSS state: %d\n", static_cast<int>(radio->getFHSSState()));
+            if (radio->getFHSSState() != FHSSState::PROCESSING && radio->getFHSSState() != FHSSState::RECEIVING) {
+                // BUG 08:10:36.472 > Packet received in wrong FHSS state: SCANNING
+                ets_printf("Packet received in wrong FHSS state: %s\n", radio->fhssStateToString(radio->getFHSSState()));
                 }
 
             // **VALIDATION SANS INTERRUPTION DU FLUX**
@@ -816,6 +930,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                     radio->forceUnlockFHSS();
                 // }
             } else {
+
             // Appeler le callback
                 if (radio->rxCB) {
                     radio->rxCB(&receivedPacket);
@@ -836,9 +951,10 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 }
 
     bool IRAM_ATTR iohcRadio::receive(bool stats = false) {
+
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // **CRITIQUE: Toujours commencer par mettre à jour l'état FHSS**
-        adaptiveFHSS->onPacketActivity();
+        // adaptiveFHSS->onPacketActivity();
         setFHSSState(FHSSState::RECEIVING);
 
         // Utiliser un buffer TEMPORAIRE local
@@ -874,38 +990,20 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         BaseType_t queueResult = xQueueSendFromISR(packetQueue, &tempRxPacket, &xHigherPriorityTaskWoken);
 
-        // if (queueResult == pdTRUE) {
-        //     ets_printf("Packet queued: %d bytes\n", tempRxPacket.buffer_length);
-        // } else {
-        //     ets_printf("Packet queue full, dropped: %d bytes\n", tempRxPacket.buffer_length);
-        // }
-        // **CRITIQUE: Mettre à jour l'état FHSS APRÈS le traitement**
-        // Si on attend une réponse, on reste verrouillé, sinon on retourne au scanning
-        if (!expectingResponse) {
-            setFHSSState(FHSSState::PROCESSING);
-            // Déverrouiller le FHSS après un court délai pour laisser le temps au processing
-            // unlockFHSSAfterDelay(10); // 10ms de délai
-            checkFHSSTimeout();
-        } else {
-            // On reste en RECEIVING car on attend une réponse spécifique
-            setFHSSState(FHSSState::RECEIVING);
-        }
+        // DÉVERROUILLAGE IMMÉDIAT - le paquet est dans la queue
+        // Ne pas attendre le traitement complet
+        setFHSSState(FHSSState::PROCESSING);
+        // Remettre en RX immédiatement
+        Radio::setRx();
+        setRadioState(RadioState::RX);
+
+        // Déverrouiller le FHSS pour permettre le hopping
+        unlockFHSS(FHSSLockReason::RECEIVING);
+        adaptiveFHSS->update();
 
         if (xHigherPriorityTaskWoken) {
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
-
-        // **DÉVERROUILLAGE FHSS - TOUJOURS faire après réception**
-        // Même pour les paquets vides/invalides, on doit déverrouiller
-
-        // Dyn Ensure the state machine returns to idle receive so FHSS can hop again
-        // if (radioState != RadioState::TX) {
-        // if (!isSending) {
-            unlockFHSS(fhssLockReason);
-            Radio::setRx();
-            setRadioState(RadioState::RX);
-            adaptiveFHSS->update();
-        // }
 
         digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
@@ -922,7 +1020,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     }
 
     /**
-     * @deprecated The function `i_preamble` sets the value of `f_lock` based on the state of `_g_preamble`
+     * @deprecated Sets the value of `f_lock` based on the state of `_g_preamble`
      */
     // void IRAM_ATTR iohcRadio::i_preamble() {
     //     _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
@@ -931,8 +1029,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     // }
 
     /**
-     * @deprecated The function `iohcRadio::i_payload()` reads the value of a digital pin and stores it in a variable
-     * `_g_payload`
+     * @deprecated Reads the value of a digital pin and stores it in `_g_payload`
      */
     // void IRAM_ATTR iohcRadio::i_payload() {
     //     _g_payload = digitalRead(RADIO_PACKET_AVAIL);

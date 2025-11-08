@@ -86,8 +86,9 @@ namespace Radio {
     bool crcOk();
     uint8_t readByte(uint8_t regAddr);
     void readBytes(uint8_t regAddr, uint8_t *out, uint8_t len);
-    bool writeByte(uint8_t regAddr, uint8_t data, bool check = NULL);
-    bool writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check = NULL);
+    void writeByte(uint8_t regAddr, uint8_t data); //, bool check = false);
+    // bool writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check = false);
+    void writeBurst(uint8_t regAddr, uint8_t *in, uint8_t len);
     bool inStdbyOrSleep();
     bool setParams();
     bool setCarrier(Carrier param, uint32_t value);

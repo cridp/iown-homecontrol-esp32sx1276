@@ -29,23 +29,24 @@ namespace IOHC {
             if (currentMode == ScanMode::FAST_SCAN) return;
 ;
             currentMode = ScanMode::FAST_SCAN;
-            radio->scanTimeUs = ms != fast_dwell? ms * 1000: fast_dwell * 1000;
+            radio->scanTimeUs = ms != fast_dwell? ms/* * 1000*/: fast_dwell/* * 1000*/;
             radio->TickTimer.detach();
-            radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
+            radio->TickTimer.attach_ms(radio->scanTimeUs, FHSSTimer, radio);
 
-            ets_printf("FHSS Switched to FAST scan (%dms/freq)\n", ms);
+            ets_printf("FHSS Switched to FAST scan (%dms/freq)\n", radio->scanTimeUs/* / 1000*/);
         }
 
-        void AdaptiveFHSS::switchToSlowScan(int ms) {
-            if (currentMode == ScanMode::SLOW_SCAN) return;
-;
-            currentMode = ScanMode::SLOW_SCAN;
-            radio->scanTimeUs = ms != slow_dwell? ms * 1000: slow_dwell * 1000;
-            radio->TickTimer.detach();
-            radio->TickTimer.attach_us(radio->scanTimeUs, FHSSTimer, radio);
+//         void AdaptiveFHSS::switchToSlowScan(int ms) {
+//             if (currentMode == ScanMode::SLOW_SCAN) return;
+// ;
+//             currentMode = ScanMode::SLOW_SCAN;
+//             radio->scanTimeUs = ms != slow_dwell? ms/* * 1000*/: slow_dwell/* * 1000*/;
+//             radio->TickTimer.detach();
+//             radio->TickTimer.attach_ms(radio->scanTimeUs, FHSSTimer, radio);
+//
+//             ets_printf("FHSS Switched to SLOW scan (%dms/freq)\n", radio->scanTimeUs/* / 1000*/);
+//         }
 
-            ets_printf("FHSS Switched to SLOW scan (%dms/freq)\n", ms);
-        }
 
         void AdaptiveFHSS::update() {
             if (!inConversation) return;
@@ -60,15 +61,16 @@ namespace IOHC {
             if (timeSinceActivity > ACTIVITY_TIMEOUT_MS &&
                 conversationDuration > CONVERSATION_TIMEOUT_MS) {
                 inConversation = false;
-                switchToFastScan();
+                switchToFastScan(fast_dwell);
                 }
 
         }
 
-        void AdaptiveFHSS::prepareForConversation() {
-            conversationStartTime = esp_timer_get_time() / 1000;
-            inConversation = true;
-            switchToSlowScan();
-        }
+        // void AdaptiveFHSS::prepareForConversation() {
+        //     conversationStartTime = esp_timer_get_time() / 1000;
+        //     inConversation = true;
+        //     switchToSlowScan(slow_dwell);
+        // }
 
+        // void AdaptiveFHSS::onCollisionDetected() {}
 }
