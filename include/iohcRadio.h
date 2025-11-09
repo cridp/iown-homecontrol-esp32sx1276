@@ -54,6 +54,7 @@ struct TxPacketWrapper;
     IOHC timings, async sending and receiving through callbacks, ...
 */
 namespace IOHC {
+    struct RadioIrqEvent;
 
     using CallbackFunction = Delegate<bool(iohcPacket *iohc)>;
 
@@ -189,7 +190,7 @@ namespace IOHC {
         // volatile static bool _g_payload;
         volatile static bool f_lock_hop;
 
-        static void tickerCounter(iohcRadio *radio);
+        static void tickerCounter(iohcRadio *radio, const RadioIrqEvent &evt);
 
         bool sendSingle(iohcPacket *packet);
         bool sendPriority(iohcPacket *packet);
@@ -234,7 +235,7 @@ namespace IOHC {
 
         // Mutex pour last1wPacket si nécessaire
         SemaphoreHandle_t lastPacketMutex;
-        bool receive(bool stats);
+        bool receive(bool stats, RadioIrqEvent evt);
 
         bool isResponsePacket(iohcPacket *packet);
 

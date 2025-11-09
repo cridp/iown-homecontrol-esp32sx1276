@@ -50,18 +50,18 @@ namespace Radio {
 /**
  * The function `SPI_beginTransaction` begins a SPI transaction and sets the RADIO_NSS pin to LOW.
  */
-    void IRAM_ATTR SPI_beginTransaction() {
-        SPI.beginTransaction(Radio::SpiSettings);
-        digitalWrite(RADIO_NSS, LOW);
-    }
+    // void IRAM_ATTR SPI_beginTransaction() {
+    //     SPI.beginTransaction(Radio::SpiSettings);
+    //     digitalWrite(RADIO_NSS, LOW);
+    // }
 
 /**
  * The function `SPI_endTransaction` ends the SPI transaction and sets the RADIO_NSS pin to HIGH.
  */
-    void IRAM_ATTR SPI_endTransaction() {
-        digitalWrite(RADIO_NSS, HIGH);
-        SPI.endTransaction();
-    }
+    // void IRAM_ATTR SPI_endTransaction() {
+    //     digitalWrite(RADIO_NSS, HIGH);
+    //     SPI.endTransaction();
+    // }
 
 /**
  * The function `initHardware` initializes the hardware for SPI communication with a radio chip, checks
@@ -185,25 +185,25 @@ void setPreambleLength(uint16_t preambleLen) {
 
         // ---------------- RX Register init section ----------------
         // Set lenght checking if passed as parameter
-        // The use of maxPayloadLength is not working. Prevents generating PayloadReady signal
+        // The use of maxPayloadLength is not working. Prevents generating PayloadReady signal if set
         writeByte(REG_PAYLOADLENGTH, 0xff);
         // RSSI precision +-2dBm
-        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_8); // 8->0.512 ms // _128); // _32); //_256); //
+        writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_4); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
-        writeByte(REG_RXCONFIG,
+        writeByte(REG_RXCONFIG, // AGCAUTO_OFF not functional AFCAUTO_OFF change nothing
             RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON | RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK);
 
         // 250KHz BW with AFC
-        writeByte(REG_AFCBW, 0x10); //RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
-        writeByte(REG_AFCFEI, 0x01);
+        writeByte(REG_AFCBW, 0x10); // RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1); // 333333 Hz
+        writeByte(REG_AFCFEI, 0x01); //
 
         // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
-        writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // 0xC3) ;
+        writeByte(REG_LNA, 0xC3); //RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); //
 
         // Enables Preamble Detect, 2 bytes
         writeByte(
             REG_PREAMBLEDETECT,
-            RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
+            RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_12);
 
         writeByte(REG_RSSITHRESH, RF_RSSITHRESH_THRESHOLD);
 
@@ -244,43 +244,6 @@ void setPreambleLength(uint16_t preambleLen) {
         writeByte(REG_PACONFIG, regPaConfigInitVal);
     }
 
-    /*!
-     * Performs the Rx chain calibration for LF and HF bands
-     * \remark Must be called just after the reset so all registers are at their
-     *         default values
-     */
-    // void RxChainCalibration( void ) {
-    //     uint8_t regPaConfigInitVal;
-    //     uint32_t initialFreq;
-
-    //     // Save context
-    //     regPaConfigInitVal = readByte( REG_PACONFIG );
-    //     initialFreq = ( double )( ( ( uint32_t )readByte( REG_FRFMSB ) << 16 ) |
-    //                               ( ( uint32_t )readByte( REG_FRFMID ) << 8 ) |
-    //                               ( ( uint32_t )readByte( REG_FRFLSB ) ) ) * ( double )FREQ_STEP;
-
-    //     // Cut the PA just in case, RFO output, power = -1 dBm
-    //     writeByte( REG_PACONFIG, 0x00 );
-
-    //     // Launch Rx chain calibration for LF band
-    //     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
-    //     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
-    //     {
-    //     }
-
-    //     // Sets a Frequency in HF band
-    //     SetChannel( 868000000 );
-
-    //     // Launch Rx chain calibration for HF band
-    //     writeByte ( REG_IMAGECAL, ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_MASK ) | RF_IMAGECAL_IMAGECAL_START );
-    //     while( ( readByte( REG_IMAGECAL ) & RF_IMAGECAL_IMAGECAL_RUNNING ) == RF_IMAGECAL_IMAGECAL_RUNNING )
-    //     {
-    //     }
-
-    //     // Restore context
-    //     writeByte( REG_PACONFIG, regPaConfigInitVal );
-    //     SetChannel( initialFreq );
-    // }
     void IRAM_ATTR setStandby() {
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_STANDBY);
     }
@@ -327,20 +290,20 @@ void setPreambleLength(uint16_t preambleLen) {
         }
     }
 
-    //     void clearFlags() {
-    //         uint8_t out[2] = {0xff, 0xff};
-    //         writeBytes(REG_IRQFLAGS1, out, 2);
-    //     }
     // void clearFlags_A() {
     //   uint8_t flags = readByte(REG_IRQFLAGS1);
     //   flags &= ~0xFF; // Efface tous les drapeaux
     //   writeByte(REG_IRQFLAGS1, flags);
     // }
-    void IRAM_ATTR clearFlags() {
-        uint16_t flags = readWord(REG_IRQFLAGS1);
-        flags &= ~0xFFFF; // Efface tous les drapeaux
-        writeWord(REG_IRQFLAGS1, flags);
-    }
+        void IRAM_ATTR clearFlags() {
+            uint8_t out[2] = {0xff, 0xff};
+            writeBurst(REG_IRQFLAGS1, out, 2);
+        }
+    // void IRAM_ATTR clearFlags() {
+    //     uint16_t flags = readWord(REG_IRQFLAGS1);
+    //     flags &= ~0xFFFF; // Efface tous les drapeaux
+    //     writeWord(REG_IRQFLAGS1, flags);
+    // }
 
     bool IRAM_ATTR preambleDetected() {
         return readByte(REG_IRQFLAGS1) & RF_IRQFLAGS1_PREAMBLEDETECT;
@@ -378,30 +341,7 @@ void setPreambleLength(uint16_t preambleLen) {
         NSS_HIGH;
     }
 
-    // auto IRAM_ATTR writeBytes(uint8_t regAddr, uint8_t *in, uint8_t len, bool check) -> bool {
-    //     NSS_LOW; //SPI_beginTransaction();
-    //     SPI.write(regAddr | SPI_Write); // Send Address with Write flag
-    //     for (uint8_t idx = 0; idx < len; ++idx) {
-    //         SPI.write(in[idx]); // Send data
-    //     }
-    //     NSS_HIGH; //SPI_endTransaction();
-    //
-    //     if (check) {
-    //         NSS_LOW; //SPI_beginTransaction();
-    //         SPI.transfer(regAddr); // Send Address
-    //         for (uint8_t idx = 0; idx < len; ++idx) {
-    //             uint8_t getByte = SPI.transfer(regAddr); // Get data
-    //             if (in[idx] != getByte) {
-    //                 SPI_endTransaction();
-    //                 return false;
-    //             }
-    //         }
-    //         NSS_HIGH; //SPI_endTransaction();
-    //     }
-    //
-    //     return true;
-    // }
-    void writeBurst(uint8_t addr, uint8_t *data, uint8_t len) {
+    void IRAM_ATTR writeBurst(uint8_t addr, uint8_t *data, uint8_t len) {
         NSS_LOW;
         SPI.write(addr | 0x80);
         SPI.transferBytes((uint8_t*)data, nullptr, len);
@@ -497,6 +437,23 @@ void setPreambleLength(uint16_t preambleLen) {
         return __bw.rbegin()->second;
     }
 
+    int32_t getFrequencyError() {
+        uint16_t fei = (readByte(REG_FEIMSB) << 8) | readByte(REG_FEILSB);
+        if (fei & 0x8000) { // Negative value
+            // frequency error is negative
+            fei |= (uint32_t) 0xFFF00000;
+            fei = (~fei + 1); // Two's complement
+            return -((static_cast<float_t>(fei) * FXOSC) / (1 << 19));
+        } else {
+            return ((static_cast<float_t>(fei) * FXOSC) / (1 << 19));
+        }
+    }
+    int16_t getAFCError() {
+        // get raw frequency error
+        int16_t raw = (uint16_t) readByte(REG_AFCMSB) << 8;
+        raw |= readByte(REG_AFCLSB);
+        return raw * (FXOSC / (1 << 19));
+    }
     void dump() {
         uint8_t idx = 0;
 

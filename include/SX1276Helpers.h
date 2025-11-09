@@ -100,5 +100,8 @@ namespace Radio {
     uint16_t readWord(uint8_t regAddr);
     void writeWord(uint8_t regAddr, uint16_t value);
 
+    int32_t getFrequencyError();
+    int16_t getAFCError();
+
 }
 #endif // SX1276HELPERS_H
