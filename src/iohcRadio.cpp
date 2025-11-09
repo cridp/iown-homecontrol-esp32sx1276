@@ -263,27 +263,12 @@ namespace IOHC {
     static QueueHandle_t radioIrqQueue = nullptr;
     static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
 
-    void optimizeRadioSensitivity(iohcRadio* radio, bool reduceFalsePositives) {
-        if (reduceFalsePositives) {
-            // Réduire la sensibilité pour moins de faux positifs
-            Radio::writeByte(REG_RSSITHRESH, 0xFF); // Seuil RSSI plus élevé
-            Radio::writeByte(REG_RXTIMEOUT2, 0x00); // Timeout plus court
-
-            ets_printf("RADIO Optimized for reduced false positives\n");
-        } else {
-            // Augmenter la sensibilité pour plus de portée
-            // Radio::writeByte(REG_RSSITHRESH, 0xE0); // Seuil RSSI plus bas
-            // Radio::writeByte(REG_RXTIMEOUT2, 0x80); // Timeout plus long
-
-            ets_printf("RADIO Optimized for maximum sensitivity\n");
-        }
-    }
 
     /**
     * No semaphore / lockFHSS() / updateFHSSActivity() here.
     * esp_timer_get_time() is ISR-safe ; millis() never sure.
     */
-    void IRAM_ATTR handle_interrupt_fromDIO0(/*void* arg*/) {
+    void IRAM_ATTR handle_interrupt_fromDIO0(void* arg) {
         uint32_t now = esp_timer_get_time();
 
         // Only GPIOS short ops, non blocking
@@ -301,7 +286,7 @@ namespace IOHC {
     * No semaphore / lockFHSS() / updateFHSSActivity() here.
     * esp_timer_get_time() is ISR-safe ; millis() never sure.
     */
-    void IRAM_ATTR handle_interrupt_fromDIO2(/*void* arg*/) {
+    void IRAM_ATTR handle_interrupt_fromDIO2(void* arg) {
         uint32_t now = esp_timer_get_time();
 
         // Only GPIOS short ops, non blocking
@@ -407,8 +392,8 @@ namespace IOHC {
         pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
         pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
         // Attacher les interruptions avec debounce matériel
-        attachInterrupt(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, RISING);
-        attachInterrupt(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, CHANGE);
+        attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
+        attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
         // gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
         // gpio_config_t io_conf = {};
@@ -419,7 +404,6 @@ namespace IOHC {
         // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         // gpio_config(&io_conf);
         // gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
-        // // gpio_isr_handler_add(GPIO_NUM_35 , handle_interrupt_fromDIO1, nullptr);
         // io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
         // io_conf.intr_type = GPIO_INTR_ANYEDGE;
         // gpio_config(&io_conf);
@@ -497,7 +481,7 @@ namespace IOHC {
             adaptiveFHSS = new AdaptiveFHSS(this);
 
             // Start Frequency Hopping Timer
-            adaptiveFHSS->switchToFastScan(adaptiveFHSS->fast_dwell);
+            adaptiveFHSS->switchToFastScan(18); // ...ms par fréquence
             ets_printf("FHSSTimer Handler Started...\n");
         }
         Radio::setRx();
@@ -509,8 +493,8 @@ namespace IOHC {
         Radio::readBytes(REG_IRQFLAGS1, _flags, sizeof(_flags));
         // uint32_t now = esp_timer_get_time();
         // Sync = preamble end
-        if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) { }
-        if (radioState == RadioState::PREAMBLE) { }
+        if (_flags[0] & RF_IRQFLAGS1_SYNCADDRESSMATCH) {  }
+        if (radioState == RadioState::PREAMBLE) {  }
         else if (radioState == RadioState::PAYLOAD) {
             // Payload ready
             radio->receive(false);

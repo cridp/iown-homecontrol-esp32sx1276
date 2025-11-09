@@ -159,18 +159,18 @@ void setPreambleLength(uint16_t preambleLen) {
         writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
 
         // Optimiser la configuration des registres
-        writeByte(REG_DIOMAPPING1,
-            RF_DIOMAPPING1_DIO0_00 | // PayloadReady sur DIO0
-            RF_DIOMAPPING1_DIO2_11 | // PreambleDetect sur DIO2
-            RF_DIOMAPPING1_DIO1_01 |
-            RF_DIOMAPPING1_DIO3_01);
+        writeByte(REG_DIOMAPPING1, 0x3D);
+            // RF_DIOMAPPING1_DIO0_00 | // PayloadReady sur DIO0
+            // RF_DIOMAPPING1_DIO2_11 | // PreambleDetect sur DIO2
+            // RF_DIOMAPPING1_DIO1_01 |
+            // RF_DIOMAPPING1_DIO3_01);
 
-        writeByte(REG_DIOMAPPING2,
-       RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_MAP_RSSI |
-            RF_DIOMAPPING2_DIO4_11 |
-            RF_DIOMAPPING2_DIO5_10);
+        writeByte(REG_DIOMAPPING2, 0xF1);
+            // RF_DIOMAPPING2_MAP_PREAMBLEDETECT | RF_DIOMAPPING2_MAP_RSSI |
+            // RF_DIOMAPPING2_DIO4_11 |
+            // RF_DIOMAPPING2_DIO5_10);
 
-        // Enable Fast Hoping (frequency change) // Not needed all the time
+        // Enable Fast Hoping (frequency change)
         if (MAX_FREQS != 1)
             writeByte(REG_PLLHOP, readByte(REG_PLLHOP) | RF_PLLHOP_FASTHOP_ON);
 
@@ -190,11 +190,13 @@ void setPreambleLength(uint16_t preambleLen) {
         // RSSI precision +-2dBm
         writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_8); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
-        writeByte(REG_RXCONFIG, RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON);
-        // 250KHz BW with AFC
-        writeByte(REG_AFCBW, RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
+        writeByte(REG_RXCONFIG,
+            RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON | RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK);
 
+        // 250KHz BW with AFC
+        writeByte(REG_AFCBW, 0x10); //RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1);
         writeByte(REG_AFCFEI, 0x01);
+
         // if AGC_AUTO_ON, RF_LNA_GAIN_XX do nothing
         writeByte(REG_LNA, RF_LNA_BOOST_ON | RF_LNA_GAIN_G6); // 0xC3) ;
 
