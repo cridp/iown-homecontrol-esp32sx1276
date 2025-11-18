@@ -30,7 +30,6 @@ volatile uint32_t timestamp_payload_ready = 0;
 
 
 // trame typique FSK : preamble (variable) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B).
-// airtime (s) = ( (preamble_bytes + 3 + 2 + payload_bytes + 2) * 8 ) / bitrate
 #define LONG_PREAMBLE_MS 128  // 0x80 52-206 ms
 #define SHORT_PREAMBLE_MS 16 // 11.458 ms
 // Timeouts adaptatifs basés sur le débit
@@ -74,185 +73,6 @@ namespace IOHC {
 
     static IOHC::iohcPacket last1wPacket;
 
-    void FHSSTimer(iohcRadio *iohc_radio) {
-        // Check timeout
-        iohc_radio->checkFHSSTimeout();
-
-        // Si toujours verrouillé, pas de hop
-        if (iohc_radio->f_lock_hop) {
-            return;
-        }
-
-        // Ne sauter que si on est vraiment en RX idle
-        if (iohcRadio::radioState != iohcRadio::RadioState::RX) {
-            return;
-        }
-
-        // Incrémenter l'index de fréquence
-        iohc_radio->currentFreqIdx++;
-        if (iohc_radio->currentFreqIdx >= iohc_radio->num_freqs) {
-            iohc_radio->currentFreqIdx = 0;
-        }
-
-        // Changer la fréquence seulement si on est en RX
-        Radio::setCarrier(Radio::Carrier::Frequency, iohc_radio->scan_freqs[iohc_radio->currentFreqIdx]);
-    }
-
-    /**
-    * Lock Fhss for a specific reason
-    */
-    void iohcRadio::lockFHSS(const FHSSLockReason reason) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            // Garder la raison la plus "forte"
-            if (reason > fhssLockReason) {
-                fhssLockReason = reason;
-                f_lock_hop = true;
-                // fhss.fhss_lock = true;
-                lastActivityTime = esp_timer_get_time();
-                // ets_printf("(D) FHSS locked: %s\n", fhssLockReasonToString(reason));
-            }
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-
-    /**
-     * Unlock FHSS for a specific reason
-     */
-    void iohcRadio::unlockFHSS(const FHSSLockReason reason) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            // Déverrouiller seulement si c'est la même raison
-            if (fhssLockReason == reason) {
-                fhssLockReason = FHSSLockReason::NONE;
-                f_lock_hop = false;
-                // fhss.fhss_lock = false;
-                // ets_printf("(D) FHSS unlocked: %s\n", fhssLockReasonToString(reason));
-            }
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-
-    /**
-    * Force Unlock FHSS
-    */
-    void iohcRadio::forceUnlockFHSS() {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            fhssLockReason = FHSSLockReason::NONE;
-            f_lock_hop = false;
-            expectingResponse = false;
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-
-    /**
-     * Set/Get FHSS State
-     */
-    void iohcRadio::setFHSSState(FHSSState newState) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            FHSSState oldState = fhssState;
-            fhssState = newState;
-
-            // Actions spécifiques selon le nouvel état
-            switch (newState) {
-                case FHSSState::SCANNING:
-                    f_lock_hop = false; // Autoriser le hopping
-                    break;
-                case FHSSState::PREAMBLE_DETECTED:
-                case FHSSState::RECEIVING:
-                case FHSSState::PROCESSING:
-                case FHSSState::TRANSMITTING:
-                    f_lock_hop = true; // Bloquer le hopping
-                    break;
-            }
-
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-
-    iohcRadio::FHSSState iohcRadio::getFHSSState() const {
-        auto state = FHSSState::SCANNING;
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            state = fhssState;
-            xSemaphoreGive(fhss_state_mutex);
-        }
-        return state;
-    }
-
-    const char* iohcRadio::fhssStateToString(FHSSState state) {
-        switch (state) {
-            case FHSSState::SCANNING: return "SCANNING";
-            case FHSSState::PREAMBLE_DETECTED: return "PREAMBLE_DETECTED";
-            case FHSSState::RECEIVING: return "RECEIVING";
-            case FHSSState::PROCESSING: return "PROCESSING";
-            case FHSSState::TRANSMITTING: return "TRANSMITTING";
-            default: return "UNKNOWN";
-        }
-    }
-
-    uint64_t iohcRadio::getAdaptiveTimeout(FHSSLockReason reason) const {
-        switch (reason) {
-            case FHSSLockReason::PREAMBLE_DETECTED:
-                return 8750; // 42 bytes
-            case FHSSLockReason::RECEIVING:
-                return 100413;  // 50 bytes
-            case FHSSLockReason::WAITING_RESPONSE:
-                return responseTimeoutMs * 1000;
-            default:
-                return 500000; // 100ms par défaut
-        }
-    }
-    void iohcRadio::handleFHSSTimeout() {
-        FHSSLockReason oldReason = fhssLockReason;
-        fhssLockReason = FHSSLockReason::NONE;
-        f_lock_hop = false;
-        expectingResponse = false;
-
-        // Remettre en RX
-        if (radioState != RadioState::TX) {
-            Radio::setRx();
-            setRadioState(RadioState::RX);
-            unlockFHSS(oldReason);
-            adaptiveFHSS->update();
-        }
-
-        ets_printf("FHSS Unlocked due to timeout (was: %s)\n", fhssLockReasonToString(oldReason));
-    }/**
-     * FHSS Watchdog
-     */
-    void iohcRadio::checkFHSSTimeout() {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            if (f_lock_hop && fhssLockReason != FHSSLockReason::TRANSMITTING) {
-                uint64_t elapsed = esp_timer_get_time() - lastActivityTime;
-                uint64_t timeout = getAdaptiveTimeout(fhssLockReason);
-
-                if (elapsed >= timeout) {
-                        ets_printf("(D) FHSS timeout(%lld), forcing unlock (reason: %s, elapsed: %lldµs)\n", timeout, fhssLockReasonToString(fhssLockReason), elapsed);
-                    handleFHSSTimeout();
-                }
-            }
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-    /**
-     * Mettre à jour l'horodatage d'activité
-     * Pas besoin de mutex pour juste mettre à jour un uint32_t
-     */
-    inline void IRAM_ATTR iohcRadio::updateFHSSActivity() {
-        lastActivityTime = esp_timer_get_time();
-    }
-    /**
-    * Indique qu'on attend une réponse après un envoi
-    */
-    void iohcRadio::setExpectingResponse(bool expecting, uint32_t timeoutMs = 1000) {
-        if (xSemaphoreTake(fhss_state_mutex, pdMS_TO_TICKS(5)) == pdTRUE) {
-            expectingResponse = expecting;
-            responseTimeoutMs = timeoutMs;
-            if (expecting) {
-                lockFHSS(FHSSLockReason::WAITING_RESPONSE);
-            }
-            xSemaphoreGive(fhss_state_mutex);
-        }
-    }
-
     TaskHandle_t handle_interrupt;
     struct RadioIrqEvent {
         uint8_t source;  // 0 = DIO0 (payload), 1 = DIO2 (preamble)
@@ -264,7 +84,7 @@ namespace IOHC {
     static constexpr size_t RADIO_IRQ_QUEUE_LEN = 128;
 
     /**
-    * No semaphore / lockFHSS() / updateFHSSActivity() here.
+    * No semaphore here.
     * esp_timer_get_time() is ISR-safe ; millis() never sure.
     */
     void IRAM_ATTR handle_interrupt_fromDIO0(void* arg) {
@@ -280,7 +100,7 @@ namespace IOHC {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
     /**
-    * No semaphore / lockFHSS() / updateFHSSActivity() here.
+    * No semaphore here.
     * esp_timer_get_time() is ISR-safe ; millis() never sure.
     */
 
@@ -298,31 +118,22 @@ namespace IOHC {
 
     void handlePreambleDetected(iohcRadio* radio, RadioIrqEvent evt) {
         timestamp_preamble_detected = evt.timestamp_us;
-        radio->lockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-        radio->updateFHSSActivity();
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
-        radio->setFHSSState(iohcRadio::FHSSState::PREAMBLE_DETECTED);
     }
 
     void handlePreambleLost(iohcRadio* radio, RadioIrqEvent evt) {
         timestamp_sync_detected = evt.timestamp_us;
         // Seulement si on était en train de recevoir un préambule
-        if (radio->getFHSSState() == iohcRadio::FHSSState::PREAMBLE_DETECTED) {
-            // C'est probablement une fausse détection ou un signal trop faible
-            radio->unlockFHSS(iohcRadio::FHSSLockReason::PREAMBLE_DETECTED);
-            radio->setFHSSState(iohcRadio::FHSSState::SCANNING);
             radio->setRadioState(iohcRadio::RadioState::RX);
 
             // Remettre la radio en état normal
             Radio::setRx();
-        }
+        // }
     }
 
     void handlePayloadReady(iohcRadio* radio, RadioIrqEvent evt) {
         timestamp_payload_ready = evt.timestamp_us;
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
-            radio->lockFHSS(iohcRadio::FHSSLockReason::RECEIVING);
-            radio->updateFHSSActivity();
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
             radio->tickerCounter(radio, evt);
             }
@@ -333,7 +144,6 @@ namespace IOHC {
         // Remettre la radio en mode RX
         Radio::setRx();
         radio->setRadioState(iohcRadio::RadioState::RX);
-        radio->unlockFHSS(iohcRadio::FHSSLockReason::TRANSMITTING);
     }
     /**
     * Sequential : Read queue — no concurrencies possible.
@@ -385,32 +195,31 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
         // Configurer les interruptions avec pull-down pour éviter les faux déclenchements
-        pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
-        pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
-        // Attacher les interruptions avec debounce matériel
-        attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
-        attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
+        // pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
+        // pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
+        // // Attacher les interruptions avec debounce matériel
+        // attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
+        // attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
-        // gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-        // gpio_config_t io_conf = {};
-        // io_conf.intr_type = GPIO_INTR_POSEDGE;
-        // io_conf.mode = GPIO_MODE_INPUT;
-        // io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
-        // io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-        // io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-        // gpio_config(&io_conf);
-        // gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
-        // io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
-        // io_conf.intr_type = GPIO_INTR_ANYEDGE;
-        // gpio_config(&io_conf);
-        // gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
+        gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+        gpio_config_t io_conf = {};
+        io_conf.intr_type = GPIO_INTR_POSEDGE;
+        io_conf.mode = GPIO_MODE_INPUT;
+        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
+        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+        gpio_config(&io_conf);
+        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
+        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
+        io_conf.intr_type = GPIO_INTR_ANYEDGE;
+        gpio_config(&io_conf);
+        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
 
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");
         // Create all mutex
         tx_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(tx_mutex);
         txQueue_binary_sem = xSemaphoreCreateBinary(); xSemaphoreGive(txQueue_binary_sem); // Initialement libre
-        fhss_state_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(fhss_state_mutex);
 
         // Create ISR Queue
         radioIrqQueue = xQueueCreate(RADIO_IRQ_QUEUE_LEN, sizeof(RadioIrqEvent));
@@ -425,7 +234,7 @@ namespace IOHC {
 
         BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task,
             "handle_interrupt_task", 8192,
-            this, 4,
+            this, configMAX_PRIORITIES - 1,// Before FHSS
              &handle_interrupt, xPortGetCoreID());
         if (task_code != pdPASS) {
             ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
@@ -474,10 +283,10 @@ namespace IOHC {
             this->currentFreqIdx = 0;
 
             // start adaptative
-            adaptiveFHSS = new AdaptiveFHSS(this);
+            // adaptiveFHSS = new AdaptiveFHSS(this);
 
             // Start Frequency Hopping Timer
-            adaptiveFHSS->switchToFastScan(36); // ...ms par fréquence
+            // adaptiveFHSS->switchToFastScan(17); // ...ms par fréquence
             ets_printf("FHSSTimer Handler Started...\n");
         }
         Radio::setRx();
@@ -497,7 +306,7 @@ namespace IOHC {
             radio->receive(false, evt);
             Radio::clearFlags(); // After receive
             if (!txMode) {
-                radio->unlockFHSS(FHSSLockReason::RECEIVING); // ← Good one
+                // radio->unlockFHSS(FHSSLockReason::RECEIVING); // ← Good one
             }
             radio->tickCounter = 0;
         }
@@ -611,7 +420,6 @@ namespace IOHC {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
         // Verrouiller pour transmission
-        radio->lockFHSS(FHSSLockReason::TRANSMITTING);
         txMode = true;
 
         iohcPacket *pkt = radio->currentTxPacket->packet;
@@ -629,7 +437,7 @@ namespace IOHC {
 
         Radio::writeBurst(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
         Radio::setTx();
-        radio->setRadioState(iohcRadio::RadioState::TX);
+        radio->setRadioState(RadioState::TX);
         // There is no need to maintain radio locked between packets transmission unless clearly asked
         txMode = pkt->lock;
 
@@ -646,12 +454,6 @@ namespace IOHC {
         }
         if (pkt->repeat == 0) {
             radio->Ticker.detach();
-
-            // spinlock au lieu de sémaphore
-            uint32_t timeout = esp_timer_get_time() + 50000;  // 50ms en microsecondes
-            while (radio->txQueue_busy && esp_timer_get_time() < timeout) {
-                // Spinlock court - OK dans ISR
-            }
 
             // Vérifier s'il y a un délai avant le prochain paquet
             bool hasNextPacket = false;
@@ -672,7 +474,7 @@ namespace IOHC {
             } else {
                 // Plus de paquets à envoyer
                 txMode = false;
-                radio->unlockFHSS(FHSSLockReason::TRANSMITTING);
+
                 radio->stopTransmission();
             }
         }
@@ -716,9 +518,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         // Attendre un paquet (bloquant)
         if (xQueueReceive(radio->packetQueue, &receivedPacket, portMAX_DELAY) == pdTRUE) {
             // **CRITIQUE: Vérifier que le FHSS est dans l'état approprié**
-            if (radio->getFHSSState() != FHSSState::PROCESSING && radio->getFHSSState() != FHSSState::RECEIVING) {
-                ets_printf("Packet received in wrong FHSS state: %s\n", radio->fhssStateToString(radio->getFHSSState()));
-                }
 
             // **VALIDATION SANS INTERRUPTION DU FLUX**
             bool shouldDecode = true;
@@ -734,26 +533,26 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 rejectReason = "Too short";
             }
 
-            if (shouldDecode)
-                if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-                    // Vérifier les doublons
-                    if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
-                        rejectReason = "Duplicate";
-                        shouldDecode = false;
-                    } else {
-                        // Sauvegarder le nouveau paquet
-                        last1wPacket = receivedPacket;
-                    }
-                    xSemaphoreGive(radio->lastPacketMutex);
-                }
+            // if (shouldDecode)
+            //     if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            //         // Vérifier les doublons
+            //         if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
+            //             rejectReason = "Duplicate";
+            //             shouldDecode = false;
+            //         } else {
+            //             // Sauvegarder le nouveau paquet
+            //             last1wPacket = receivedPacket;
+            //         }
+            //         xSemaphoreGive(radio->lastPacketMutex);
+            //     }
 
             // Traiter le paquet
             // **TOUJOURS logger, même les rejets**
             if (!shouldDecode) {
-                if (rejectReason != "Duplicate")
-                ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
-                radio->setFHSSState(FHSSState::SCANNING);
-                radio->forceUnlockFHSS();
+                // if (rejectReason != "Duplicate")
+                // ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
+                // radio->setFHSSState(FHSSState::SCANNING);
+                // radio->forceUnlockFHSS();
             } else {
 
             // Appeler le callback
@@ -764,9 +563,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 // Décoder le paquet
                 receivedPacket.decode(true);
             }
-            // *KEEP FHSS state**
-            radio->setFHSSState(FHSSState::SCANNING);
-
         }
     }
 }
@@ -775,7 +571,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // **CRITIQUE: Toujours commencer par mettre à jour l'état FHSS**
         // adaptiveFHSS->onPacketActivity();
-        setFHSSState(FHSSState::RECEIVING);
+        // setFHSSState(FHSSState::RECEIVING);
 
         // Utiliser un buffer TEMPORAIRE local
         tempRxPacket.reset();
@@ -812,14 +608,14 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         // DÉVERROUILLAGE IMMÉDIAT - le paquet est dans la queue
         // Ne pas attendre le traitement complet
-        setFHSSState(FHSSState::PROCESSING);
+        // setFHSSState(FHSSState::PROCESSING);
         // Remettre en RX immédiatement
         Radio::setRx();
         setRadioState(RadioState::RX);
 
         // Déverrouiller le FHSS pour permettre le hopping
-        unlockFHSS(FHSSLockReason::RECEIVING);
-        adaptiveFHSS->update();
+        // unlockFHSS(FHSSLockReason::RECEIVING);
+        // adaptiveFHSS->update();
 
         if (xHigherPriorityTaskWoken) {
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -936,7 +732,8 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             isSending = false;
 
             txMode = false;
-            unlockFHSS(FHSSLockReason::TRANSMITTING);
+            // unlockFHSS(FHSSLockReason::TRANSMITTING);
+            // setExpectingResponse(true, 25);
 
             xSemaphoreGive(tx_mutex);
         }

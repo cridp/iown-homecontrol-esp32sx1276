@@ -28,7 +28,7 @@
 #include <iohcPacket.h>
 #include <queue>
 
-#include "iohcFHSS.hpp"
+// #include "../archives/iohcFHSS.hpp"
 
 #if defined(RADIO_SX127X)
 #include <SX1276Helpers.h>
@@ -59,11 +59,11 @@ namespace IOHC {
     using CallbackFunction = Delegate<bool(iohcPacket *iohc)>;
 
     // Déclaration de la fonction FHSSTimer (utilisée par AdaptiveFHSS)
-    void FHSSTimer(iohcRadio *iohc_radio);
+    // void FHSSTimer(iohcRadio *iohc_radio);
 
     class iohcRadio {
-        friend class AdaptiveFHSS; // Permet à AdaptiveFHSS d'accéder aux membres privés
-        friend class FHSSCalibration;
+        // friend class AdaptiveFHSS; // Permet à AdaptiveFHSS d'accéder aux membres privés
+        // friend class FHSSCalibration;
     public:
         static iohcRadio *getInstance();
 
@@ -74,8 +74,6 @@ namespace IOHC {
             //     vSemaphoreDelete(txQueue_mutex);
             if (tx_mutex)
                 vSemaphoreDelete(tx_mutex);
-            if (fhss_state_mutex)
-                vSemaphoreDelete(fhss_state_mutex);
             if (txQueue_binary_sem)
                 vSemaphoreDelete(txQueue_binary_sem);
         };
@@ -103,55 +101,51 @@ namespace IOHC {
             }
         }
 
-        // États de verrouillage FHSS
-        enum class FHSSLockReason {
-            NONE = 0, // Pas de verrouillage, hopping libre
-            PREAMBLE_DETECTED, // Préambule détecté
-            RECEIVING, // Réception en cours
-            TRANSMITTING, // Transmission en cours
-            WAITING_RESPONSE, // En attente d'une réponse après TX
-            MANUAL_LOCK // Verrouillage manuel
-        };
+        // // États de verrouillage FHSS
+        // enum class FHSSLockReason {
+        //     NONE = 0, // Pas de verrouillage, hopping libre
+        //     PREAMBLE_DETECTED, // Préambule détecté
+        //     RECEIVING, // Réception en cours
+        //     TRANSMITTING, // Transmission en cours
+        //     WAITING_RESPONSE, // En attente d'une réponse après TX
+        //     MANUAL_LOCK // Verrouillage manuel
+        // };
+        //
+        // static const char *fhssLockReasonToString(FHSSLockReason reason) {
+        //     switch (reason) {
+        //         case FHSSLockReason::NONE: return "NONE";
+        //         case FHSSLockReason::PREAMBLE_DETECTED: return "PREAMBLE";
+        //         case FHSSLockReason::RECEIVING: return "RECEIVING";
+        //         case FHSSLockReason::TRANSMITTING: return "TRANSMITTING";
+        //         case FHSSLockReason::WAITING_RESPONSE: return "WAITING_RESPONSE";
+        //         case FHSSLockReason::MANUAL_LOCK: return "MANUAL";
+        //         default: return "UNKNOWN";
+        //     }
+        // }
+        // enum class FHSSState {
+        //     SCANNING,      // En train de scanner les fréquences
+        //     PREAMBLE_DETECTED, // Préambule détecté, verrouillé sur fréquence
+        //     RECEIVING,     // En train de recevoir un payload
+        //     PROCESSING,    // Traitement du paquet (ne bloque pas FHSS)
+        //     TRANSMITTING   // En transmission
+        // };
 
-        static const char *fhssLockReasonToString(FHSSLockReason reason) {
-            switch (reason) {
-                case FHSSLockReason::NONE: return "NONE";
-                case FHSSLockReason::PREAMBLE_DETECTED: return "PREAMBLE";
-                case FHSSLockReason::RECEIVING: return "RECEIVING";
-                case FHSSLockReason::TRANSMITTING: return "TRANSMITTING";
-                case FHSSLockReason::WAITING_RESPONSE: return "WAITING_RESPONSE";
-                case FHSSLockReason::MANUAL_LOCK: return "MANUAL";
-                default: return "UNKNOWN";
-            }
-        }
-        enum class FHSSState {
-            SCANNING,      // En train de scanner les fréquences
-            PREAMBLE_DETECTED, // Préambule détecté, verrouillé sur fréquence
-            RECEIVING,     // En train de recevoir un payload
-            PROCESSING,    // Traitement du paquet (ne bloque pas FHSS)
-            TRANSMITTING   // En transmission
-        };
+        // volatile FHSSState fhssState = FHSSState::SCANNING;
+        // // Méthodes pour gérer l'état FHSS
+        // void setFHSSState(FHSSState newState);
+        // FHSSState getFHSSState() const;
 
-        volatile FHSSState fhssState = FHSSState::SCANNING;
-        // Méthodes pour gérer l'état FHSS
-        void setFHSSState(FHSSState newState);
-        FHSSState getFHSSState() const;
-
-        static const char *fhssStateToString(FHSSState state);
-
-        uint64_t getAdaptiveTimeout(FHSSLockReason reason) const;
-
-        void lockFHSS(FHSSLockReason reason);
-        void unlockFHSS(FHSSLockReason reason);
-        void forceUnlockFHSS();
-
-        void handleFHSSTimeout();
-
-        void checkFHSSTimeout();
-        void updateFHSSActivity();
+        // static const char *fhssStateToString(FHSSState state);
+        // uint64_t getAdaptiveTimeout(FHSSLockReason reason) const;
+        // void lockFHSS(FHSSLockReason reason);
+        // void unlockFHSS(FHSSLockReason reason);
+        // void forceUnlockFHSS();
+        // void handleFHSSTimeout();
+        // void checkFHSSTimeout();
+        // void updateFHSSActivity();
 
         // Utiliser atomic au lieu de sémaphore
-        volatile FHSSLockReason fhssLockReason = FHSSLockReason::NONE;
+        // volatile FHSSLockReason fhssLockReason = FHSSLockReason::NONE;
         // Flag pour indiquer qu'on attend une réponse après envoi
         volatile bool expectingResponse = false;
         // Timeout pour déverrouiller automatiquement si pas d'activité
@@ -160,21 +154,17 @@ namespace IOHC {
         // Queue : utiliser une queue atomique simple (pas de sémaphore)
         volatile bool txQueue_busy = false;  // Simple spinlock
 
-        SemaphoreHandle_t fhss_state_mutex = nullptr;
+        // SemaphoreHandle_t fhss_state_mutex = nullptr;
 
-        static constexpr uint32_t FHSS_UNLOCK_TIMEOUT_MS = 6 * 47; // Sans activité = unlock
+        // static constexpr uint32_t FHSS_UNLOCK_TIMEOUT_MS = 6 * 47; // Sans activité = unlock
 
 
         void start(uint8_t num_freqs, uint32_t *scan_freqs, uint32_t scanTimeUs, CallbackFunction rxCallback, CallbackFunction txCallback);
 
         bool send(std::vector<iohcPacket *> &TxPackets);
-
         static void setRadioState(RadioState newState);
-
         static void processNextPacketCallback(iohcRadio *radio);
-
         void startTransmission();
-
         bool processNextPacket();
         void stopTransmission();
         void clearTxQueue();
@@ -213,9 +203,9 @@ namespace IOHC {
         bool isSending = false;
 
     //private:
-        void setExpectingResponse(bool expecting, uint32_t timeoutMs);
+        // void setExpectingResponse(bool expecting, uint32_t timeoutMs);
 
-        AdaptiveFHSS *adaptiveFHSS = nullptr;
+        // AdaptiveFHSS *adaptiveFHSS = nullptr;
 
         iohcRadio();
 
@@ -251,11 +241,9 @@ namespace IOHC {
         volatile uint32_t tickCounter = 0;
         volatile uint8_t txCounter = 0;
 
-
-#if defined(ESP32)
         TimersUS::TickerUsESP32 TickTimer;
         TimersUS::TickerUsESP32 Ticker;
-#endif
+
         iohcPacket *new_packet{};
 
         CallbackFunction rxCB = nullptr;

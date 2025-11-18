@@ -74,7 +74,7 @@ namespace IOHC {
             _radioInstance = iohcRadio::getInstance();
         }
         iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
-        _radioInstance->adaptiveFHSS->prepareForConversation();
+        // _radioInstance->adaptiveFHSS->prepareForConversation();
 
         // Emulates device button press
         switch (cmd) {

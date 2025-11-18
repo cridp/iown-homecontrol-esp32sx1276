@@ -47,6 +47,20 @@ namespace Radio {
     // digitalWrite() prend entre 1.3 et 4.2 µs selon contention.
 #define NSS_LOW  (GPIO.out_w1tc = (1<<RADIO_NSS))
 #define NSS_HIGH (GPIO.out_w1ts = (1<<RADIO_NSS))
+
+    // spinlock/mutex pour SPI (ISR-safe usage: on n'appelle pas le mutex en ISR)
+    static portMUX_TYPE spiMux = portMUX_INITIALIZER_UNLOCKED;
+
+    void IRAM_ATTR spi_select() {
+        portENTER_CRITICAL(&spiMux);
+        GPIO.out_w1tc = (1 << RADIO_NSS);
+    }
+
+    void IRAM_ATTR spi_deselect() {
+        GPIO.out_w1ts = (1 << RADIO_NSS);
+        portEXIT_CRITICAL(&spiMux);
+    }
+
 /**
  * The function `SPI_beginTransaction` begins a SPI transaction and sets the RADIO_NSS pin to LOW.
  */
@@ -178,10 +192,10 @@ void setPreambleLength(uint16_t preambleLen) {
         writeByte(REG_PARAMP, RF_PARAMP_MODULATIONSHAPING_00 | RF_PARAMP_0015_US); //_0012_US); //_0031_US); //
         // Setting Preamble Length
         writeByte(REG_PREAMBLEMSB, PREAMBLE_MSB);
-        writeByte(REG_PREAMBLELSB, 0x80); //PREAMBLE_LSB);
+        writeByte(REG_PREAMBLELSB, 0x34); // PREAMBLE_LSB);
 
         // FIFO Threshold - currently useless
-        writeByte(REG_FIFOTHRESH, RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
+        writeByte(REG_FIFOTHRESH, 0x88); //0x08); // RF_FIFOTHRESH_TXSTARTCONDITION_FIFONOTEMPTY);
 
         // ---------------- RX Register init section ----------------
         // Set lenght checking if passed as parameter
@@ -190,8 +204,12 @@ void setPreambleLength(uint16_t preambleLen) {
         // RSSI precision +-2dBm
         writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_4); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
+        //L'AFC (Automatic Frequency Control) tente de compenser les dérives de fréquence.
+        //Pendant un saut FHSS, cela peut être contre-productif car le saut de fréquence
+        //peut être interprété comme une dérive massive, amenant l'AFC à "lutter" contre le saut.
+        //Désactiver (RF_RXCONFIG_AFCAUTO_OFF). Cela pourrait stabiliser la réception juste après un saut.
         writeByte(REG_RXCONFIG, // AGCAUTO_OFF not functional AFCAUTO_OFF change nothing
-            RF_RXCONFIG_AFCAUTO_ON | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON | RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK);
+            RF_RXCONFIG_AFCAUTO_OFF | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON | RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK);
 
         // 250KHz BW with AFC
         writeByte(REG_AFCBW, 0x10); // RF_AFCBW_MANTAFC_16 | RF_AFCBW_EXPAFC_1); // 333333 Hz
@@ -203,7 +221,7 @@ void setPreambleLength(uint16_t preambleLen) {
         // Enables Preamble Detect, 2 bytes
         writeByte(
             REG_PREAMBLEDETECT,
-            RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_12);
+            RF_PREAMBLEDETECT_DETECTOR_ON | RF_PREAMBLEDETECT_DETECTORSIZE_2 | RF_PREAMBLEDETECT_DETECTORTOL_10);
 
         writeByte(REG_RSSITHRESH, RF_RSSITHRESH_THRESHOLD);
 
@@ -252,7 +270,6 @@ void setPreambleLength(uint16_t preambleLen) {
         // Enabling Sync word - Size must be set to SYNCSIZE_2
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
-
         TxReady;
     }
 
@@ -260,7 +277,6 @@ void setPreambleLength(uint16_t preambleLen) {
         // Enabling Sync word - Size must be set to SYNCSIZE_3
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-
         RxReady;
         /*
                 // Start Sequencer
@@ -274,11 +290,9 @@ void setPreambleLength(uint16_t preambleLen) {
         for (uint8_t i = 0; i < size; ++i) {
             buffer[i] = readByte(regAddr + i);
         }
-    } // Clears FIFO at startup to avoid dirty reads
-    // void clearBuffer() {
-    //     for (uint8_t idx=0; idx <= 64; ++idx)
-    //         readByte(REG_FIFO);
-    // }
+    }
+
+    // Clears FIFO at startup to avoid dirty reads
     void clearBuffer() {
         // Taille du buffer FIFO du SX1276
         const uint8_t bufferSize = 64;
@@ -324,28 +338,28 @@ void setPreambleLength(uint16_t preambleLen) {
     }
 
     void IRAM_ATTR readBytes(uint8_t regAddr, uint8_t *out, uint8_t len) {
-        NSS_LOW; //SPI_beginTransaction();
+        spi_select(); //NSS_LOW; //SPI_beginTransaction();
         SPI.transfer(regAddr); // Send Address
         for (uint8_t idx = 0; idx < len; ++idx) {
             out[idx] = SPI.transfer(regAddr); // Get data
         }
-        NSS_HIGH; //SPI_endTransaction();
+        spi_deselect(); //NSS_HIGH; //SPI_endTransaction();
     }
 
     void IRAM_ATTR writeByte(uint8_t regAddr, uint8_t data) {//, bool check) {
         // return writeBurst(regAddr, &data, 1);//, check);
-        NSS_LOW;
+        spi_select(); //NSS_LOW;
         SPI.write(regAddr | 0x80);
         // ets_delay_us(SPI_RW_DELAY);
         SPI.write/*transfer*/(data);
-        NSS_HIGH;
+        spi_deselect(); //NSS_HIGH;
     }
 
     void IRAM_ATTR writeBurst(uint8_t addr, uint8_t *data, uint8_t len) {
-        NSS_LOW;
+        spi_select(); //NSS_LOW;
         SPI.write(addr | 0x80);
         SPI.transferBytes((uint8_t*)data, nullptr, len);
-        NSS_HIGH;
+        spi_deselect(); //NSS_HIGH;
     }
 
     uint16_t IRAM_ATTR readWord(uint8_t regAddr) {
