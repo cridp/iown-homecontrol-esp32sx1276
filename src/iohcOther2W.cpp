@@ -65,6 +65,8 @@ namespace IOHC {
         packet->payload.packet.header.CtrlByte1.asByte += toSend.size();
         memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
         packet->buffer_length = toSend.size() + 9;
+
+        packet->repeatTime = 75;
     }
 
 
@@ -90,7 +92,7 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend, bec);
                     packets2send.back()->payload.packet.header.cmd = 0x2e;
                     bec += 0x3B;
-                    packets2send.back()->repeatTime = 60;
+                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
@@ -115,7 +117,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
 
-                    packets2send.back()->repeatTime = 47;
+                    // packets2send.back()->repeatTime = 50;
                 }
 
                 IOHC::lastCmd = GET_NAME_0x50;
@@ -160,7 +162,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
 
-                    packets2send.back()->repeatTime = 47;
+                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
@@ -191,7 +193,7 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to/*slave_to*/, 3);
 
-                packets2send.back()->repeatTime = 50;
+                // packets2send.back()->repeatTime = 50;
                 _radioInstance->send(packets2send);
                 break;
             }
@@ -237,7 +239,7 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.target, broadcast, 3);
 
-                    packets2send.back()->repeatTime = 47;
+                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
@@ -327,7 +329,7 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     packets2send.back()->repeat = 4;
-                    packets2send.back()->repeatTime = 47;
+                    // packets2send.back()->repeatTime = 50;
                     packets2send.back()->frequency = CHANNEL2;
                 }
                 // Envoyer (les paquets sont copiés, il faut les libérer après)
@@ -356,7 +358,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
 
-                    packets2send.back()->repeatTime = 47;
+                    // packets2send.back()->repeatTime = 50;
 
                 }
                 _radioInstance->send(packets2send);
@@ -393,7 +395,7 @@ namespace IOHC {
 
                         discover.frequency = CHANNEL2;
                         discover.repeat = 4;
-                        discover.repeatTime = 47;
+                        // discover.repeatTime = 50;
                         _radioInstance->sendSingle(&discover);
                 }
                 break;
@@ -495,7 +497,7 @@ namespace IOHC {
                         memcpy(packet->payload.packet.header.target, SALONRUE, 3);
                         // }
 
-                        packet->repeatTime = 47;
+                        // packet->repeatTime = 50;
                         packets2send.push_back(packet);
                     }
                     toSend.clear();

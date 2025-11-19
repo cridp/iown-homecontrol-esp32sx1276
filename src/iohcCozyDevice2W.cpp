@@ -51,7 +51,7 @@ namespace IOHC {
         memcpy(packet->payload.buffer + 9, toSend.data(), toSend.size());
         packet->buffer_length = toSend.size() + 9;
 
-        packet->repeatTime = 47;
+        packet->repeatTime = 50;
     }
 
     /**
@@ -169,7 +169,7 @@ namespace IOHC {
                     memcpy(packet->payload.packet.header.target, addresses.at(dest).data(), 3);
 
                     dest++;
-                    packet->repeatTime = 75;
+                    packet->repeatTime = 50;
                     packets2send.push_back(packet);
                 }
                 _radioInstance->send(packets2send);

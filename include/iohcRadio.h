@@ -225,7 +225,7 @@ namespace IOHC {
 
         // Mutex pour last1wPacket si nécessaire
         SemaphoreHandle_t lastPacketMutex;
-        bool receive(bool stats, RadioIrqEvent evt);
+        bool receive(bool stats, const RadioIrqEvent &evt);
 
         bool isResponsePacket(iohcPacket *packet);
 

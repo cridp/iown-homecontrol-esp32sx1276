@@ -116,22 +116,21 @@ namespace IOHC {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 
-    void handlePreambleDetected(iohcRadio* radio, RadioIrqEvent evt) {
+    void handlePreambleDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_preamble_detected = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
     }
 
-    void handlePreambleLost(iohcRadio* radio, RadioIrqEvent evt) {
+    void handlePreambleLost(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_sync_detected = evt.timestamp_us;
         // Seulement si on était en train de recevoir un préambule
             radio->setRadioState(iohcRadio::RadioState::RX);
-
             // Remettre la radio en état normal
-            Radio::setRx();
+            // Radio::setRx();
         // }
     }
 
-    void handlePayloadReady(iohcRadio* radio, RadioIrqEvent evt) {
+    void handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_payload_ready = evt.timestamp_us;
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
@@ -139,7 +138,7 @@ namespace IOHC {
             }
     }
 
-    void handlePacketSent(iohcRadio* radio, RadioIrqEvent evt) {
+    void handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
         Radio::clearFlags();
         // Remettre la radio en mode RX
         Radio::setRx();
@@ -150,7 +149,7 @@ namespace IOHC {
     * tickerCounter isn't called by the ISR.
     */
     void handle_interrupt_task(void *pvParameters) {
-        iohcRadio *radio = static_cast<iohcRadio*>(pvParameters);
+        auto radio = static_cast<iohcRadio*>(pvParameters);
         RadioIrqEvent evt;
         // RF_IRQFLAGS1_0xDB -> MODEREADY RXREADY PLLLOCK RSSI PREAMBLEDETECT SYNCADDRESSMATCH
         // RF_IRQFLAGS2_0x26 -> FIFOLEVEL PAYLOADREADY CRCOK
@@ -432,12 +431,11 @@ namespace IOHC {
             pkt->frequency = radio->scan_freqs[radio->currentFreqIdx];
         }
 
-        Radio::setStandby();
-        Radio::clearFlags();
-
-        Radio::writeBurst(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
-        Radio::setTx();
+        // Radio::setStandby();
+        // Radio::clearFlags();
         radio->setRadioState(RadioState::TX);
+        Radio::setTx();
+        Radio::writeBurst(REG_FIFO, pkt->payload.buffer, pkt->buffer_length);
         // There is no need to maintain radio locked between packets transmission unless clearly asked
         txMode = pkt->lock;
 
@@ -509,7 +507,7 @@ namespace IOHC {
 
 void iohcRadio::packetProcessorTask(void* parameter) {
 
-    iohcRadio* radio = static_cast<iohcRadio*>(parameter);
+    auto radio = static_cast<iohcRadio*>(parameter);
     iohcPacket receivedPacket;
 
     ets_printf("Packet processor task started\n");
@@ -533,18 +531,18 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 rejectReason = "Too short";
             }
 
-            // if (shouldDecode)
-            //     if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
+            if (shouldDecode)
+            if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             //         // Vérifier les doublons
             //         if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
             //             rejectReason = "Duplicate";
             //             shouldDecode = false;
             //         } else {
             //             // Sauvegarder le nouveau paquet
-            //             last1wPacket = receivedPacket;
+                         last1wPacket = receivedPacket;
             //         }
-            //         xSemaphoreGive(radio->lastPacketMutex);
-            //     }
+            xSemaphoreGive(radio->lastPacketMutex);
+            }
 
             // Traiter le paquet
             // **TOUJOURS logger, même les rejets**
@@ -567,7 +565,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     }
 }
 
-    bool IRAM_ATTR iohcRadio::receive(bool stats, RadioIrqEvent evt) {
+    bool IRAM_ATTR iohcRadio::receive(bool stats, const RadioIrqEvent &evt) {
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // **CRITIQUE: Toujours commencer par mettre à jour l'état FHSS**
         // adaptiveFHSS->onPacketActivity();
@@ -591,11 +589,11 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         // Lire les données
         while (Radio::dataAvail()) {
-            if (tempRxPacket.buffer_length < MAX_FRAME_LEN) {
+            // if (tempRxPacket.buffer_length < MAX_FRAME_LEN) {
                 tempRxPacket.payload.buffer[tempRxPacket.buffer_length++] = Radio::readByte(REG_FIFO);
-            } else {
-                Radio::readByte(REG_FIFO);
-            }
+            // } else {
+                // Radio::readByte(REG_FIFO);
+            // }
         }
 
         // **CRITIQUE: Toujours compléter le cycle FHSS même pour les paquets rejetés**
@@ -623,12 +621,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
-    }
-
-    // HELPER : Détecter si un paquet est une réponse
-    bool iohcRadio::isResponsePacket(iohcPacket *packet) {
-        if (!packet) return false;
-        return (packet->payload.packet.header.cmd == IOHC::lastCmd + 1);
     }
 
     /**
@@ -707,7 +699,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         // Start packet timer
         uint32_t repeatTime = currentTxPacket->repeatTime;
-        if (repeatTime == 0) repeatTime = 100;  // Défaut si non spécifié
+        if (repeatTime == 0) repeatTime = 50;  // Défaut si non spécifié
 
         // Reattach the Ticker
         Ticker.attach_ms(repeatTime, packetSender, this);
