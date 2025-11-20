@@ -363,6 +363,10 @@ namespace IOHC {
                 }
                 _radioInstance->send(packets2send);
                 break;
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
             }
             case Other2WButton::dynamite: {
                 Cmd::pairMode = true;
