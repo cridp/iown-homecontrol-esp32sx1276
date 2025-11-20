@@ -125,6 +125,10 @@ namespace IOHC {
                 cozyDevice2W->memorizeSend.memorizedData = {};
 
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
 
@@ -401,6 +405,10 @@ namespace IOHC {
                         discover.repeat = 4;
                         // discover.repeatTime = 50;
                         _radioInstance->sendSingle(&discover);
+                }
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
                 }
                 break;
             }
