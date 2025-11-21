@@ -76,7 +76,6 @@ namespace IOHC {
             _radioInstance = iohcRadio::getInstance();
         }
         iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
-        // _radioInstance->adaptiveFHSS->prepareForConversation();
 
         // Emulates device button press
         switch (cmd) {
@@ -96,6 +95,10 @@ namespace IOHC {
                 }
 
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
 
@@ -170,6 +173,10 @@ namespace IOHC {
                 }
 
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
             case Other2WButton::custom60: {
@@ -199,6 +206,10 @@ namespace IOHC {
 
                 // packets2send.back()->repeatTime = 50;
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
             case Other2WButton::discover28: {
@@ -247,6 +258,10 @@ namespace IOHC {
                 }
 
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
             case Other2WButton::discover2A: {
@@ -338,6 +353,10 @@ namespace IOHC {
                 }
                 // Envoyer (les paquets sont copiés, il faut les libérer après)
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
 
                 break;
             }
@@ -516,6 +535,10 @@ namespace IOHC {
                 }
                 // ets_printf("valid %u\n", counter);
                 _radioInstance->send(packets2send);
+                // Libérer les paquets originaux
+                for (auto* p : packets2send) {
+                    delete p;
+                }
                 break;
             }
             default: break;

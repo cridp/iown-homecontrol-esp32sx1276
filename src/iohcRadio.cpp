@@ -608,7 +608,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         // Ne pas attendre le traitement complet
         // setFHSSState(FHSSState::PROCESSING);
         // Remettre en RX immédiatement
-        Radio::setRx();
+        // Radio::setRx(); // ?
         setRadioState(RadioState::RX);
 
         // Déverrouiller le FHSS pour permettre le hopping
