@@ -75,7 +75,6 @@ uint32_t frequencies[] = FREQS2SCAN;
 
 using namespace IOHC;
 
-
 void setup() {
     esp_log_level_set("*", ESP_LOG_VERBOSE);    // Or VERBOSE for ESP_LOGV
     Serial.begin(115200);    //Start serial connection for debug and manual input

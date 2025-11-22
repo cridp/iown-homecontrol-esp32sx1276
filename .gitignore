@@ -14,7 +14,7 @@ include/user_config.h
 test/variousHeater
 src/CMakeLists.txt
 /.vscode/
-/lib/
+/archives/lib/
 /build/
 /archives/
 *.org

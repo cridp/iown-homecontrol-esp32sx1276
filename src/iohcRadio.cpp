@@ -64,7 +64,7 @@ namespace IOHC {
     iohcRadio *iohcRadio::_iohcRadio = nullptr;
     // volatile bool iohcRadio::_g_preamble = false;
     // volatile bool iohcRadio::_g_payload = false;
-    volatile uint32_t iohcRadio::_g_payload_millis = 0L;
+    // volatile uint32_t iohcRadio::_g_payload_millis = 0L;
     uint8_t iohcRadio::_flags[2] = {0, 0};
     volatile bool iohcRadio::f_lock_hop = false;
     volatile bool iohcRadio::send_lock = false;
@@ -197,25 +197,25 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
         // Configurer les interruptions avec pull-down pour éviter les faux déclenchements
-        // pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
-        // pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
+         pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
+         pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
         // // Attacher les interruptions avec debounce matériel
-        // attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
-        // attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
+         attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
+         attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
-        gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-        gpio_config_t io_conf = {};
-        io_conf.intr_type = GPIO_INTR_POSEDGE;
-        io_conf.mode = GPIO_MODE_INPUT;
-        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
-        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-        gpio_config(&io_conf);
-        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
-        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
-        io_conf.intr_type = GPIO_INTR_ANYEDGE;
-        gpio_config(&io_conf);
-        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
+//        gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+//        gpio_config_t io_conf = {};
+//        io_conf.intr_type = GPIO_INTR_POSEDGE;
+//        io_conf.mode = GPIO_MODE_INPUT;
+//        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
+//        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+//        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+//        gpio_config(&io_conf);
+//        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
+//        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
+//        io_conf.intr_type = GPIO_INTR_ANYEDGE;
+//        gpio_config(&io_conf);
+//        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
 
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");

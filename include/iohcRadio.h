@@ -233,7 +233,7 @@ namespace IOHC {
 
         static iohcRadio *_iohcRadio;
         static uint8_t _flags[2];
-        volatile static unsigned long _g_payload_millis;
+        // volatile static unsigned long _g_payload_millis;
 
         volatile static bool send_lock;
         volatile static bool txMode;

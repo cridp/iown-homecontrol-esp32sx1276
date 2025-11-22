@@ -94,7 +94,7 @@ namespace IOHC {
 
         std::string description = data->at(1).c_str();
 
-        auto it = std::ranges::find_if(remotes,  [&] ( const remote &r  ) {
+        auto it = std::find_if(remotes.begin(), remotes.end(),  [&] ( const remote &r  ) {
                  return description == r.description;
               } );
 

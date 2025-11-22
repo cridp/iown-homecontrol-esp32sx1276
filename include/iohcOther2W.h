@@ -20,6 +20,7 @@
 #include <algorithm>
 #include <string>
 #include <vector>
+
 #include <iohcDevice.h>
 #include <iohcSystemTable.h>
 #include <tokens.h>
@@ -97,13 +98,13 @@ namespace IOHC {
 
         std::vector<Device> devices;
         std::string getDescription(const Device &device)    {
-            const auto it = std::ranges::find(devices, device);
+            const auto it = std::find(devices.begin(), devices.end(), device);
             if ( it != devices.end())
                 return it->_description;
             return "";
         }
         bool addOrUpdateDevice(const Device &device) {
-            const auto it = std::ranges::find(devices, device);
+            auto it = std::find(devices.begin(), devices.end(), device);
             if (it != devices.end()) {
                 bool modified = false;
                 if (it->_description != device._description && device._description != "NONAME") {

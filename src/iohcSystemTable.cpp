@@ -17,7 +17,7 @@
 #include <iohcSystemTable.h>
 #include <LittleFS.h>
 #include <ArduinoJson.h>
-#include <ranges>
+
 
 #include <utility>
 
@@ -107,10 +107,10 @@ namespace IOHC {
         fs::File f = LittleFS.open(IOHC_SYS_TABLE, "a+");
         /*Dynamic*/JsonDocument doc; //(2048);
 
-        for (auto [fst, snd] : _objects) {
-            auto jobj = doc[fst].to<JsonObject>();
+        for (auto const& [key, val] : _objects) {
+            auto jobj = doc[key].to<JsonObject>();
 
-            jobj["values"] = snd->serialize();
+            jobj["values"] = val->serialize();
         }
         serializeJson(doc, f);
         f.close();
@@ -121,13 +121,13 @@ namespace IOHC {
 
     void iohcSystemTable::dump1W()  {
         Serial.printf("********************** 1W sysTable objects ***********************\n");
-        for (auto val: _objects | std::views::values)
+        for (auto const& [key, val] : _objects)
             val->dump1W();
         Serial.printf("\n");
     }
     void iohcSystemTable::dump2W()  {
         Serial.printf("********************** 2W sysTable objects ***********************\n");
-        for (auto val: _objects | std::views::values)
+        for (auto const& [key, val] : _objects)
             val->dump2W();
         Serial.printf("\n");
     }
