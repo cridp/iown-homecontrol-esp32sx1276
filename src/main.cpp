@@ -142,7 +142,7 @@ void setup() {
 * @param packet * The packet you want to forge
 * @param toSend The data that will be added to the packet
 */
-void IRAM_ATTR forgePacket(iohcPacket* packet, const std::vector<uint8_t> &toSend) {
+void forgePacket(iohcPacket* packet, const std::vector<uint8_t> &toSend) {
     IOHC::packetStamp = esp_timer_get_time();
 
     // Common Flags

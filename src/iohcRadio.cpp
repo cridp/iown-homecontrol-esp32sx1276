@@ -116,18 +116,18 @@ namespace IOHC {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 
-    void handleSynchroDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
+    void IRAM_ATTR handleSynchroDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_sync_detected = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
     }
 
-    void handleSynchroLost(iohcRadio* radio, const RadioIrqEvent &evt) {
+    void IRAM_ATTR handleSynchroLost(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_sync_lost = evt.timestamp_us;
             // Only if we were receiving a preamble
             radio->setRadioState(iohcRadio::RadioState::RX);
     }
 
-    void handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
+    void IRAM_ATTR handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_payload_ready = evt.timestamp_us;
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
@@ -135,7 +135,7 @@ namespace IOHC {
             }
     }
 
-    void handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
+    void IRAM_ATTR handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
         Radio::clearFlags();
         // Return the radio to RX mode
         Radio::setRx();

@@ -32,7 +32,7 @@ namespace IOHC {
     static TimersUS::TickerUsESP32 positionTicker;
     static constexpr uint32_t DEFAULT_TRAVEL_TIME_MS = 10000;
 
-    static void positionTickerCallback() {
+    static void IRAM_ATTR positionTickerCallback() {
         iohcRemote1W *inst = iohcRemote1W::getInstance();
         if (inst) {
             inst->updatePositions();
