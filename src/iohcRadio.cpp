@@ -357,7 +357,7 @@ namespace IOHC {
 
         txCounter = 0;
         size_t packetsAdded = 0;
-        // Ajouter chaque paquet à la queue (en faisant une COPIE)
+        // Add each packet to the queue (making a COPY)
         for (auto *pkt: TxPackets) {
             if (pkt) {
                 // Utiliser la factory
@@ -421,7 +421,7 @@ namespace IOHC {
 
         digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
-        // Verrouiller pour transmission
+        // Lock for transmission
         txMode = true;
 
         iohcPacket *pkt = radio->currentTxPacket->packet;
@@ -456,24 +456,24 @@ namespace IOHC {
         if (pkt->repeat == 0) {
             radio->Ticker.detach();
 
-            // Vérifier s'il y a un délai avant le prochain paquet
+            // Check if there is a delay before the next packet
             bool hasNextPacket = false;
             uint32_t nextDelay = 0;
 
-            // VÉRIFICATION RAPIDE sans modifier la queue
+            // QUICK CHECK without modifying the queue
             if (!radio->txQueue_busy && !radio->txQueue.empty()) {
                 hasNextPacket = true;
                 nextDelay = radio->txQueue.front()->repeatTime;
             }
 
             if (hasNextPacket && nextDelay > 0) {
-                // Délai avant le prochain paquet
+                // Delay before next packet
                 radio->Ticker.attach_ms(nextDelay, processNextPacketCallback, radio);
             } else if (hasNextPacket) {
-                // Pas de délai, traiter immédiatement
+                // No delay, process immediately
                 radio->processNextPacket();
             } else {
-                // Plus de paquets à envoyer
+                // No more packets to send
                 txMode = false;
 
                 radio->stopTransmission();
@@ -649,7 +649,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     }
 
     /**
-    * Callback statique pour le délai entre paquets
+    * Static callback for inter-packet delay
     */
     void IRAM_ATTR iohcRadio::processNextPacketCallback(iohcRadio *radio) {
         if (radio) {
@@ -658,7 +658,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     }
 
     /**
-    * Démarre la transmission si pas déjà en cours
+    * Starts transmission if not already in progress
     */
     void iohcRadio::startTransmission() {
         if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(10)) != pdTRUE) {
@@ -669,7 +669,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             isSending = true;
             xSemaphoreGive(tx_mutex);
 
-            // Lancer le premier paquet
+            // Launch the first packet
             processNextPacket();
         } else {
             xSemaphoreGive(tx_mutex);
@@ -702,7 +702,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
         // Start packet timer
         uint32_t repeatTime = currentTxPacket->repeatTime;
-        if (repeatTime == 0) repeatTime = 50;  // Défaut si non spécifié
+        if (repeatTime == 0) repeatTime = 50;  // Default if not specified
 
         // Reattach the Ticker
         Ticker.attach_ms(repeatTime, packetSender, this);
@@ -741,7 +741,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         while (!txQueue.empty()) {
             const TxPacketWrapper *wrapper = txQueue.front();
             txQueue.pop_front();
-            delete wrapper; // Le destructeur libère la mémoire
+            delete wrapper; // The destructor frees the memory
         }
     }
 
