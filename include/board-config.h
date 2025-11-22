@@ -102,8 +102,6 @@
 #define SYNC_BYTE_1                                 0xff
 #define SYNC_BYTE_2                                 0x33    // Sync word - Size must be set to 2; first byte 0xff then 0x33 size-1 times
 
-//#define SYNC_BYTE_2_ENC                             0xB3    // Sync word Inverted + Encoded with start & stop bits
-
 #define CHANNEL1  868250000 //2W
 #define CHANNEL2  868950000 //1W 2W
 #define CHANNEL3  869850000 //2W
