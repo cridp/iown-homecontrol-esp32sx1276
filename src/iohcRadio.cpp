@@ -30,13 +30,13 @@ volatile uint32_t timestamp_payload_ready = 0;
 
 
 // trame typique FSK : preamble (variable) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B).
-#define LONG_PREAMBLE_MS 128  // 0x80 52-206 ms
-#define SHORT_PREAMBLE_MS 16 // 11.458 ms
+// #define LONG_PREAMBLE_MS 128  // 0x80 52-206 ms
+// #define SHORT_PREAMBLE_MS 16 // 11.458 ms
 // Timeouts adaptatifs basés sur le débit
 // airtime (s) = ( (preamble_bytes + 3SYNC + 2HEAD + payload_bytes + 2CRC) * 8 ) / bitrate
-const uint32_t bitrate = 38400; // 38.4 kbps
-const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 + 2 + MAX_FRAME_LEN + 2) * 8;
-const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
+// const uint32_t bitrate = 38400; // 38.4 kbps
+// const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 + 2 + MAX_FRAME_LEN + 2) * 8;
+// const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
 
 TaskHandle_t IOHC::iohcRadio::txTaskHandle = nullptr;
 
