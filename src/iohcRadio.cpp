@@ -199,7 +199,7 @@ namespace IOHC {
         // Configurer les interruptions avec pull-down pour éviter les faux déclenchements
          pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
          pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
-        // // Attacher les interruptions avec debounce matériel
+        // Attacher les interruptions avec debounce matériel
          attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
          attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
