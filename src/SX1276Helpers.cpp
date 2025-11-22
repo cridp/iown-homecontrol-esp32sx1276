@@ -31,7 +31,7 @@
 #endif
 
 namespace Radio {
-    SPISettings SpiSettings(4000000, MSBFIRST, SPI_MODE0);
+    SPISettings SpiSettings(8000000, MSBFIRST, SPI_MODE0);
 
     // Simplified bandwidth registries evaluation
     std::map<uint8_t, regBandWidth> __bw =
@@ -53,11 +53,11 @@ namespace Radio {
 
     void IRAM_ATTR spi_select() {
         portENTER_CRITICAL(&spiMux);
-        GPIO.out_w1tc = (1 << RADIO_NSS);
+        NSS_LOW; //GPIO.out_w1tc = (1 << RADIO_NSS);
     }
 
     void IRAM_ATTR spi_deselect() {
-        GPIO.out_w1ts = (1 << RADIO_NSS);
+        NSS_HIGH; //GPIO.out_w1ts = (1 << RADIO_NSS);
         portEXIT_CRITICAL(&spiMux);
     }
 
@@ -229,6 +229,7 @@ void setPreambleLength(uint16_t preambleLen) {
         writeByte(REG_PACONFIG, RF_PACONFIG_PASELECT_MASK | RF_PACONFIG_PASELECT_PABOOST);
         writeByte(REG_OCP, RF_OCP_ON | RF_OCP_TRIM_240_MA); // 0x37); //200mA //0x3B 240mA
         writeByte(REG_PADAC, 0x87); //  RF_PADAC_20DBM_MASK | RF_PADAC_20DBM_ON); // turn 20dBm mode on
+
     }
 
 /**
@@ -270,14 +271,14 @@ void setPreambleLength(uint16_t preambleLen) {
         // Enabling Sync word - Size must be set to SYNCSIZE_2
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
-        TxReady;
+        // TxReady;
     }
 
     void IRAM_ATTR setRx() {
         // Enabling Sync word - Size must be set to SYNCSIZE_3
         writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
         writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-        RxReady;
+        // RxReady;
         /*
                 // Start Sequencer
                 writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);

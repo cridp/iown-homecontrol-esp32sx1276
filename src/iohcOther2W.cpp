@@ -67,6 +67,8 @@ namespace IOHC {
         packet->buffer_length = toSend.size() + 9;
 
         packet->repeatTime = 75;
+        packet->frequency = CHANNEL2;
+
     }
 
 
@@ -91,14 +93,10 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend, bec);
                     packets2send.back()->payload.packet.header.cmd = 0x2e;
                     bec += 0x3B;
-                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
 
@@ -119,8 +117,6 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
-
-                    // packets2send.back()->repeatTime = 50;
                 }
 
                 IOHC::lastCmd = GET_NAME_0x50;
@@ -128,10 +124,7 @@ namespace IOHC {
                 cozyDevice2W->memorizeSend.memorizedData = {};
 
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
 
@@ -168,15 +161,10 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, from/*gateway*/, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, to_1, 3);
-
-                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             case Other2WButton::custom60: {
@@ -204,12 +192,8 @@ namespace IOHC {
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to/*slave_to*/, 3);
 
-                // packets2send.back()->repeatTime = 50;
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             case Other2WButton::discover28: {
@@ -253,15 +237,10 @@ namespace IOHC {
                     broadcast[2] = bcast & 0xFF;          // Octet de poids faible
 
                     memcpy(packets2send.back()->payload.packet.header.target, broadcast, 3);
-
-                    // packets2send.back()->repeatTime = 50;
                 }
 
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             case Other2WButton::discover2A: {
@@ -348,15 +327,9 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     packets2send.back()->repeat = 4;
-                    // packets2send.back()->repeatTime = 50;
-                    packets2send.back()->frequency = CHANNEL2;
                 }
                 // Envoyer (les paquets sont copiés, il faut les libérer après)
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
 
                 break;
             }
@@ -380,15 +353,9 @@ namespace IOHC {
 
                     memcpy(packets2send.back()->payload.packet.header.source, d._node, 3);
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
-
-                    // packets2send.back()->repeatTime = 50;
-
                 }
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             case Other2WButton::dynamite: {
@@ -420,15 +387,10 @@ namespace IOHC {
                         memcpy(discover.payload.packet.header.source, gateway, 3);
                         memcpy(discover.payload.packet.header.target, broadcast_3b, 3);
 
-                        discover.frequency = CHANNEL2;
                         discover.repeat = 4;
-                        // discover.repeatTime = 50;
                         _radioInstance->sendSingle(&discover);
                 }
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             case Other2WButton::scanMode: {
@@ -528,22 +490,18 @@ namespace IOHC {
                         memcpy(packet->payload.packet.header.target, SALONRUE, 3);
                         // }
 
-                        // packet->repeatTime = 50;
                         packets2send.push_back(packet);
                     }
                     toSend.clear();
                 }
                 // ets_printf("valid %u\n", counter);
                 _radioInstance->send(packets2send);
-                // Libérer les paquets originaux
-                for (auto* p : packets2send) {
-                    delete p;
-                }
+
                 break;
             }
             default: break;
         } // switch (cmd)
-        //        save(); // Save Other associated devices
+        // save(); // Save Other associated devices
         // Libérer les paquets originaux
         for (auto* p : packets2send) {
             delete p;

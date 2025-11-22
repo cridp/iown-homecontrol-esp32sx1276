@@ -14,7 +14,6 @@
    limitations under the License.
  */
 
-#include <ArduinoJson.h>
 #include <board-config.h>
 #include <crypto2Wutils.h>
 #include <fileSystemHelpers.h>
@@ -27,6 +26,7 @@
 #include <iohcRemoteMap.h>
 #include <iohcSystemTable.h>
 #include <user_config.h>
+#include <ArduinoJson.h>
 #include <nvs_helpers.h>
 #include <wifi_helper.h>
 #include "LittleFS.h"

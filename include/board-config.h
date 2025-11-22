@@ -17,6 +17,8 @@
 #ifndef IOHC_BOARD_H
 #define IOHC_BOARD_H
 
+#define INTERRUPT_ATTR IRAM_ATTR
+
 #define RADIO_SX127X
 #define Regulatory_Domain_EU_868
 //#define RADIO_SX126X

@@ -24,8 +24,8 @@
 #include "iohcCozyDevice2W.h"
 
 // Timestamps pour mesures précises
-volatile uint32_t timestamp_preamble_detected = 0;
 volatile uint32_t timestamp_sync_detected = 0;
+volatile uint32_t timestamp_sync_lost = 0;
 volatile uint32_t timestamp_payload_ready = 0;
 
 
@@ -75,7 +75,7 @@ namespace IOHC {
 
     TaskHandle_t handle_interrupt;
     struct RadioIrqEvent {
-        uint8_t source;  // 0 = DIO0 (payload), 1 = DIO2 (preamble)
+        uint8_t source;  // 0 = DIO0 (payload), 1 = DIO2 (synchro)
         uint8_t edge;    // 0 = falling, 1 = rising
         uint64_t timestamp_us;
     };
@@ -107,7 +107,7 @@ namespace IOHC {
     void IRAM_ATTR handle_interrupt_fromDIO2(void* arg) {
         // Only GPIOS short ops, non blocking
         RadioIrqEvent ev;
-        ev.source = 1; // DIO2
+        ev.source = 2; // DIO2
         ev.edge = digitalRead(RADIO_PREAMBLE_DETECTED) ? 1 : 0;
         ev.timestamp_us = esp_timer_get_time();
 
@@ -116,18 +116,15 @@ namespace IOHC {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 
-    void handlePreambleDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_preamble_detected = evt.timestamp_us;
+    void handleSynchroDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
+        timestamp_sync_detected = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
     }
 
-    void handlePreambleLost(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_sync_detected = evt.timestamp_us;
-        // Seulement si on était en train de recevoir un préambule
+    void handleSynchroLost(iohcRadio* radio, const RadioIrqEvent &evt) {
+        timestamp_sync_lost = evt.timestamp_us;
+            // Only if we were receiving a preamble
             radio->setRadioState(iohcRadio::RadioState::RX);
-            // Remettre la radio en état normal
-            // Radio::setRx();
-        // }
     }
 
     void handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
@@ -140,10 +137,11 @@ namespace IOHC {
 
     void handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
         Radio::clearFlags();
-        // Remettre la radio en mode RX
+        // Return the radio to RX mode
         Radio::setRx();
         radio->setRadioState(iohcRadio::RadioState::RX);
     }
+
     /**
     * Sequential : Read queue — no concurrencies possible.
     * tickerCounter isn't called by the ISR.
@@ -159,25 +157,30 @@ namespace IOHC {
         while (true) {
             if (xQueueReceive(radioIrqQueue, &evt, portMAX_DELAY) == pdTRUE) {
                 switch (evt.source) {
-                    case 1: // DIO2 - Preamble
-                        if (evt.edge == 1) { // Rising edge = Preamble detected
-                            handlePreambleDetected(radio, evt);
-                        } else {
-                            handlePreambleLost(radio, evt);
-                        }
-                        break;
-
-                    case 0: // DIO0 - Payload
-                        // Lire IRQFLAGS2 pour déterminer la cause
+                    case 0: {
+                        // DIO0 - Payload
+                        // Read IRQFLAGS2 to determine the cause
                         uint8_t irqflags2 = Radio::readByte(REG_IRQFLAGS2);
-                        if (irqflags2 & RF_IRQFLAGS2_PACKETSENT) {
-                            // End of transmission
-                            handlePacketSent(radio, evt);
-                        } else if (irqflags2 & RF_IRQFLAGS2_PAYLOADREADY) {
+                        // The order is important, DIO0 (PayloadReady) should be checked first
+                        if (irqflags2 & RF_IRQFLAGS2_PAYLOADREADY) {
                             // Reception Event
                             handlePayloadReady(radio, evt);
+                        } else if (irqflags2 & RF_IRQFLAGS2_PACKETSENT) {
+                            // End of transmission
+                            handlePacketSent(radio, evt);
                         }
                         break;
+                    }
+
+                    case 2: {
+                        // DIO2 - Synchro
+                        if (evt.edge == 1) { // Rising edge = Synchro detected
+                            handleSynchroDetected(radio, evt);
+                        } else {
+                            handleSynchroLost(radio, evt);
+                        }
+                        break;
+                    }
                 }
             }
         }

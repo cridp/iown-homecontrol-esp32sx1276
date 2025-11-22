@@ -73,7 +73,6 @@ namespace IOHC {
             ets_printf("NO RADIO INSTANCE\n");
             _radioInstance = IOHC::iohcRadio::getInstance();
         }
-        // _radioInstance->adaptiveFHSS->prepareForConversation();
 
         switch (cmd) {
             case DeviceButton::associate: {
@@ -169,7 +168,7 @@ namespace IOHC {
                     memcpy(packet->payload.packet.header.target, addresses.at(dest).data(), 3);
 
                     dest++;
-                    packet->repeatTime = 50;
+                    // packet->repeatTime = 50;
                     packets2send.push_back(packet);
                 }
                 _radioInstance->send(packets2send);
@@ -218,7 +217,7 @@ namespace IOHC {
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
 
-                packet->repeatTime = 50;
+                // packet->repeatTime = 50;
 
                 packets2send.push_back(packet);
                 _radioInstance->send(packets2send);
@@ -249,7 +248,7 @@ namespace IOHC {
             default: break;
         } // switch (cmd)
         IOHC::packetStamp = esp_timer_get_time();
-        //        save(); // Save Cozy associated devices
+        // save(); // Save Cozy associated devices
         // Libérer vos paquets originaux
         for (auto* p : packets2send) {
             delete p;
