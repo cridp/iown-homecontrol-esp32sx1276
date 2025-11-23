@@ -268,21 +268,22 @@ void setPreambleLength(uint16_t preambleLen) {
     }
 
     void IRAM_ATTR setTx() {
-        // Enabling Sync word - Size must be set to SYNCSIZE_2
-        writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
-        // TxReady;
+        // Enabling Sync word - Size must be set to SYNCSIZE_2 0x51
+        writeByte(REG_SYNCCONFIG, 0x51); // (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_2);
+        writeByte(REG_OPMODE, 0x03); //(readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_TRANSMITTER);
+        // TxReady; // No busy wait
     }
 
     void IRAM_ATTR setRx() {
-        // Enabling Sync word - Size must be set to SYNCSIZE_3
-        writeByte(REG_SYNCCONFIG, (readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
-        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-        // RxReady;
+        // Enabling Sync word - Size must be set to SYNCSIZE_3 0x52
+        writeByte(REG_SYNCCONFIG, 0x52); //(readByte(REG_SYNCCONFIG) & RF_SYNCCONFIG_SYNCSIZE_MASK) | RF_SYNCCONFIG_SYNCSIZE_3);
+        writeByte(REG_OPMODE, 0x05); //(readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+        // RxReady; // No busy wait
+
         /*
-                // Start Sequencer
-                writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
-                writeByte(REG_SEQCONFIG1, readByte(REG_SEQCONFIG1 | RF_SEQCONFIG1_SEQUENCER_START));
+        // Start Sequencer
+        writeByte(REG_OPMODE, (readByte(REG_OPMODE) & RF_OPMODE_MASK) | RF_OPMODE_RECEIVER);
+        writeByte(REG_SEQCONFIG1, readByte(REG_SEQCONFIG1 | RF_SEQCONFIG1_SEQUENCER_START));
         */
     }
 
