@@ -187,7 +187,7 @@ namespace IOHC {
                 packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
                 // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.LPM = 1;
-                // packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 1;
+                packets2send.back()->payload.packet.header.CtrlByte2.asStruct.Prio = 0;
 
                 memcpy(packets2send.back()->payload.packet.header.source, gateway/*master_from*/, 3);
                 memcpy(packets2send.back()->payload.packet.header.target, master_to/*slave_to*/, 3);

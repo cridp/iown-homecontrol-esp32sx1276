@@ -48,7 +48,7 @@ namespace Radio {
 #define NSS_LOW  (GPIO.out_w1tc = (1<<RADIO_NSS))
 #define NSS_HIGH (GPIO.out_w1ts = (1<<RADIO_NSS))
 
-    // spinlock/mutex pour SPI (ISR-safe usage: on n'appelle pas le mutex en ISR)
+    // spinlock/mutex for SPI (ISR-safe usage: we do not call the mutex in ISR)
     static portMUX_TYPE spiMux = portMUX_INITIALIZER_UNLOCKED;
 
     void IRAM_ATTR spi_select() {
@@ -82,7 +82,7 @@ namespace Radio {
  * the availability of the radio, configures SPI settings, and puts the radio chip in standby mode.
  */
     void initHardware() {
-        printf("\nSPI Init");
+        ets_printf("\nSPI Init");
 
         //gpio_pullup_en((gpio_num_t) RADIO_MISO);
         pinMode(RADIO_MISO, INPUT_PULLUP);
@@ -122,7 +122,7 @@ namespace Radio {
 
         pinMode(SCAN_LED, OUTPUT);
         digitalWrite(SCAN_LED, 1);
-        printf("\nRadio Chip is ready\n");
+        ets_printf("\nRadio Chip is ready\n");
     }
 
 void setPreambleLength(uint16_t preambleLen) {
@@ -204,10 +204,10 @@ void setPreambleLength(uint16_t preambleLen) {
         // RSSI precision +-2dBm
         writeByte(REG_RSSICONFIG, RF_RSSICONFIG_SMOOTHING_4); // 8->0.512 ms // _128); // _32); //_256); //
         // Activates Timeout interrupt on Preamble
-        //L'AFC (Automatic Frequency Control) tente de compenser les dérives de fréquence.
-        //Pendant un saut FHSS, cela peut être contre-productif car le saut de fréquence
-        //peut être interprété comme une dérive massive, amenant l'AFC à "lutter" contre le saut.
-        //Désactiver (RF_RXCONFIG_AFCAUTO_OFF). Cela pourrait stabiliser la réception juste après un saut.
+        // AFC (Automatic Frequency Control) attempts to compensate for frequency drifts.
+        // During an FHSS jump, this can be counterproductive because the frequency jump
+        // can be interpreted as a massive drift, causing the AFC to "fight" against the jump.
+        // Disabling (RF_RXCONFIG_AFCAUTO_OFF) could stabilize the landing right after a jump.
         writeByte(REG_RXCONFIG, // AGCAUTO_OFF not functional AFCAUTO_OFF change nothing
             RF_RXCONFIG_AFCAUTO_OFF | RF_RXCONFIG_AGCAUTO_ON | RF_RXCONFIG_RXTRIGER_RSSI_PREAMBLEDETECT | RF_RXCONFIG_RESTARTRXONCOLLISION_ON | RF_RXCONFIG_RESTARTRXWITHOUTPLLLOCK);
 
@@ -473,13 +473,12 @@ void setPreambleLength(uint16_t preambleLen) {
     void dump() {
         uint8_t idx = 0;
 
-        Serial.printf("#Type\tRegister Name\tAddress[Hex]\tValue[Hex]\n");
+        ets_printf("#Type\tRegister Name\tAddress[Hex]\tValue[Hex]\n");
         do {
-            Serial.printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx));
+            ets_printf("REG\tname\t0x%2.2x\t0x%2.2x\n", idx, readByte(idx));
             idx += 1;
         } while (idx < 0x7f);
-        Serial.printf("PKT\tFalse;False;255;0;\nXTAL\t32000000\n");
-        // Serial.printf("\n");
+        ets_printf("PKT\tFalse;False;255;0;\nXTAL\t32000000\n");
         dumpReal();
     }
 
@@ -490,11 +489,11 @@ void setPreambleLength(uint16_t preambleLen) {
         // sx127x_dump_registers(registers, device);
         for (int idx = 0; idx < sizeof(registers); idx++) {
             if (idx != 0) {
-                printf(",");
+                ets_printf(",");
             }
-            printf("0x%2.2x", registers[idx]);
+            ets_printf("0x%2.2x", registers[idx]);
         }
-        printf("\n");
+        ets_printf("\n");
 
         dump_fsk_registers(registers);
     }

@@ -641,31 +641,31 @@ bool publishMsg(IOHC::iohcPacket *iohc) {
  * @return `true` if the operation is successful
  * and `false` if there is a failure condition detected during the execution of the function.
  */
-bool msgArchive(IOHC::iohcPacket *iohc) {
-    radioPackets[nextPacket] = new IOHC::iohcPacket; 
-    if (!radioPackets[nextPacket]) {
-        ets_printf("*** Malloc failed!\n");
-        return false;
-    }
-
-    radioPackets[nextPacket]->buffer_length = iohc->buffer_length;
-    radioPackets[nextPacket]->frequency = iohc->frequency;
-    //    radioPackets[nextPacket]->stamp = iohc->stamp;
-    radioPackets[nextPacket]->rssi = iohc->rssi;
-
-    for (uint8_t i = 0; i < iohc->buffer_length; i++)
-        radioPackets[nextPacket]->payload.buffer[i] = iohc->payload.buffer[i];
-
-    nextPacket += 1;
-    Serial.printf("-> %d\r", nextPacket);
-    if (nextPacket >= IOHC_INBOUND_MAX_PACKETS) {
-        nextPacket = IOHC_INBOUND_MAX_PACKETS - 1;
-        Serial.printf("*** Not enough buffers available. Please erase current ones\n");
-        return false;
-    }
-
-    return true;
-}
+// bool msgArchive(IOHC::iohcPacket *iohc) {
+//     radioPackets[nextPacket] = new IOHC::iohcPacket;
+//     if (!radioPackets[nextPacket]) {
+//         ets_printf("*** Malloc failed!\n");
+//         return false;
+//     }
+//
+//     radioPackets[nextPacket]->buffer_length = iohc->buffer_length;
+//     radioPackets[nextPacket]->frequency = iohc->frequency;
+//     //    radioPackets[nextPacket]->stamp = iohc->stamp;
+//     radioPackets[nextPacket]->rssi = iohc->rssi;
+//
+//     for (uint8_t i = 0; i < iohc->buffer_length; i++)
+//         radioPackets[nextPacket]->payload.buffer[i] = iohc->payload.buffer[i];
+//
+//     nextPacket += 1;
+//     Serial.printf("-> %d\r", nextPacket);
+//     if (nextPacket >= IOHC_INBOUND_MAX_PACKETS) {
+//         nextPacket = IOHC_INBOUND_MAX_PACKETS - 1;
+//         Serial.printf("*** Not enough buffers available. Please erase current ones\n");
+//         return false;
+//     }
+//
+//     return true;
+// }
 
 /**
  * @deprecated

@@ -23,24 +23,16 @@
 #include <utility>
 #include "iohcCozyDevice2W.h"
 
-// Timestamps pour mesures précises
-volatile uint32_t timestamp_sync_detected = 0;
-volatile uint32_t timestamp_sync_lost = 0;
-volatile uint32_t timestamp_payload_ready = 0;
+// Timestamps for precise measurements
+// max airTime µs: (preamble (0x3D) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B)) / 38.4 kbps.
+volatile uint64_t timestamp_sync_started = 0;
+volatile uint64_t timestamp_sync_stopped = 0;
+volatile uint64_t timestamp_payload_ready = 0;
 
-
-// trame typique FSK : preamble (variable) + sync (3 B) + header (2 B) + payload (32 B) + CRC (2 B).
-// #define LONG_PREAMBLE_MS 128  // 0x80 52-206 ms
-// #define SHORT_PREAMBLE_MS 16 // 11.458 ms
-// Timeouts adaptatifs basés sur le débit
-// airtime (s) = ( (preamble_bytes + 3SYNC + 2HEAD + payload_bytes + 2CRC) * 8 ) / bitrate
-// const uint32_t bitrate = 38400; // 38.4 kbps
-// const uint32_t maxPacketBits = (SHORT_PREAMBLE_MS + 3 + 2 + MAX_FRAME_LEN + 2) * 8;
-// const uint32_t minAirTimeMs = (maxPacketBits * 1000) / bitrate; // ~ms
 
 TaskHandle_t IOHC::iohcRadio::txTaskHandle = nullptr;
 
-// Structure pour gérer un paquet en transmission
+// Structure to manage a packet in transmission
 struct TxPacketWrapper {
     IOHC::iohcPacket *packet;
     uint8_t repeatsRemaining;
@@ -62,9 +54,7 @@ struct TxPacketWrapper {
 
 namespace IOHC {
     iohcRadio *iohcRadio::_iohcRadio = nullptr;
-    // volatile bool iohcRadio::_g_preamble = false;
-    // volatile bool iohcRadio::_g_payload = false;
-    // volatile uint32_t iohcRadio::_g_payload_millis = 0L;
+
     uint8_t iohcRadio::_flags[2] = {0, 0};
     volatile bool iohcRadio::f_lock_hop = false;
     volatile bool iohcRadio::send_lock = false;
@@ -75,7 +65,7 @@ namespace IOHC {
 
     TaskHandle_t handle_interrupt;
     struct RadioIrqEvent {
-        uint8_t source;  // 0 = DIO0 (payload), 1 = DIO2 (synchro)
+        uint8_t source;  // 0 = DIO0 (payload), 2 = DIO2 (synchro)
         uint8_t edge;    // 0 = falling, 1 = rising
         uint64_t timestamp_us;
     };
@@ -85,7 +75,7 @@ namespace IOHC {
 
     /**
     * No semaphore here.
-    * esp_timer_get_time() is ISR-safe ; millis() never sure.
+    * esp_timer_get_time() is ISR-safe
     */
     void IRAM_ATTR handle_interrupt_fromDIO0(void* arg) {
         // Only GPIOS short ops, non blocking
@@ -101,7 +91,7 @@ namespace IOHC {
     }
     /**
     * No semaphore here.
-    * esp_timer_get_time() is ISR-safe ; millis() never sure.
+    * esp_timer_get_time() is ISR-safe
     */
 
     void IRAM_ATTR handle_interrupt_fromDIO2(void* arg) {
@@ -116,15 +106,17 @@ namespace IOHC {
         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
     }
 
-    void IRAM_ATTR handleSynchroDetected(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_sync_detected = evt.timestamp_us;
+    void IRAM_ATTR handleSynchroStart(iohcRadio* radio, const RadioIrqEvent &evt) {
+        timestamp_sync_started = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
     }
 
-    void IRAM_ATTR handleSynchroLost(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_sync_lost = evt.timestamp_us;
+    void IRAM_ATTR handleSynchroStop(iohcRadio* radio, const RadioIrqEvent &evt) {
+        timestamp_sync_stopped = evt.timestamp_us;
             // Only if we were receiving a preamble
             radio->setRadioState(iohcRadio::RadioState::RX);
+        // SyncLen ~= nByte * 1250 µs
+        // ets_printf("SYNCHRO LEN: %llu\n", timestamp_sync_stopped - timestamp_sync_started);
     }
 
     void IRAM_ATTR handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
@@ -175,9 +167,9 @@ namespace IOHC {
                     case 2: {
                         // DIO2 - Synchro
                         if (evt.edge == 1) { // Rising edge = Synchro detected
-                            handleSynchroDetected(radio, evt);
+                            handleSynchroStart(radio, evt);
                         } else {
-                            handleSynchroLost(radio, evt);
+                            handleSynchroStop(radio, evt);
                         }
                         break;
                     }
@@ -196,26 +188,26 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Bandwidth, 250);
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
-        // Configurer les interruptions avec pull-down pour éviter les faux déclenchements
-         pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
-         pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
-        // Attacher les interruptions avec debounce matériel
-         attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
-         attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
+        // Configure interrupts with pull-down to avoid false triggers
+//         pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
+//         pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
+        // Attach interrupts with hardware debounce
+//         attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
+//         attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
-//        gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
-//        gpio_config_t io_conf = {};
-//        io_conf.intr_type = GPIO_INTR_POSEDGE;
-//        io_conf.mode = GPIO_MODE_INPUT;
-//        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
-//        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
-//        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
-//        gpio_config(&io_conf);
-//        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
-//        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
-//        io_conf.intr_type = GPIO_INTR_ANYEDGE;
-//        gpio_config(&io_conf);
-//        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
+        gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
+        gpio_config_t io_conf = {};
+        io_conf.intr_type = GPIO_INTR_POSEDGE;
+        io_conf.mode = GPIO_MODE_INPUT;
+        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO0_PIN);
+        io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
+        io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
+        gpio_config(&io_conf);
+        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
+        io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
+        io_conf.intr_type = GPIO_INTR_ANYEDGE;
+        gpio_config(&io_conf);
+        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
 
         // start state machine
         ets_printf("Starting Interrupt Handler...\n");
@@ -321,20 +313,20 @@ namespace IOHC {
             return nullptr;
         }
 
-        // Essayer d'allouer d'abord la copie du paquet
+        // Try to allocate copy of package first
         iohcPacket* pktToSend = nullptr;
 
         pktToSend = new (std::nothrow) iohcPacket(*sourcePacket);
         if (!pktToSend) {
-            return nullptr;  // Fuite zéro - rien n'a été alloué
+            return nullptr;  // Zero leakage - nothing has been allocated
         }
 
-        // Ensuite allouer le wrapper
+        // Then allocate the wrapper
         auto wrapper = new (std::nothrow) TxPacketWrapper(pktToSend);
         if (!wrapper) {
-            // Libérer le paquet
+            // Release the package
             delete pktToSend;
-            return nullptr;  // Fuite zéro
+            return nullptr;  // Zero leak
         }
 
         return wrapper;
@@ -344,8 +336,8 @@ namespace IOHC {
      *
      * @param TxPackets `Vector of pointers to `iohcPacket` objects.
     *
-     * Envoie un ou plusieurs paquets
-     * Les paquets sont COPIÉS en interne, on garde la propriété des originaux
+* Sends one or more packets
+     * Packages are COPIED internally, we retain ownership of the originals
      */
     bool iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
         if (TxPackets.empty()) {
@@ -360,7 +352,7 @@ namespace IOHC {
         // Add each packet to the queue (making a COPY)
         for (auto *pkt: TxPackets) {
             if (pkt) {
-                // Utiliser la factory
+                // Use la factory
                 if (TxPacketWrapper* wrapper = createPacketWrapper(pkt)) {
                     txQueue.push_back(wrapper);
                     //pkt = nullptr; // Transfer ownership
@@ -520,11 +512,11 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         if (xQueueReceive(radio->packetQueue, &receivedPacket, portMAX_DELAY) == pdTRUE) {
             // **CRITIQUE: Vérifier que le FHSS est dans l'état approprié**
 
-            // **VALIDATION SANS INTERRUPTION DU FLUX**
+            // **VALIDATION WITHOUT INTERRUPTION OF THE FLOW**
             bool shouldDecode = true;
             std::string rejectReason;
 
-            // Critères de rejet (mais on maintient le flux)
+            // Rejection criteria (but we maintain the flow)
             if (receivedPacket.buffer_length == 0) {
                 shouldDecode = false;
                 rejectReason = "Empty packet";
@@ -536,19 +528,19 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 
             if (shouldDecode)
             if (xSemaphoreTake(radio->lastPacketMutex, pdMS_TO_TICKS(10)) == pdTRUE) {
-            //         // Vérifier les doublons
+            //         // Check for duplicates
             //         if (receivedPacket == last1wPacket && receivedPacket.is1W()) {
             //             rejectReason = "Duplicate";
             //             shouldDecode = false;
             //         } else {
-            //             // Sauvegarder le nouveau paquet
+            //             // Save new packet
                          last1wPacket = receivedPacket;
             //         }
             xSemaphoreGive(radio->lastPacketMutex);
             }
 
-            // Traiter le paquet
-            // **TOUJOURS logger, même les rejets**
+            // Process the package
+            // **ALWAYS log, even rejections**
             if (!shouldDecode) {
                 // if (rejectReason != "Duplicate")
                 // ets_printf("Packet rejected: %s, len=%d\n",  rejectReason.c_str(), receivedPacket.buffer_length);
@@ -556,12 +548,12 @@ void iohcRadio::packetProcessorTask(void* parameter) {
                 // radio->forceUnlockFHSS();
             } else {
 
-            // Appeler le callback
+                // Call the callback if defined
                 if (radio->rxCB) {
                     radio->rxCB(&receivedPacket);
                 }
 
-                // Décoder le paquet
+                // Decode the packet
                 receivedPacket.decode(true);
             }
         }
@@ -574,11 +566,10 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         // adaptiveFHSS->onPacketActivity();
         // setFHSSState(FHSSState::RECEIVING);
 
-        // Utiliser un buffer TEMPORAIRE local
+        // Use a local TEMPORARY buffer
         tempRxPacket.reset();
         tempRxPacket.frequency = scan_freqs[currentFreqIdx];
 
-        // _g_payload_millis = esp_timer_get_time();
         packetStamp = evt.timestamp_us; //_g_payload_millis;
 
         if (stats) {
@@ -590,20 +581,16 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             tempRxPacket.afc = f * 61.0;
         }
 
-        // Lire les données
+        // Read FIFO
         while (Radio::dataAvail()) {
-            // if (tempRxPacket.buffer_length < MAX_FRAME_LEN) {
-                tempRxPacket.payload.buffer[tempRxPacket.buffer_length++] = Radio::readByte(REG_FIFO);
-            // } else {
-                // Radio::readByte(REG_FIFO);
-            // }
+            tempRxPacket.payload.buffer[tempRxPacket.buffer_length++] = Radio::readByte(REG_FIFO);
         }
 
         // **CRITIQUE: Toujours compléter le cycle FHSS même pour les paquets rejetés**
         // Marquer la fin de la réception pour le FHSS
-        // **TOUJOURS envoyer à la queue, même les paquets "invalides"**
-        // Les décisions de rejet se font dans le processor, pas ici
-        // Envoyer une COPIE dans la queue (thread-safe)
+        // **ALWAYS send to queue, even "invalid" packets**
+        // Rejection decisions are made in the processor, not here
+        // Send a COPY to the queue (thread-safe)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         BaseType_t queueResult = xQueueSendFromISR(packetQueue, &tempRxPacket, &xHigherPriorityTaskWoken);
 
@@ -625,24 +612,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
         digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
     }
-
-    /**
-     * @deprecated Sets the value of `f_lock` based on the state of `_g_preamble`
-     */
-    // void IRAM_ATTR iohcRadio::i_preamble() {
-    //     _g_preamble = digitalRead(RADIO_PREAMBLE_DETECTED);
-    //     f_lock = _g_preamble;
-    //     iohcRadio::setRadioState(_g_preamble ? iohcRadio::RadioState::PREAMBLE : iohcRadio::RadioState::RX);
-    // }
-
-    /**
-     * @deprecated Reads the value of a digital pin and stores it in `_g_payload`
-     */
-    // void IRAM_ATTR iohcRadio::i_payload() {
-    //     _g_payload = digitalRead(RADIO_PACKET_AVAIL);
-    //     iohcRadio::setRadioState(_g_payload ? iohcRadio::RadioState::PAYLOAD : iohcRadio::RadioState::RX);
-    // }
-
 
     void IRAM_ATTR iohcRadio::setRadioState(const RadioState newState) {
         radioState = newState;
