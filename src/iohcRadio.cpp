@@ -67,7 +67,7 @@ namespace IOHC {
     struct RadioIrqEvent {
         uint8_t source;  // 0 = DIO0 (payload), 2 = DIO2 (synchro)
         uint8_t edge;    // 0 = falling, 1 = rising
-        uint64_t timestamp_us;
+        mutable uint64_t timestamp_us;
     };
 
     static QueueHandle_t radioIrqQueue = nullptr;
@@ -82,7 +82,7 @@ namespace IOHC {
         RadioIrqEvent ev;
         ev.source = 0; // DIO0 - PayloadReady / PacketSent
         ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PACKET_AVAIL));
-        ev.timestamp_us = esp_timer_get_time();
+        // ev.timestamp_us = esp_timer_get_time();
 
         // Send it to queue (FromISR)
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -99,7 +99,7 @@ namespace IOHC {
         RadioIrqEvent ev;
         ev.source = 2; // DIO2 - SyncAddress
         ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PREAMBLE_DETECTED));
-        ev.timestamp_us = esp_timer_get_time();
+        // ev.timestamp_us = esp_timer_get_time();
 
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
         xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken);
@@ -107,19 +107,19 @@ namespace IOHC {
     }
 
     void IRAM_ATTR handleSynchroStart(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_sync_started = evt.timestamp_us;
+evt.timestamp_us = esp_timer_get_time();        timestamp_sync_started = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::PREAMBLE);
     }
 
     void IRAM_ATTR handleSynchroStop(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_sync_stopped = evt.timestamp_us;
+evt.timestamp_us = esp_timer_get_time();        timestamp_sync_stopped = evt.timestamp_us;
         radio->setRadioState(iohcRadio::RadioState::RX);
         // SyncLen ~= nByte * 1250 µs
         // ets_printf("SYNCHRO LEN: %llu\n", timestamp_sync_stopped - timestamp_sync_started);
     }
 
     void IRAM_ATTR handlePayloadReady(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_payload_ready = evt.timestamp_us;
+evt.timestamp_us = esp_timer_get_time();        timestamp_payload_ready = evt.timestamp_us;
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
             radio->tickerCounter(radio, evt);
@@ -127,7 +127,7 @@ namespace IOHC {
     }
 
     void IRAM_ATTR handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
-        timestamp_packet_sent = evt.timestamp_us;
+evt.timestamp_us = esp_timer_get_time();        timestamp_packet_sent = evt.timestamp_us;
         Radio::clearFlags();
         // Return the radio to RX mode
         Radio::setRx();
