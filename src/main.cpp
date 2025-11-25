@@ -312,7 +312,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             forgePacket(&response, toSend);
 
             response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
-            cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
+            // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
 
             /* Swap */
             memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
@@ -343,8 +343,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         }
         case iohcDevice::CHALLENGE_REQUEST_0x3C: {
             // Answer only to our fake gateway, not to others real devices
-            if (true) {
-            // if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
+            // if (true) {
+            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
                 // radioInstance->maybeCheckHeap("CREATE RESPONSE 0x3D IN msgRcvd");
                 doc["type"] = "Gateway";
 
@@ -491,9 +491,9 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                 doc["type"] = "Other";
                 IOHC::lastCmd = 0x03;
                 IOHC::lastData = receivedPacket->data(); //  .assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 12);
-                otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
-                cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                cozyDevice2W->memorizeSend.memorizedData = IOHC::lastData; //.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
+                // otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
+                // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
+                // cozyDevice2W->memorizeSend.memorizedData = IOHC::lastData; //.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
             }
             break;
         }
