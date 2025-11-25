@@ -84,7 +84,7 @@
 #define RADIO_PACKET_AVAIL                      RADIO_DIO_0     // Packet Received / CRC ok from Radio
 #define RADIO_DATA_AVAIL                        RADIO_DIO_1     // FIFO empty from Radio
 #define RADIO_RXTIMEOUT                         RADIO_DIO_2     // Radio Rx Sequencer timeout (used to switch the receiver frequency)
-#define RADIO_PREAMBLE_DETECTED                 RADIO_DIO_4     // Preamble detected from Radio (used instead of FIFO empty)
+#define RADIO_SYNCHRO_DETECTED                 RADIO_DIO_4     // Preamble detected from Radio (used instead of FIFO empty)
 #endif
 
 #define SPI_CLK_FRQ                                 8000000

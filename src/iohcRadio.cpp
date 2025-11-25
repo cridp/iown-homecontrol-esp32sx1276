@@ -98,7 +98,7 @@ namespace IOHC {
         // Only GPIOS short ops, non blocking
         RadioIrqEvent ev;
         ev.source = 2; // DIO2 - SyncAddress
-        ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PREAMBLE_DETECTED));
+        ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_SYNCHRO_DETECTED));
         // ev.timestamp_us = esp_timer_get_time();
 
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
