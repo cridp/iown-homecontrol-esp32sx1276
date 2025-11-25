@@ -40,7 +40,7 @@ inline const char *mqtt_password = "passwd";
 //#define WEBSERVER
 
 //#define ECHONET
-#define UECHO
+//#define UECHO
 
 #define HTTP_LISTEN_PORT    80
 #define HTTP_USERNAME       "admin"
