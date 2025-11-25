@@ -82,8 +82,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::ASK_CHALLENGE_0x31;
-                memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = iohcDevice::ASK_CHALLENGE_0x31;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::ASK_CHALLENGE_0x31;
 
                 packet->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
 
@@ -102,8 +102,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeSend.memorizedData = toSend;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);
@@ -127,8 +127,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
@@ -160,8 +160,8 @@ namespace IOHC {
                     forge2WPacket(packet, toSend);
 
                     packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                    memorizeSend.memorizedData = toSend;
-                    memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                    // memorizeSend.memorizedData = toSend;
+                    // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                     packet->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     memcpy(packet->payload.packet.header.source, gateway, 3);
@@ -185,8 +185,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);
@@ -211,8 +211,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, addresses.at(addr).data()/* 0 Master_to*/, 3);
@@ -233,8 +233,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeSend.memorizedData = toSend;
-                memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeSend.memorizedData = toSend;
+                // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                 memcpy(packet->payload.packet.header.source, gateway, 3);
                 memcpy(packet->payload.packet.header.target, master_to, 3);

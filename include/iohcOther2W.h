@@ -27,6 +27,8 @@
 
 #define OTHER_2W_FILE  "/Other2W.json"
 
+inline volatile bool saveRequestFlag = false;
+
 /*
     Singleton class with a full implementation of a COZYTOUCH/KIZBOX/CONEXOON controller
     The type of the controller can be managed changing related value within its profile file (Cozy2W.json)

@@ -119,9 +119,9 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.target, d._dst, 3);
                 }
 
-                IOHC::lastCmd = GET_NAME_0x50;
-                cozyDevice2W->memorizeSend.memorizedCmd = GET_NAME_0x50;
-                cozyDevice2W->memorizeSend.memorizedData = {};
+                // IOHC::lastCmd = GET_NAME_0x50;
+                // cozyDevice2W->memorizeSend.memorizedCmd = GET_NAME_0x50;
+                // cozyDevice2W->memorizeSend.memorizedData = {};
 
                 _radioInstance->send(packets2send);
 
@@ -151,8 +151,9 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend);
 
                     packets2send.back()->payload.packet.header.cmd = 0x00; //WRITE_PRIVATE_0x20;
-                    memorizeOther2W.memorizedData = toSend;
-                    memorizeOther2W.memorizedCmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
+                    // memorizeOther2W.memorizedData = toSend;
+                    // memorizeOther2W.memorizedCmd = 0x00; //SEND_WRITE_PRIVATE_0x20;
+                    // cozyDevice2W->memorizeSend.memorizedCmd = 0x00;
 
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
@@ -181,8 +182,10 @@ namespace IOHC {
                 forgeAnyWPacket(packets2send.back(), toSend);
 
                 packets2send.back()->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
-                memorizeOther2W.memorizedData = toSend;
-                memorizeOther2W.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // memorizeOther2W.memorizedData = toSend;
+                // memorizeOther2W.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
+                // cozyDevice2W->memorizeSend.memorizedData = toSend;
+                // cozyDevice2W->memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 
                 packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
@@ -217,8 +220,10 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend);
 
                     packets2send.back()->payload.packet.header.cmd = command[i]; //iohcDevice::SEND_DISCOVER_0x28;
-                    memorizeOther2W.memorizedData = toSend;
-                    memorizeOther2W.memorizedCmd = iohcDevice::DISCOVER_0x28;
+                    // memorizeOther2W.memorizedData = toSend;
+                    // memorizeOther2W.memorizedCmd = iohcDevice::DISCOVER_0x28;
+                    // cozyDevice2W->memorizeSend.memorizedCmd = iohcDevice::DISCOVER_0x28;
+                    // cozyDevice2W->memorizeSend.memorizedData = toSend;
 
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
@@ -343,11 +348,12 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend);
 
                     packets2send.back()->payload.packet.header.cmd = 0x03;
-                    memorizeOther2W.memorizedData = toSend;
-                    memorizeOther2W.memorizedCmd = 0x03;
-                    IOHC::lastCmd = 0x03;
+                    // memorizeOther2W.memorizedData = toSend;
+                    // memorizeOther2W.memorizedCmd = 0x03;
                     // cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
                     // cozyDevice2W->memorizeSend.memorizedData = toSend;
+                    // IOHC::lastCmd = 0x03;
+                    // IOHC::lastData = toSend;
 
                     packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
 
@@ -368,11 +374,15 @@ namespace IOHC {
                         forgeAnyWPacket(&discover, toSend);
 
                         discover.payload.packet.header.cmd = DISCOVER_0x28;
-                        memorizeOther2W.memorizedCmd = DISCOVER_0x28;
+                        // memorizeOther2W.memorizedCmd = DISCOVER_0x28;
+                        // cozyDevice2W->memorizeSend.memorizedCmd = DISCOVER_0x28;
+
                         if (i>=8) {
                             discover.payload.packet.header.cmd = DISCOVER_REMOTE_0x2A;
-                            memorizeOther2W.memorizedCmd = DISCOVER_REMOTE_0x2A;
+                            // memorizeOther2W.memorizedCmd = DISCOVER_REMOTE_0x2A;
+                            // cozyDevice2W->memorizeSend.memorizedCmd = 0x2A;
                         }
+
                         memorizeOther2W.memorizedData = toSend;
 
                         discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
@@ -463,6 +473,7 @@ namespace IOHC {
                         packet->payload.packet.header.cmd = CmdSend;
 
                         IOHC::lastCmd = CmdSend;
+                        // We cant memorize here.....
                         // memorizeOther2W.memorizedCmd = CmdSend;
                         // memorizeOther2W.memorizedData = toSend;
                         // cozyDevice2W->memorizeSend.memorizedCmd = CmdSend;

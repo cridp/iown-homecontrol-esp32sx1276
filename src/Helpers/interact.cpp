@@ -1,18 +1,16 @@
-/*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
-
-   Licensed under the Apache License, Version 2.0 (the "License");
-   you may not use this file except in compliance with the License.
-   You may obtain a copy of the License at
-
-           http://www.apache.org/licenses/LICENSE-2.0
-
-   Unless required by applicable law or agreed to in writing, software
-   distributed under the License is distributed on an "AS IS" BASIS,
-   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-   See the License for the specific language governing permissions and
-   limitations under the License.
- */
+//   Copyright (c) 2024-2025. CRIDP https://github.com/cridp
+//
+//   Licensed under the Apache License, Version 2.0 (the "License");
+//   you may not use this file except in compliance with the License.
+//   You may obtain a copy of the License at
+//
+//           http://www.apache.org/licenses/LICENSE-2.0
+//
+//   Unless required by applicable law or agreed to in writing, software
+//   distributed under the License is distributed on an "AS IS" BASIS,
+//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+//   See the License for the specific language governing permissions and
+//   limitations under the License.
 #include <fileSystemHelpers.h>
 #include <interact.h>
 #include <iohcCozyDevice2W.h>
@@ -24,6 +22,9 @@
 #if defined(MQTT)
 #include <mqtt_handler.h>
 #endif
+
+// Drapeau pour demander une sauvegarde depuis la tâche de fond
+extern volatile bool saveRequestFlag;
 
 ConnState mqttStatus = ConnState::Disconnected;
 
@@ -42,9 +43,8 @@ namespace Cmd {
     bool verbosity = true;
     bool pairMode = false;
     bool scanMode = false;
-#if defined(ESP32)
-        TimersUS::TickerUsESP32 kbd_tick;
-#endif
+
+    TimersUS::TickerUsESP32 kbd_tick;
     TimerHandle_t consoleTimer;
 
     static char _rxbuffer[512];
@@ -233,6 +233,13 @@ namespace Cmd {
     }
 
     void cmdFuncHandler() {
+      // Vérifier si une sauvegarde de fichier est demandée
+      if (saveRequestFlag) {
+          saveRequestFlag = false; // Réinitialiser le drapeau immédiatement
+          IOHC::iohcOther2W::getInstance()->save();
+          // ets_printf("File /Other2W.json saved by background task.\n");
+      }
+
       constexpr char delim = ' ';
       Tokens segments;
 

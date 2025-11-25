@@ -87,9 +87,7 @@ namespace Cmd {
     extern bool pairMode;
     extern bool scanMode;
 
-#if defined(ESP32)
-      extern TimersUS::TickerUsESP32 kbd_tick;
-#endif
+    extern TimersUS::TickerUsESP32 kbd_tick;
 
     extern TimerHandle_t consoleTimer;
 

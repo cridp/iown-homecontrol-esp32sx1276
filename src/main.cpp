@@ -323,8 +323,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             break;
         }
         case iohcDevice::WRITE_PRIVATE_0x20:  {
-            cozyDevice2W->memorizeSend.memorizedCmd = receivedPacket->payload.packet.header.cmd;
-            IOHC::lastCmd = receivedPacket->payload.packet.header.cmd;
+            // cozyDevice2W->memorizeSend.memorizedCmd = receivedPacket->payload.packet.header.cmd;
+            // IOHC::lastCmd = receivedPacket->payload.packet.header.cmd;
             break;
         }
         case iohcDevice::PRIVATE_ACK_0x21: {
@@ -343,8 +343,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         }
         case iohcDevice::CHALLENGE_REQUEST_0x3C: {
             // Answer only to our fake gateway, not to others real devices
-            // if (true) {
-            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
+            if (true) {
+            // if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
                 // radioInstance->maybeCheckHeap("CREATE RESPONSE 0x3D IN msgRcvd");
                 doc["type"] = "Gateway";
 
@@ -354,8 +354,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                 // }
 
                 // IVdata is the challenge with commandId put on start
-                std::vector<uint8_t> challengeAsked;
-                challengeAsked.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
+                std::vector<uint8_t> challengeAsked = receivedPacket->data();
+                // challengeAsked.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
                 // ets_printf("Challenge asked after Last Command %2.2X and Memorized %2.2X (%d)\n", IOHC::lastCmd, cozyDevice2W->memorizeSend.memorizedCmd, cozyDevice2W->memorizeSend.memorizedData.size());
 
                 iohcPacket response;
@@ -375,7 +375,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
                 uint8_t dataLen = 6;
 
-                if (cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) {
+                if (IOHC::lastCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) { //cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) {
                     response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
                     dataLen = 16;
                     IVdata = {IOHC::iohcDevice::ASK_CHALLENGE_0x31};
@@ -385,12 +385,14 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                         initial_value[i] = initial_value[i] ^ transfert_key[i];
                     cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
                     cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
+                    IOHC::lastCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
+                    IOHC::lastData.assign(initial_value, initial_value + 16);
                 } else {
 // radioInstance->maybeCheckHeap("just before 'constructInitialValue' with alignas and before 'AES_ECB_encrypt' CREATE RESPONSE 0x3D IN msgRcvd");
                     response.payload.packet.header.cmd = IOHC::iohcDevice::CHALLENGE_ANSWER_0x3D;
                     dataLen = 6;
-                    IVdata = cozyDevice2W->memorizeSend.memorizedData;
-                    IVdata.insert(IVdata.begin(), cozyDevice2W->memorizeSend.memorizedCmd);
+                    IVdata = IOHC::lastData; //cozyDevice2W->memorizeSend.memorizedData;
+                    IVdata.insert(IVdata.begin(), IOHC::lastCmd); //cozyDevice2W->memorizeSend.memorizedCmd);
                     constructInitialValue(IVdata, initial_value, IVdata.size(), challengeAsked, nullptr);
                     AES_ECB_encrypt(&ctx, initial_value);
 // radioInstance->maybeCheckHeap("AFTER AES_ECB_encrypt");
@@ -410,7 +412,11 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
                 response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
                 response.frequency = receivedPacket->frequency;
-                response.repeatTime = 11;
+
+                // distinguish our answer from others with a working unknow flag
+                response.payload.packet.header.CtrlByte2.asStruct.Unk2 = 1;
+
+                response.repeatTime = 10;
 // radioInstance->maybeCheckHeap("just before 'radioInstance->sendPriority(&response);' CREATE RESPONSE 0x3D IN msgRcvd");
                 radioInstance->sendPriority(&response);
 // radioInstance->maybeCheckHeap("EXIT AFTER sendPriority RESPONSE 0x3D IN msgRcvd");
@@ -484,9 +490,10 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             } else {
                 doc["type"] = "Other";
                 IOHC::lastCmd = 0x03;
+                IOHC::lastData = receivedPacket->data(); //  .assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 12);
                 otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
                 cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                cozyDevice2W->memorizeSend.memorizedData.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
+                cozyDevice2W->memorizeSend.memorizedData = IOHC::lastData; //.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
             }
             break;
         }

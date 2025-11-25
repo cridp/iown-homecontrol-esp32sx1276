@@ -224,6 +224,7 @@ namespace IOHC {
     inline unsigned long packetStamp = 0L;
     inline unsigned long relStamp = 0L;
     inline size_t lastCmd = 0xFF;
+    inline std::vector<uint8_t> lastData;
     /**
     Class implementing the IOHC packet received/sent, including some additional members useful to track/control Radio parameters and timings
     */
@@ -285,7 +286,7 @@ namespace IOHC {
 
         bool is1W() const { return this->payload.packet.header.CtrlByte1.asStruct.Protocol; }
         uint8_t cmd() const { return this->payload.packet.header.cmd; }
-
+        std::vector<uint8_t> data() const  { return std::vector<uint8_t>(this->payload.buffer + 9, this->payload.buffer + this->buffer_length);}
     };
 }
 #endif

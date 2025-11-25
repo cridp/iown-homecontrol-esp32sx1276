@@ -29,6 +29,9 @@
 #include "interact.h"
 #include "iohcCozyDevice2W.h"
 
+// Drapeau pour demander une sauvegarde depuis la tâche de fond
+extern volatile bool saveRequestFlag;
+
 namespace IOHC {
 
     static bool sameDiscussion; // = false;
@@ -250,8 +253,6 @@ namespace IOHC {
             ets_printf(" Type %s ", typeName);
         } else {
             // 2W fields
-            // IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd = this->payload.packet.header.cmd;
-            // IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData = {};
             if (dataLen != 0) {
                 std::string msg_data = bitrow_to_hex_string(this->payload.buffer + 9, dataLen);
                 ets_printf(" %s ", msg_data.c_str());
@@ -335,7 +336,7 @@ namespace IOHC {
                     // ets_printf("\n");
                 }
                 if (this->cmd() == 0x3C) {
-                    ets_printf("Challenge asked after Last Command %2.2X and Memorized %2.2X (%d)", IOHC::lastCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedData.size());
+                    ets_printf("Challenge asked after Last Command %2.2X (%d)", IOHC::lastCmd, IOHC::lastData.size()); // IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedData.size());
 
 // IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd = 0x3C;
 // IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.assign(this->payload.buffer+9, this->payload.buffer+15);
@@ -350,13 +351,16 @@ namespace IOHC {
             } else {
                 if (this->cmd() == iohcDevice::DISCOVER_0x28) {ets_printf("2W Pairing Asked Waiting for 0x29/0x2B");}
                 if (this->cmd() == iohcDevice::DISCOVER_ACTUATOR_0x2C) {ets_printf("2W Actuator Ack Asked Waiting for 0x2D");}
-                if (this->cmd() == iohcDevice::LAUNCH_KEY_TRANSFERT_0x38) {ets_printf("2W Key Transfert Asked after Command %2.2X Waiting for 0x32", this->payload.packet.header.cmd);}
+                if (this->cmd() == iohcDevice::LAUNCH_KEY_TRANSFERT_0x38) {ets_printf("2W Key Transfert Asked after Command %2.2X Waiting for 0x32", this->cmd());} //payload.packet.header.cmd);}
 
             }
         }
         ets_printf("\n");
         relStamp = packetStamp;
-        if (save2W) {iohcOther2W::getInstance()->save();}
+        if (save2W) {
+            // Demander une sauvegarde à la tâche de fond
+            saveRequestFlag = true;
+        }
     }
 
     std::string iohcPacket::decodeToString(bool verbosity) {

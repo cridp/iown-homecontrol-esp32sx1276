@@ -28,7 +28,7 @@
 volatile uint64_t timestamp_sync_started = 0;
 volatile uint64_t timestamp_sync_stopped = 0;
 volatile uint64_t timestamp_payload_ready = 0;
-
+volatile uint64_t timestamp_packet_sent = 0;
 
 TaskHandle_t IOHC::iohcRadio::txTaskHandle = nullptr;
 
@@ -80,8 +80,8 @@ namespace IOHC {
     void IRAM_ATTR handle_interrupt_fromDIO0(void* arg) {
         // Only GPIOS short ops, non blocking
         RadioIrqEvent ev;
-        ev.source = 0; // DIO0
-        ev.edge = digitalRead(RADIO_PACKET_AVAIL) ? 1 : 0;
+        ev.source = 0; // DIO0 - PayloadReady / PacketSent
+        ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PACKET_AVAIL));
         ev.timestamp_us = esp_timer_get_time();
 
         // Send it to queue (FromISR)
@@ -97,8 +97,8 @@ namespace IOHC {
     void IRAM_ATTR handle_interrupt_fromDIO2(void* arg) {
         // Only GPIOS short ops, non blocking
         RadioIrqEvent ev;
-        ev.source = 2; // DIO2
-        ev.edge = digitalRead(RADIO_PREAMBLE_DETECTED) ? 1 : 0;
+        ev.source = 2; // DIO2 - SyncAddress
+        ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PREAMBLE_DETECTED));
         ev.timestamp_us = esp_timer_get_time();
 
         BaseType_t xHigherPriorityTaskWoken = pdFALSE;
@@ -113,8 +113,7 @@ namespace IOHC {
 
     void IRAM_ATTR handleSynchroStop(iohcRadio* radio, const RadioIrqEvent &evt) {
         timestamp_sync_stopped = evt.timestamp_us;
-            // Only if we were receiving a preamble
-            radio->setRadioState(iohcRadio::RadioState::RX);
+        radio->setRadioState(iohcRadio::RadioState::RX);
         // SyncLen ~= nByte * 1250 µs
         // ets_printf("SYNCHRO LEN: %llu\n", timestamp_sync_stopped - timestamp_sync_started);
     }
@@ -124,10 +123,11 @@ namespace IOHC {
         if (iohcRadio::radioState == iohcRadio::RadioState::PREAMBLE || iohcRadio::radioState == iohcRadio::RadioState::RX) {
             radio->setRadioState(iohcRadio::RadioState::PAYLOAD);
             radio->tickerCounter(radio, evt);
-            }
+        }
     }
 
     void IRAM_ATTR handlePacketSent(iohcRadio* radio, const RadioIrqEvent &evt) {
+        timestamp_packet_sent = evt.timestamp_us;
         Radio::clearFlags();
         // Return the radio to RX mode
         Radio::setRx();
@@ -189,11 +189,11 @@ namespace IOHC {
         Radio::setCarrier(Radio::Carrier::Modulation, Radio::Modulation::FSK);
 
         // Configure interrupts with pull-down to avoid false triggers
-//         pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
-//         pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
+         // pinMode(RADIO_DIO0_PIN, INPUT); //_PULLDOWN);
+         // pinMode(RADIO_DIO2_PIN, INPUT); //_PULLDOWN);
         // Attach interrupts with hardware debounce
-//         attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
-//         attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
+         // attachInterruptArg(RADIO_DIO0_PIN, handle_interrupt_fromDIO0, nullptr, RISING);
+         // attachInterruptArg(RADIO_DIO2_PIN, handle_interrupt_fromDIO2, nullptr, CHANGE);
         // #define GPIO_BIT_MASK  ((1ULL<<RADIO_DIO0_PIN) | (1ULL<<RADIO_DIO1) | (1ULL<<RADIO_DIO2_PIN))
         gpio_install_isr_service(ESP_INTR_FLAG_IRAM);
         gpio_config_t io_conf = {};
@@ -308,7 +308,7 @@ namespace IOHC {
 
     /**
     */
-    static TxPacketWrapper* IRAM_ATTR createPacketWrapper(iohcPacket* sourcePacket) {
+    static TxPacketWrapper* createPacketWrapper(iohcPacket* sourcePacket) {
         if (!sourcePacket) {
             return nullptr;
         }
@@ -411,8 +411,6 @@ namespace IOHC {
             return;
         }
 
-        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
-
         // Lock for transmission
         txMode = true;
 
@@ -439,6 +437,7 @@ namespace IOHC {
         pkt->decode(true);
         // Memorize last command sent
         IOHC::lastCmd = pkt->cmd();
+        IOHC::lastData = pkt->data();
 
         if (pkt->repeat > 0) {
             // Only the first frame is LPM (1W)
@@ -471,8 +470,6 @@ namespace IOHC {
                 radio->stopTransmission();
             }
         }
-
-        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     }
 
     /**
@@ -500,7 +497,7 @@ namespace IOHC {
     }
 }
 
-void iohcRadio::packetProcessorTask(void* parameter) {
+void IRAM_ATTR iohcRadio::packetProcessorTask(void* parameter) {
 
     auto radio = static_cast<iohcRadio*>(parameter);
     iohcPacket receivedPacket;
@@ -561,7 +558,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
 }
 
     bool IRAM_ATTR iohcRadio::receive(bool stats, const RadioIrqEvent &evt) {
-        digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
         // **CRITIQUE: Toujours commencer par mettre à jour l'état FHSS**
         // adaptiveFHSS->onPacketActivity();
         // setFHSSState(FHSSState::RECEIVING);
@@ -609,7 +605,6 @@ void iohcRadio::packetProcessorTask(void* parameter) {
             portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
         }
 
-        digitalWrite(RX_LED, false);
         return (queueResult == pdTRUE);
     }
 
@@ -629,7 +624,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
     * Starts transmission if not already in progress
     */
-    void iohcRadio::startTransmission() {
+    void IRAM_ATTR iohcRadio::startTransmission() {
         if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(10)) != pdTRUE) {
             return;
         }
@@ -648,7 +643,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
      * Process Next Packet in Queue
      */
-    bool iohcRadio::processNextPacket() {
+    bool IRAM_ATTR iohcRadio::processNextPacket() {
         // Clean current packet
         if (currentTxPacket) {
             delete currentTxPacket;
@@ -682,7 +677,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
      * Stop Transmission
      */
-    void iohcRadio::stopTransmission() {
+    void IRAM_ATTR iohcRadio::stopTransmission() {
         if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(100)) == pdTRUE) {
             isSending = false;
             Ticker.detach();
@@ -706,7 +701,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
      * Clean TX Queue
      */
-    void iohcRadio::clearTxQueue() {
+    void IRAM_ATTR iohcRadio::clearTxQueue() {
         while (!txQueue.empty()) {
             const TxPacketWrapper *wrapper = txQueue.front();
             txQueue.pop_front();
@@ -717,7 +712,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
     * Check if currently transmitting
     */
-    bool iohcRadio::isTransmitting() const {
+    bool IRAM_ATTR iohcRadio::isTransmitting() const {
         bool transmitting = false;
         if (xSemaphoreTake(tx_mutex, pdMS_TO_TICKS(10)) == pdTRUE) {
             transmitting = isSending;
@@ -729,7 +724,7 @@ void iohcRadio::packetProcessorTask(void* parameter) {
     /**
      * Clean TX Queue and stop transmission
      */
-    void iohcRadio::cancelTransmissions() {
+    void IRAM_ATTR iohcRadio::cancelTransmissions() {
         Ticker.detach();
         clearTxQueue();
         stopTransmission();
