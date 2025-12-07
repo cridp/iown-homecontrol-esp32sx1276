@@ -3,7 +3,7 @@
     "node": "0842e3",
     "type": "",
     "description": "SALON COTE RUE",
-    "associated": "1c5b65"
+    "associated": "9a5065"
   },
   "94786e": {
     "node": "269411",
@@ -21,19 +21,19 @@
     "node": "0842e3",
     "type": "",
     "description": "SALLE _ MANGER ",
-    "associated": "2a940f"
+    "associated": "9a5065"
   },
   "14e00e": {
     "node": "0842e3",
     "type": "",
     "description": "CUISINE",
-    "associated": "3299d8"
+    "associated": "9a5065"
   },
   "1c6858": {
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE _TAGE GA",
-    "associated": "1c6858"
+    "associated": "9a5065"
   },
   "dfe03f": {
     "node": "269411",
@@ -57,7 +57,7 @@
     "node": "0842e3",
     "type": "",
     "description": "SALON COTE ",
-    "associated": "937b80"
+    "associated": "315824"
   },
   "b3a198": {
     "node": "269411",
@@ -75,13 +75,13 @@
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE _TAGE DR",
-    "associated": "9a5065"
+    "associated": "000000"
   },
   "d58341": {
     "node": "0842e3",
     "type": "",
     "description": "SALLE DE BAIN CH",
-    "associated": "d58341"
+    "associated": "9a5065"
   },
   "e67334": {
     "node": "269411",
@@ -99,12 +99,18 @@
     "node": "0842e3",
     "type": "",
     "description": "CHAMBRE PARENTAL",
-    "associated": "b489be"
+    "associated": "000000"
   },
   "5be4d0": {
     "node": "269411",
     "type": "",
     "description": "NONAME",
     "associated": "b66eac"
+  },
+  "703f95": {
+    "node": "269411",
+    "type": "",
+    "description": "NONAME",
+    "associated": "269411"
   }
 }
