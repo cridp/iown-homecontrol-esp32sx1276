@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -209,11 +209,10 @@ timestamp_packet_sent = evt.timestamp_us;
         gpio_config(&io_conf);
         gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
 
-        // start state machine
-        ets_printf("Starting Interrupt Handler...\n");
         // Create all mutex
         tx_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(tx_mutex);
         txQueue_binary_sem = xSemaphoreCreateBinary(); xSemaphoreGive(txQueue_binary_sem); // Initialement libre
+        lastPacketMutex = xSemaphoreCreateMutex();
 
         // Create ISR Queue
         radioIrqQueue = xQueueCreate(RADIO_IRQ_QUEUE_LEN, sizeof(RadioIrqEvent));
@@ -221,14 +220,15 @@ timestamp_packet_sent = evt.timestamp_us;
         // Create Packet Queue
         packetQueue = xQueueCreate(PACKET_QUEUE_SIZE, sizeof(iohcPacket));
 
-        lastPacketMutex = xSemaphoreCreateMutex();
-
         // Start Packet processor
         startPacketProcessor();
 
+        // start state machine
+        ets_printf("Starting Interrupt Handler...\n");
+
         BaseType_t task_code = xTaskCreatePinnedToCore(handle_interrupt_task,
             "handle_interrupt_task", 8192,
-            this, configMAX_PRIORITIES - 1,// Before FHSS
+            this, configMAX_PRIORITIES - 1, // Before FHSS
              &handle_interrupt, xPortGetCoreID());
         if (task_code != pdPASS) {
             ets_printf("ERROR STATEMACHINE Can't create task %d\n", task_code);
@@ -339,7 +339,7 @@ timestamp_packet_sent = evt.timestamp_us;
 * Sends one or more packets
      * Packages are COPIED internally, we retain ownership of the originals
      */
-    bool iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
+    bool IRAM_ATTR iohcRadio::send(std::vector<iohcPacket *> &TxPackets) {
         if (TxPackets.empty()) {
             return false;
         }
@@ -376,7 +376,7 @@ timestamp_packet_sent = evt.timestamp_us;
     /**
      * Send a single packet, to help reveiced the answer in another frequency
      */
-    bool iohcRadio::sendSingle(iohcPacket *packet) {
+    bool IRAM_ATTR iohcRadio::sendSingle(iohcPacket *packet) {
         if (!packet) return false;
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet))
             txQueue.push_back(wrapper);
@@ -391,7 +391,7 @@ timestamp_packet_sent = evt.timestamp_us;
     * Insère un paquet en priorité (au début de la queue)
     * Pour les réponses urgentes
     */
-    bool iohcRadio::sendPriority(iohcPacket *packet) {
+    bool IRAM_ATTR iohcRadio::sendPriority(iohcPacket *packet) {
         if (!packet) return false;
         // O(1)
         if (TxPacketWrapper* wrapper = createPacketWrapper(packet)) txQueue.push_front(wrapper);
@@ -417,12 +417,14 @@ timestamp_packet_sent = evt.timestamp_us;
         iohcPacket *pkt = radio->currentTxPacket->packet;
 
         // Use the frequency of the packet if specified. 1W is always set at CHANNEL2
-        if (pkt->frequency == 0) pkt->frequency = radio->scan_freqs[radio->currentFreqIdx];;
-        if (pkt->frequency != radio->scan_freqs[radio->currentFreqIdx]) {
-            Radio::setCarrier(Radio::Carrier::Frequency, pkt->frequency);
-        } else {
+        if (pkt->frequency == 0) {
             pkt->frequency = radio->scan_freqs[radio->currentFreqIdx];
         }
+        // Only change frequency if necessary
+        // This assumes a function Radio::getCurrentFrequency() exists or can be implemented
+        // to avoid redundant SPI writes. For now, we set it.
+        // if (pkt->frequency != Radio::getCurrentFrequency()) {
+            Radio::setCarrier(Radio::Carrier::Frequency, pkt->frequency);
 
         // Radio::setStandby();
         // Radio::clearFlags();
@@ -436,6 +438,8 @@ timestamp_packet_sent = evt.timestamp_us;
 
         pkt->decode(true);
         // Memorize last command sent
+        // iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd = pkt->cmd();
+        // iohcCozyDevice2W::getInstance()->memorizeSend.memorizedData = pkt->data();
         IOHC::lastCmd = pkt->cmd();
         IOHC::lastData = pkt->data();
 

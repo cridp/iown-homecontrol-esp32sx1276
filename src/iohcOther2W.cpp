@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -333,7 +333,7 @@ namespace IOHC {
                     memcpy(packets2send.back()->payload.packet.header.source, gateway, 3);
                     packets2send.back()->repeat = 4;
                 }
-                // Envoyer (les paquets sont copiés, il faut les libérer après)
+
                 _radioInstance->send(packets2send);
 
                 break;
@@ -348,10 +348,6 @@ namespace IOHC {
                     forgeAnyWPacket(packets2send.back(), toSend);
 
                     packets2send.back()->payload.packet.header.cmd = 0x03;
-                    // memorizeOther2W.memorizedData = toSend;
-                    // memorizeOther2W.memorizedCmd = 0x03;
-                    // cozyDevice2W->memorizeSend.memorizedCmd = 0x03;
-                    // cozyDevice2W->memorizeSend.memorizedData = toSend;
                     // IOHC::lastCmd = 0x03;
                     // IOHC::lastData = toSend;
 
@@ -388,7 +384,7 @@ namespace IOHC {
                         discover.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
                         discover.payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
 
-                        // discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
+                        discover.payload.packet.header.CtrlByte2.asStruct.LPM = 1;
                         discover.payload.packet.header.CtrlByte2.asStruct.Prio = 0;
 
                         address somfy = {0xe0, 0x98, 0x48}; // Somfy Remote (E09848)
@@ -403,9 +399,63 @@ namespace IOHC {
 
                 break;
             }
-            case Other2WButton::scanMode: {
-                // _radioInstance->adaptiveFHSS->prepareForConversation();
 
+            case Other2WButton::pair31: {
+                packets2send.push_back(new iohcPacket);
+                std::vector<uint8_t> toSend;
+                // iohcPacket response;
+                forgeAnyWPacket(packets2send.back(), toSend);
+                packets2send.back()->payload.packet.header.cmd = 0x2c;
+                lastCmd = 0x2c;
+                lastData = toSend;
+                address GW1 = {0x08, 0x42, 0xe3};
+                address SALONRUE = {0x05, 0x4E, 0x17};
+                memcpy(packets2send.back()->payload.packet.header.source, GW1, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, SALONRUE, 3);
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+
+                // After 2C 2D
+                packets2send.push_back(new iohcPacket);
+                toSend = {0xab, 0xba, 0xab, 0xba, 0xab, 0xba};
+                forgeAnyWPacket(packets2send.back(), toSend);
+                packets2send.back()->payload.packet.header.cmd = 0x38;
+// lastCmd = 0x31;
+// lastData = toSend;
+                // address GW1 = {0x08, 0x42, 0xe3};
+                // address SALONRUE = {0x05, 0x4E, 0x17};
+                memcpy(packets2send.back()->payload.packet.header.source, GW1, 3);
+                memcpy(packets2send.back()->payload.packet.header.target, SALONRUE, 3);
+                packets2send.back()->payload.packet.header.CtrlByte1.asStruct.StartFrame = 0; //0x38 is 1 ?
+
+                packets2send.back()->repeat = 4;
+                packets2send.back()->repeatTime = 25;
+                _radioInstance->send(packets2send);
+
+                break;
+            }
+
+            case Other2WButton::pair38: {
+                std::vector<uint8_t> toSend;
+                iohcPacket response;
+
+                toSend = {0xab, 0x99, 0x45, 0x78, 0x38, 0x8d};
+                forgeAnyWPacket(&response, toSend);
+
+                response.payload.packet.header.cmd = 0x38;
+
+                address GW1 = {0x08, 0x42, 0xe3};
+                address SALONRUE = {0x05, 0x4E, 0x17};
+                memcpy(response.payload.packet.header.source, GW1, 3);
+                memcpy(response.payload.packet.header.target, SALONRUE, 3);
+                response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 1;
+
+                // response.repeat = 4;
+                _radioInstance->sendSingle(&response);
+
+                break;
+            }
+
+                case Other2WButton::scanMode: {
                 std::vector<uint8_t> toSend;
                 // = {}; //{0x01, 0x02, 0x03, 0x04, 0x05, 0x06}; //, 0x07, 0x08, 0x09, 0x10, 0x11, 0x12};
                 uint8_t special12[] = {
@@ -457,10 +507,12 @@ namespace IOHC {
                             toSend.assign(special12, special12 + 12);
                         if (CmdSend == 0x38 || CmdSend == 0x3D)
                             toSend.assign(special12, special12 + 6);
-                        if (CmdSend == 0x3C)
+                        if (CmdSend == 0x3C) {
                             toSend = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-                        if (CmdSend == 0x32 || CmdSend == 0x92)
-                            toSend.assign(special12, special12 + 16);
+                            toSend = {0xab, 0xba, 0xab, 0xba, 0xab, 0xba};
+                        }
+                        // if (CmdSend == 0x32 || CmdSend == 0x92)
+                        //     toSend.assign(special12, special12 + 16);
                         if (CmdSend == 0x52) toSend = myName;
                         if (CmdSend == 0x46 || CmdSend == 0x48 || CmdSend == 0x6E || CmdSend == 0x6F)
                             toSend.assign(special12, special12 + 9);
@@ -531,7 +583,7 @@ namespace IOHC {
         // std::iota(valid.begin(), valid.end(), 0x00);
 
         const std::set valid = {
-            0x00, 0x01, 0x03, 0x0a, 0x0c, 0x19, 0x1e, 0x20, 0x23, 0x28, 0x2a, 0x2c, 0x38, 0x2e, 0x31, 0x32, 0x36, 0x39,
+            0x00, 0x01, 0x03, 0x0a, 0x0c, 0x19, 0x1e, 0x20, 0x23, 0x28, 0x2a, 0x2c, 0x38, 0x2e, 0x31, /*0x32,*/ 0x36, 0x39,
             0x46, 0x48, 0x4a, 0x4b,
             0x50, 0x52, 0x54, 0x56, 0x60, 0x64, 0x6e, 0x6f, 0x71, 0x73, 0x80, 0x82, 0x84, 0x86, 0x88, 0x8a, 0x8b, 0x8e,
             0x90, 0x92, 0x94, 0x96, 0x98,

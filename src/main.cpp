@@ -1,5 +1,5 @@
-/**
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+/*
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,7 +15,6 @@
  */
 
 #include <board-config.h>
-#include <crypto2Wutils.h>
 #include <fileSystemHelpers.h>
 #include <interact.h>
 #include <iohcCozyDevice2W.h>
@@ -71,6 +70,10 @@ IOHC::iohcOther2W *otherDevice2W;
 // IOHC::iohcSystemTable *sysTable;
 // IOHC::iohcRemoteMap *remoteMap;
 
+// Longueur de préambule pour réveiller un appareil distant en veille (ex: gateway)
+constexpr uint16_t PREAMBLE_LENGTH_WAKEUP = 0x0068; // 104 symboles
+constexpr uint16_t PREAMBLE_LENGTH_DEFAULT = 0x0034; // 52 symboles
+
 uint32_t frequencies[] = FREQS2SCAN;
 
 using namespace IOHC;
@@ -79,7 +82,7 @@ void setup() {
     esp_log_level_set("*", ESP_LOG_VERBOSE);    // Or VERBOSE for ESP_LOGV
     Serial.begin(115200);    //Start serial connection for debug and manual input
     pinMode(RX_LED, OUTPUT); // Blink this LED
-    digitalWrite(RX_LED, 1);
+    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
     Cmd::createCommands();
     Cmd::kbd_tick.attach_ms(500, Cmd::cmdFuncHandler);
 
@@ -133,7 +136,32 @@ void setup() {
     otherDevice2W = IOHC::iohcOther2W::getInstance();
 
     ets_printf("Startup completed. type help to see what you can do!\n");
-    digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+    digitalWrite(RX_LED, 0);
+
+    // Verification logic to match Python implementation for deriving system_key
+    // challenge used from 0x3C received after sending 0x31
+    // Challenge utilisé (CMD 31/3C): f4bf794c01bd
+    // encrypted_key = bytes.fromhex("72c552ce5183f740c806e30ad8d3733c")
+    // expected_key = bytes.fromhex("777cb0cf4fdc591d4c8173637e1b7013")
+    std::vector<uint8_t> challengeAsked = {0xf4, 0xbf, 0x79, 0x4c, 0x01, 0xbd};
+    std::vector<uint8_t> encrypted_key = {0x72, 0xc5, 0x52, 0xce, 0x51, 0x83, 0xf7, 0x40, 0xc8, 0x06, 0xe3, 0x0a, 0xd8, 0xd3, 0x73, 0x3c};
+    
+    std::vector<uint8_t> IVdata = {IOHC::iohcDevice::ASK_CHALLENGE_0x31};
+
+    // 1. Construct IV and encrypt it with transfer_key to get the keystream
+    std::vector<uint8_t> keystream = iohcCrypto::encrypt_2W_payload(IVdata, challengeAsked, iohcCrypto::transfert_key);
+
+    // 2. XOR the encrypted_key with the keystream to get the final system_key
+    std::vector<uint8_t> calculated_system_key = encrypted_key; // copy
+    for (size_t i = 0; i < calculated_system_key.size(); i++) {
+        calculated_system_key[i] ^= keystream[i];
+    }
+
+    ets_printf("Calculated 2W SYSTEM_KEY (KEEP IT PRIVATE): ");
+    for (unsigned char idx: calculated_system_key)
+        ets_printf("%2.2X", idx);
+    ets_printf("\n");
+    ets_printf("Expected 2W SYSTEM_KEY: 777CB0CF4FDC591D4C8173637E1B7013\n");
 }
 
 /**
@@ -162,11 +190,6 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->cmd();
     }
     otherDevice2W->stopDiscover = false;
-    // IOHC::lastCmd = receivedPacket->cmd();
-    // Used for the AUTH replies in main
-    // iohcCozyDevice2W *cozyDevice2W = iohcCozyDevice2W::getInstance();
-    // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-    // cozyDevice2W->memorizeSend.memorizedData = {iohc->payload.buffer+9, iohc->payload.buffer+iohc->buffer_length};
 
     switch (receivedPacket->cmd()) {
         case iohcDevice::DISCOVER_0x28: {
@@ -182,7 +205,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
             // 0x0b OverKiz 0x0c Atlantic
             // std::vector<uint8_t> toSend = {0xff, 0xc0, 0xba, 0x11, 0xad, 0x0b, 0xcc, 0x00, 0x00};
-            // Sunblind dynamit 0x344e1f fabricant 0x02 dc9c88 04 00 34 4E 1F 02 DC D5 7B
+            // Sunblind dyna 0x344e1f fabricant 0x02 dc9c88 04 00 34 4E 1F 02 DC D5 7B
             std::vector<uint8_t> toSend = {0x04, 0x00, 0x34, 0x4E, 0x1F, 0x02, 0xDC, 0x9C, 0x88};
 
             // auto* packet = new iohcPacket();
@@ -229,8 +252,6 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
             // packet->payload.packet.header.cmd = 0x38;
             response.payload.packet.header.cmd = iohcDevice::DISCOVER_ACTUATOR_0x2C;
-            // cozyDevice2W->memorizeSend.memorizedData = toSend;
-            // cozyDevice2W->memorizeSend.memorizedCmd = SEND_DISCOVER_ACTUATOR_0x2C;
 
             /* Swap */
             memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
@@ -253,7 +274,6 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
             std::vector<uint8_t> toSend = {};
 
-            // auto *packet = new iohcPacket();
             iohcPacket response;
 
             forgePacket(&response, toSend);
@@ -272,8 +292,6 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             break;
         }
         case iohcDevice::LAUNCH_KEY_TRANSFERT_0x38: {
-            // ets_printf("2W Key Transfert Asked after Command %2.2X Waiting for 0x32\n", iohc->payload.packet.header.cmd);
-            //
             std::vector<uint8_t> key_transfert;
             key_transfert.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
 
@@ -283,20 +301,17 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             ets_printf("\n");
 
             std::vector<uint8_t> data = {IOHC::iohcDevice::ASK_CHALLENGE_0x31}; //0x38
-            unsigned char initial_value[16];
-            constructInitialValue(data, initial_value, data.size(), key_transfert, nullptr);
+            std::vector<uint8_t> initial_value = iohcCrypto::constructInitialValue(data, key_transfert.data(), nullptr);
             ets_printf("2) Initial value used for key encryption: ");
             for (unsigned char i: initial_value) {
                 ets_printf("%02X ", i);
             }
             ets_printf("\n");
 
-            AES_init_ctx(&ctx, transfert_key);
-            uint8_t encrypted_key[16];
-            AES_ECB_encrypt(&ctx, initial_value);
+            std::vector<uint8_t> encrypted_key = iohcCrypto::encrypt_2W_payload(data, key_transfert, iohcCrypto::transfert_key);
             //  XORing transfert_key
             for (int i = 0; i < 16; i++) {
-                encrypted_key[i] = initial_value[i] ^ transfert_key[i];
+                encrypted_key[i] = encrypted_key[i] ^ iohcCrypto::transfert_key[i];
             }
             ets_printf("2) Encrypted 2-way key to be sent with SEND_KEY_TRANSFERT_0x32: ");
             for (unsigned char i: encrypted_key) {
@@ -305,20 +320,16 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             ets_printf("\n");
             if (!Cmd::pairMode) break;
 
-            std::vector<uint8_t> toSend;
-            toSend.assign(encrypted_key, encrypted_key + 16);
-
             iohcPacket response;
-            forgePacket(&response, toSend);
+            forgePacket(&response, encrypted_key);
 
             response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
-            // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
 
             /* Swap */
             memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
             memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
-            response.frequency = receivedPacket->frequency;
+            // response.frequency = receivedPacket->frequency;
             radioInstance->sendPriority(&response);
             break;
         }
@@ -343,9 +354,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         }
         case iohcDevice::CHALLENGE_REQUEST_0x3C: {
             // Answer only to our fake gateway, not to others real devices
-            // if (true) {
-            if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
-                // radioInstance->maybeCheckHeap("CREATE RESPONSE 0x3D IN msgRcvd");
+            if (true) {
+            // if (cozyDevice2W->isFake(receivedPacket->payload.packet.header.source, receivedPacket->payload.packet.header.target)) {
                 doc["type"] = "Gateway";
 
                 // if (Cmd::scanMode) {
@@ -355,71 +365,48 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
 
                 // IVdata is the challenge with commandId put on start
                 std::vector<uint8_t> challengeAsked = receivedPacket->data();
-                // challengeAsked.assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 15);
-                // ets_printf("Challenge asked after Last Command %2.2X and Memorized %2.2X (%d)\n", IOHC::lastCmd, cozyDevice2W->memorizeSend.memorizedCmd, cozyDevice2W->memorizeSend.memorizedData.size());
 
                 iohcPacket response;
-                // radioInstance->maybeCheckHeap("just after 'iohcPacket response; CREATE RESPONSE 0x3D IN msgRcvd");
-                // ets_printf("DBG: AES_init ctx=%p key=%p first4=0x%02X%02X%02X%02X\n",
-                //            (void*)&ctx,
-                //            (void*)transfert_key,
-                //            transfert_key[0], transfert_key[1], transfert_key[2], transfert_key[3]);
-                AES_init_ctx(&ctx, transfert_key);
-                // radioInstance->maybeCheckHeap("just after 'AES_init_ctx' CREATE RESPONSE 0x3D IN msgRcvd");
-
-                std::vector<uint8_t> IVdata;
-
-                alignas(16) unsigned char initial_value[16];
-                // uint32_t initial_value32[4];
-                // unsigned char* initial_value = reinterpret_cast<unsigned char*>(initial_value32);
-
-                uint8_t dataLen = 6;
-
-                if (IOHC::lastCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) { //cozyDevice2W->memorizeSend.memorizedCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) {
-                    response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
-                    dataLen = 16;
-                    IVdata = {IOHC::iohcDevice::ASK_CHALLENGE_0x31};
-                    constructInitialValue(IVdata, initial_value, 1, challengeAsked, nullptr);
-                    AES_ECB_encrypt(&ctx, initial_value);
-                    for (int i = 0; i < dataLen; i++)
-                        initial_value[i] = initial_value[i] ^ transfert_key[i];
-                    cozyDevice2W->memorizeSend.memorizedCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
-                    cozyDevice2W->memorizeSend.memorizedData.assign(initial_value, initial_value + 16);
-                    IOHC::lastCmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
-                    IOHC::lastData.assign(initial_value, initial_value + 16);
-                } else {
-// radioInstance->maybeCheckHeap("just before 'constructInitialValue' with alignas and before 'AES_ECB_encrypt' CREATE RESPONSE 0x3D IN msgRcvd");
-                    response.payload.packet.header.cmd = IOHC::iohcDevice::CHALLENGE_ANSWER_0x3D;
-                    dataLen = 6;
-                    IVdata = IOHC::lastData; //cozyDevice2W->memorizeSend.memorizedData;
-                    IVdata.insert(IVdata.begin(), IOHC::lastCmd); //cozyDevice2W->memorizeSend.memorizedCmd);
-                    constructInitialValue(IVdata, initial_value, IVdata.size(), challengeAsked, nullptr);
-                    AES_ECB_encrypt(&ctx, initial_value);
-// radioInstance->maybeCheckHeap("AFTER AES_ECB_encrypt");
-                }
-                // ets_printf("Challenge response %2.2X: ", packet->payload.packet.header.cmd);
-                // for (int i = 0; i < dataLen; i++)
-                //     ets_printf("%02X ", initial_value[i]);
-                // ets_printf("\n");
-
                 std::vector<uint8_t> toSend;
-                toSend.assign(initial_value, initial_value + dataLen);
+
+                if (IOHC::lastCmd == IOHC::iohcDevice::ASK_CHALLENGE_0x31) {
+                    response.payload.packet.header.cmd = IOHC::iohcDevice::KEY_TRANSFERT_0x32;
+                    std::vector<uint8_t> IVdata = {IOHC::iohcDevice::ASK_CHALLENGE_0x31};
+                    toSend = iohcCrypto::encrypt_2W_payload(IVdata, challengeAsked, iohcCrypto::transfert_key);
+                    for (size_t i = 0; i < toSend.size(); i++)
+                        toSend[i] ^= iohcCrypto::transfert_key[i];
+                } else {
+                    response.payload.packet.header.cmd = IOHC::iohcDevice::CHALLENGE_ANSWER_0x3D;
+                    std::vector<uint8_t> IVdata = IOHC::lastData;
+                    IVdata.insert(IVdata.begin(), IOHC::lastCmd);
+                    // The challenge response for regular commands seems to use the transfert_key, not the system_key.
+                    // This is unusual but matches the behavior of the original implementation.
+                    toSend = iohcCrypto::encrypt_2W_payload(IVdata, challengeAsked, iohcCrypto::transfert_key);
+                    toSend.resize(6);
+                }
+
                 forgePacket(&response, toSend);
+
+                cozyDevice2W->memorizeSend.memorizedCmd = response.payload.packet.header.cmd;
+                cozyDevice2W->memorizeSend.memorizedData = toSend;
 
                 /* Swap */
                 memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
                 memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
 
                 response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
-                response.frequency = receivedPacket->frequency;
 
-                // distinguish our answer from others with a working unknow flag
-                response.payload.packet.header.CtrlByte2.asStruct.Unk2 = 1;
+                // For remote devices, a longer preamble is needed
+                // to allow their AFC (Automatic Frequency Control) to stabilize.
+                // Radio::setPreambleLength(PREAMBLE_LENGTH_WAKEUP);
+                // Timing is critical. A specific delay is necessary for the gateway to accept the response.
+                // The window appears to be between 9 and 12 ms.
+                response.repeatTime = 12;
 
-                response.repeatTime = 10;
-// radioInstance->maybeCheckHeap("just before 'radioInstance->sendPriority(&response);' CREATE RESPONSE 0x3D IN msgRcvd");
                 radioInstance->sendPriority(&response);
-// radioInstance->maybeCheckHeap("EXIT AFTER sendPriority RESPONSE 0x3D IN msgRcvd");
+
+                // Restaurer la longueur de préambule par défaut pour les communications suivantes.
+                // Radio::setPreambleLength(PREAMBLE_LENGTH_DEFAULT);
             }
             break;
         }
@@ -451,8 +438,8 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             // in iohcPacket
             break;
         }
-        case 0X00: if (!receivedPacket->is1W()) IOHC::lastCmd = 0x00;
-        case 0x01: if (!receivedPacket->is1W()) IOHC::lastCmd = 0x01;
+        case 0x01: if (!receivedPacket->is1W()) {IOHC::lastCmd = 0x01; break;}
+        case 0X00: if (!receivedPacket->is1W()) {IOHC::lastCmd = 0x00;}
         case 0x03: {
             if (receivedPacket->is1W() && receivedPacket->cmd() == 0x00) {
                 // doc["type"] = "1W";
@@ -487,13 +474,30 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
                     }
                 }
 #endif
-            } else {
+            } else if (!receivedPacket->is1W() && receivedPacket->cmd() == 0x03){
                 doc["type"] = "Other";
                 IOHC::lastCmd = 0x03;
-                IOHC::lastData = receivedPacket->data(); //  .assign(receivedPacket->payload.buffer + 9, receivedPacket->payload.buffer + 12);
-                // otherDevice2W->memorizeOther2W.memorizedCmd = IOHC::lastCmd;
-                // cozyDevice2W->memorizeSend.memorizedCmd = IOHC::lastCmd;
-                // cozyDevice2W->memorizeSend.memorizedData = IOHC::lastData; //.assign(receivedPacket->payload.buffer+9, receivedPacket->payload.buffer+12);
+                IOHC::lastData = receivedPacket->data();
+                // For the fun....
+                iohcPacket response;
+
+//                response.payload.packet.header.cmd = 0x3C;
+//                std::vector<uint8_t> toSend = {0xab, 0xba, 0xab, 0xba, 0xab, 0xba};
+                response.payload.packet.header.cmd = 0x04;
+                std::vector<uint8_t> toSend = {0x05 , 0x00, 0xc8, 0x00 , 0xc8, 0x00, 0x00, 0x00 , 0x32, 0x99, 0xd8 , 0x01, 0x00, 0x00};
+
+                memcpy(toSend.data() + 8, receivedPacket->payload.packet.header.source, 3);
+                forgePacket(&response, toSend);
+
+                /* Swap */
+                memcpy(response.payload.packet.header.source, receivedPacket->payload.packet.header.target, 3);
+                memcpy(response.payload.packet.header.target, receivedPacket->payload.packet.header.source, 3);
+
+                response.payload.packet.header.CtrlByte1.asStruct.StartFrame = 0;
+                response.payload.packet.header.CtrlByte1.asStruct.EndFrame = 1;
+
+                response.repeatTime = 10;
+                radioInstance->sendSingle(&response);
             }
             break;
         }
@@ -514,7 +518,6 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
         case iohcDevice::STATUS_0xFE: {
             if (Cmd::scanMode) {
                 otherDevice2W->memorizeOther2W = {};
-                // ets_printf(" Unknown %X Cmd %X ", iohc->payload.buffer[9], IOHC::lastSendCmd);
                 otherDevice2W->mapValid[IOHC::lastCmd] = receivedPacket->cmd();// payload.buffer[9];
             }
             break;
@@ -523,7 +526,7 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             for (uint8_t idx = 0; idx < 16; idx++)
                 keyCap[idx] = receivedPacket->payload.packet.msg.p0x30.enc_key[idx];
 
-            iohcCrypto::encrypt_1W_key((const uint8_t *) receivedPacket->payload.packet.header.source, (uint8_t *) keyCap);
+            iohcCrypto::encrypt_1W_key(receivedPacket->payload.packet.header.source, keyCap);
             ets_printf("CLEAR KEY: ");
             for (unsigned char idx: keyCap)
                 ets_printf("%2.2X", idx);
@@ -547,18 +550,38 @@ bool msgRcvd(IOHC::iohcPacket *receivedPacket) {
             break;
         }
         case iohcDevice::CHALLENGE_ANSWER_0x3D: // TODO save
-            // ets_printf("Challenge response from %2.2X: ", iohc->payload.packet.header.cmd);
-            // for (int i = 0; i < 6; i++)
-            //     ets_printf("%02X ", iohc->payload.buffer[10+i]);
-            // ets_printf("\n");
+        {
+            // This is where we verify if a received challenge answer is valid.
+//            ets_printf("Received a 0x3D challenge answer. Verifying...\n");
+            
+            // 1. Get the encrypted data from the received packet.
+//            std::vector<uint8_t> encrypted_data = receivedPacket->data();
+            
+            // 2. Decrypt it using the system key.
+//            std::vector<uint8_t> decrypted_payload = iohcCrypto::decrypt_2W_payload(encrypted_data, iohcCrypto::transfert_key);
 
+            // 3. Reconstruct the expected IV based on the last command we sent.
+//            std::vector<uint8_t> iv_data_base = cozyDevice2W->memorizeSend.memorizedData;
+//            iv_data_base.insert(iv_data_base.begin(), cozyDevice2W->memorizeSend.memorizedCmd);
+            // We can't know the challenge used by the other remote, so we only construct the first part of the IV.
+//            std::vector<uint8_t> expected_iv = iohcCrypto::constructInitialValue(iv_data_base, std::vector<uint8_t>(6, 0).data(), nullptr);
+
+//            ets_printf("Decrypted IV from 0x3D:       ");
+//            for (int i = 0; i < 8; i++) ets_printf("%02X ", decrypted_payload[i]);
+//            ets_printf("\n");
+
+//            ets_printf("Expected IV base (from us): ");
+//            for (int i = 0; i < 8; i++) ets_printf("%02X ", expected_iv[i]);
+//            ets_printf("\n");
+            break;
+        }
         case 0x2A:
         case 0x48:
         case 0x49:
         case 0x4A:
         case 0X05:
         case 0x19:
-        case 0x0C: IOHC::lastCmd = 0x0C; break;// Can answer with 0x0d (7bytes): 05 aa1c 0000  or 05 aa0a 0000
+        case 0x0C: break;
         case 0x31:
         case 0x32:
         case 0x33:

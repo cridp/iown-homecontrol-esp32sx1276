@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -15,8 +15,8 @@
  */
 
 #include <iohcCryptoHelpers.h>
-#include <crypto2Wutils.h>
 #include <rom/ets_sys.h>
+#include "mbedtls/aes.h"
 
 /**
     Helper function to convert a string containing hex numbers to a bytes sequence; one byte every two characters
@@ -46,13 +46,10 @@ std::string bytesToHexString(const uint8_t *byteString, uint8_t len) {
 }
 
 namespace iohcCrypto {
-    std::string transfer_key = "34c3466ed88f4e8e16aa473949884373";
+    // Unified keys for 1-Way and 2-Way communication
+//    uint8_t system_key[16] = {0xCE, 0x0D, 0x4B, 0x2F, 0x5C, 0x68, 0x24, 0x93, 0x2D, 0xFF, 0xED, 0x7E, 0x70, 0x06, 0xD3, 0x38};
+    uint8_t transfert_key[16] = {0x34, 0xc3, 0x46, 0x6e, 0xd8, 0x8f, 0x4e, 0x8e, 0x16, 0xaa, 0x47, 0x39, 0x49, 0x88, 0x43, 0x73};
 
-
-#if defined(ESP32)
-    mbedtls_aes_context aes;
-#endif
-    
     uint16_t computeCrc(uint8_t data, uint16_t crc = 0) {
         crc ^= data;
         for (int i = 0; i < 8; ++i) {
@@ -143,23 +140,12 @@ namespace iohcCrypto {
     - frame data starting from Command byte
 */
     void create_1W_hmac(uint8_t *hmac, const uint8_t *seq_number, uint8_t *controller_key, const std::vector<uint8_t>& frame_data) {
-        std::vector<uint8_t> iv;
-        #if defined(HELTEC)
-            mbedtls_aes_init(&aes);
-        #endif
-
-        iv = constructInitialValue(frame_data, nullptr, seq_number);
-
-#if defined(ESP32)
-            mbedtls_aes_setkey_enc( &aes, controller_key, 128 );
-           
-//        for (uint8_t a=0; a<16; a++){
-//            hmac[a] = 0;
-//        }
+        mbedtls_aes_context aes;
+        mbedtls_aes_init(&aes);
+        std::vector<uint8_t> iv = constructInitialValue(frame_data, nullptr, seq_number);
+        mbedtls_aes_setkey_enc( &aes, controller_key, 128 );
         mbedtls_aes_crypt_ecb(&aes, MBEDTLS_AES_ENCRYPT, iv.data(), hmac);
-//        mbedtls_aes_free( &aes );
-        #endif        
-
+        mbedtls_aes_free(&aes);
     }
 
 /**
@@ -168,14 +154,10 @@ namespace iohcCrypto {
     - Key in clear (or encrypted to decrypt)
 */
     void encrypt_1W_key(const uint8_t *node_address, uint8_t *key) {
-        #if defined(ESP32)
-            mbedtls_aes_init(&aes);
-        #endif
+        mbedtls_aes_context aes;
+        mbedtls_aes_init(&aes);
 
-        uint8_t btransfer[16];
         uint8_t captured[16] = {};
-
-        hexStringToBytes(transfer_key, btransfer);
 
         std::vector<uint8_t> iv(16, 0);
         for (int i = 0; i < 13; i += 3) {
@@ -185,21 +167,53 @@ namespace iohcCrypto {
         }
         iv[15] = node_address[0];
 
-    /*  
-        uint8_t captured[16] = {0};
-        aes128.setKey((uint8_t *)btransfer, 16);
-        aes128.encryptBlock(captured, iv.data());
-
+        size_t iv_offset = 0;
+        mbedtls_aes_setkey_enc( &aes, transfert_key, 128 );
+        mbedtls_aes_crypt_cfb128(&aes, MBEDTLS_AES_ENCRYPT, 16, &iv_offset, iv.data(), (uint8_t *)key, captured);
         for (int i = 0; i < 16; ++i)
-            key[i] ^= captured[i];
-    */
-        #if defined(ESP32)
-            size_t iv_offset = 0;
-            mbedtls_aes_setkey_enc( &aes, (uint8_t *)btransfer, 128 );
-            mbedtls_aes_crypt_cfb128(&aes, MBEDTLS_AES_ENCRYPT, 16, &iv_offset, iv.data(), (uint8_t *)key, captured);
-            for (int i = 0; i < 16; ++i)
-                key[i] = captured[i];
-            mbedtls_aes_free( &aes );
-        #endif
+            key[i] = captured[i];
+        mbedtls_aes_free( &aes );
+    }
+
+    /**
+     * @brief Encrypts a payload for 2-Way communication using AES/ECB.
+     * This function constructs an initial value (IV) based on frame data and a challenge,
+     * then encrypts the IV using the provided key.
+     * @param frame_data Data to build the IV from.
+     * @param challenge 6-byte challenge from the other device.
+     * @param key 16-byte encryption key.
+     * @return The 16-byte encrypted payload.
+     */
+    std::vector<uint8_t> encrypt_2W_payload(const std::vector<uint8_t>& frame_data, const std::vector<uint8_t>& challenge, const uint8_t* key) {
+        std::vector<uint8_t> iv = constructInitialValue(frame_data, challenge.data(), nullptr);
+        std::vector<uint8_t> encrypted_payload(16);
+
+        mbedtls_aes_context aes_ctx;
+        mbedtls_aes_init(&aes_ctx);
+
+        mbedtls_aes_setkey_enc(&aes_ctx, key, 128);
+        mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_ENCRYPT, iv.data(), encrypted_payload.data());
+
+        mbedtls_aes_free(&aes_ctx);
+        return encrypted_payload;
+    }
+
+    /**
+     * @brief Decrypts a 16-byte payload from 2-Way communication using AES/ECB.
+     * @param encrypted_payload The 16-byte data to decrypt.
+     * @param key The 16-byte decryption key.
+     * @return The 16-byte decrypted payload.
+     */
+    std::vector<uint8_t> decrypt_2W_payload(const std::vector<uint8_t>& encrypted_payload, const uint8_t* key) {
+        std::vector<uint8_t> decrypted_payload(16);
+
+        mbedtls_aes_context aes_ctx;
+        mbedtls_aes_init(&aes_ctx);
+
+        mbedtls_aes_setkey_dec(&aes_ctx, key, 128);
+        mbedtls_aes_crypt_ecb(&aes_ctx, MBEDTLS_AES_DECRYPT, encrypted_payload.data(), decrypted_payload.data());
+
+        mbedtls_aes_free(&aes_ctx);
+        return decrypted_payload;
     }
 }

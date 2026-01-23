@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -90,7 +90,6 @@ namespace IOHC {
 
     void iohcRemote1W::cmd(RemoteButton cmd, Tokens* data) {
         if (data->size() == 1) {return; }
-        // _radioInstance->adaptiveFHSS->prepareForConversation();
 
         std::string description = data->at(1).c_str();
 
@@ -557,7 +556,7 @@ uint8_t fp1 = (r.type[1] == 0) ? 0x0B : 0x02;
                 break;
 //            }
         }
-        this->save(); // Save sequence number
+        this->save(); // Save sequence numbers
         // Libérer vos paquets originaux
         for (auto* p : packets2send) {
             delete p;

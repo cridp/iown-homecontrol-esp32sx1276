@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -311,7 +311,7 @@ namespace IOHC {
                         );
                     // At least 2 types: simple state or extended state
                     // simple state OPEN CLOSE etc... c800 c800 0000 - d100 0000 0000 - d200 3796
-                    // extended state to learn ... 0c00 0a3f 0000 - 6000 6011 0000 - 7000 7011 0000
+                    // actualized states ... 0c00 0a3f 0000 - 6000 6011 0000 - 7000 7011 0000
                     // Target and source are inverted as it is a response
                     auto device = iohcOther2W::Device(this->payload.packet.header.target, this->payload.packet.header.source);
                     hexStringToBytes(msg_data.substr(16, 6), device._associated);
@@ -324,28 +324,9 @@ namespace IOHC {
                 if (this->cmd() == 0x57) {ets_printf("general info 2 %s ", iohcOther2W::extractAndNormalizeName(this->payload.buffer, 9, 16).c_str());}
                 if (this->cmd() == 0x59) {ets_printf("general info 3 %s ", iohcOther2W::extractAndNormalizeName(this->payload.buffer, 9, 16).c_str());}
                 if (this->cmd() == 0x3D) {
-// if (sameDiscussion && iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd == 0x3C) {
-    // std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAnswer.begin());
-    // IOHC::iohcOther2W::getInstance()->mapChallenge.insert_or_assign(challengeAsked, challengeAnswer);
-    // ets_printf("%d %d", countDiscussions, IOHC::iohcOther2W::getInstance()->mapChallenge.size());
-// }
-
-                    // ets_printf("Challenge response for %2.2X: ", IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd); // iohc->payload.packet.header.cmd);
-                    // for (int i = 0; i < 6; i++)
-                    //     ets_printf("%02X ", iohc->payload.buffer[10+i]);
-                    // ets_printf("\n");
                 }
                 if (this->cmd() == 0x3C) {
                     ets_printf("Challenge asked after Last Command %2.2X (%d)", IOHC::lastCmd, IOHC::lastData.size()); // IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd, IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedData.size());
-
-// IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedCmd = 0x3C;
-// IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.assign(this->payload.buffer+9, this->payload.buffer+15);
-                    // = {this->payload.buffer+9, this->payload.buffer+this->buffer_length};
-// std::copy_n(IOHC::iohcOther2W::getInstance()->memorizeOther2W.memorizedData.begin(), 6, challengeAsked.begin());
-                    // ets_printf("Challenge response for %2.2X: ", IOHC::iohcCozyDevice2W::getInstance()->memorizeSend.memorizedCmd); // iohc->payload.packet.header.cmd);
-                    // for (int i = 0; i < 6; i++)
-                    //     ets_printf("%02X ", iohc->payload.buffer[10+i]);
-                    // ets_printf("\n");
                 }
 
             } else {

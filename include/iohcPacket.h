@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -231,7 +231,7 @@ namespace IOHC {
     class iohcPacket {
     public:
         iohcPacket() {
-            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
+//            digitalWrite(RX_LED, digitalRead(RX_LED) ^ 1);
 
             // Common Flags
             // size is 8 if protocol version is 0 else 10

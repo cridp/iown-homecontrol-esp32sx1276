@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -47,6 +47,8 @@ namespace IOHC {
         dynamite,
         pairMode,
         scanMode,
+        pair31,
+        pair38,
     };
 
     class iohcOther2W : public iohcDevice {

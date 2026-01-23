@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2014-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -211,6 +211,8 @@ namespace IOHC {
                 forge2WPacket(packet, toSend);
 
                 packet->payload.packet.header.cmd = iohcDevice::WRITE_PRIVATE_0x20;
+                IOHC::lastCmd = 0x20;
+                IOHC::lastData = toSend;
                 // memorizeSend.memorizedData = toSend;
                 // memorizeSend.memorizedCmd = iohcDevice::WRITE_PRIVATE_0x20;
 

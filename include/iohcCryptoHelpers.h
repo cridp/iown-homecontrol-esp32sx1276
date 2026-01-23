@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -14,28 +14,31 @@
    limitations under the License.
  */
 
-#ifndef CRYPTO_H
-#define CRYPTO_H
+#ifndef IOHCCRYPTOHELPERS_H
+#define IOHCCRYPTOHELPERS_H
 
-#include <board-config.h>
 #include <string>
-#include <tuple>
 #include <vector>
+#include <tuple>
+#include "mbedtls/aes.h"
 
-#if defined(ESP32)
-    #include "mbedtls/aes.h"        // AES functions
-#endif
+#define CRC_POLYNOMIAL_CCITT 0x8408
 
-#define CRC_POLYNOMIAL_CCITT    0x8408
-
-uint8_t hexStringToBytes(std::string hexString, uint8_t *byteString);
+uint8_t hexStringToBytes(const std::string hexString, uint8_t *byteString);
 std::string bytesToHexString(const uint8_t *byteString, uint8_t len);
 
 namespace iohcCrypto {
+    extern uint8_t system_key[16];
+    extern uint8_t transfert_key[16];
+
     uint16_t computeCrc(uint8_t data, uint16_t crc);
     uint16_t radioPacketComputeCrc(uint8_t *buffer, uint8_t bufferLength);
     uint16_t radioPacketComputeCrc(std::vector<uint8_t>& buffer);
-    void encrypt_1W_key(const uint8_t *node_address, uint8_t *key);
+    std::tuple<uint8_t, uint8_t> computeChecksum(uint8_t frame_byte, uint8_t chksum1, uint8_t chksum2);
+    std::vector<uint8_t> constructInitialValue(const std::vector<uint8_t>& frame_data, const uint8_t *challenge, const uint8_t *sequence_number);
     void create_1W_hmac(uint8_t *hmac, const uint8_t *seq_number, uint8_t *controller_key, const std::vector<uint8_t>& frame_data);
+    void encrypt_1W_key(const uint8_t *node_address, uint8_t *key);
+    std::vector<uint8_t> encrypt_2W_payload(const std::vector<uint8_t>& frame_data, const std::vector<uint8_t>& challenge, const uint8_t* key);
+    std::vector<uint8_t> decrypt_2W_payload(const std::vector<uint8_t>& encrypted_payload, const uint8_t* key);
 }
-#endif
+#endif //IOHCCRYPTOHELPERS_H

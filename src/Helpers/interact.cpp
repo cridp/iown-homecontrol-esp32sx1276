@@ -1,16 +1,18 @@
-//   Copyright (c) 2024-2025. CRIDP https://github.com/cridp
-//
-//   Licensed under the Apache License, Version 2.0 (the "License");
-//   you may not use this file except in compliance with the License.
-//   You may obtain a copy of the License at
-//
-//           http://www.apache.org/licenses/LICENSE-2.0
-//
-//   Unless required by applicable law or agreed to in writing, software
-//   distributed under the License is distributed on an "AS IS" BASIS,
-//   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-//   See the License for the specific language governing permissions and
-//   limitations under the License.
+/*
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
+
+   Licensed under the Apache License, Version 2.0 (the "License");
+   you may not use this file except in compliance with the License.
+   You may obtain a copy of the License at
+
+           http://www.apache.org/licenses/LICENSE-2.0
+
+   Unless required by applicable law or agreed to in writing, software
+   distributed under the License is distributed on an "AS IS" BASIS,
+   WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+   See the License for the specific language governing permissions and
+   limitations under the License.
+ */
 #include <fileSystemHelpers.h>
 #include <interact.h>
 #include <iohcCozyDevice2W.h>
@@ -141,6 +143,15 @@ namespace Cmd {
         Cmd::addHandler("verbose", "Toggle verbose output on packets list", [](Tokens *cmd)-> void { verbosity = !verbosity;
         });
         Cmd::addHandler("pairMode", "pairMode", [](Tokens *cmd)-> void { pairMode = !pairMode; });
+
+        Cmd::addHandler("pair31", "test pair31", [](Tokens *cmd)-> void {
+            pairMode = true;
+            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::pair31, cmd /*cmd->at(1).c_str()*/);
+        });
+        Cmd::addHandler("pair38", "test pair38", [](Tokens *cmd)-> void {
+            pairMode = true;
+            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::pair38, cmd /*cmd->at(1).c_str()*/);
+        });
 
         // Utils
         Cmd::addHandler("dump", "Dump Transceiver registers", [](Tokens *cmd)-> void {
