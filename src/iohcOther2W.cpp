@@ -81,6 +81,59 @@ namespace IOHC {
 
         // Emulates device button press
         switch (cmd) {
+            case Other2WButton::ems: {
+                 //EMS2 est un mode spécial (le troisième protocole, souvent pour OEMs), et la principale différence est bien liée à la porteuse : il est déclenché par une longue porteuse non modulée (unmodulated carrier wave) avant l'envoi de la frame. Ça permet d'activer le mode pour une initialisation building-wide sans pairing individuel, en "réveillant" tous les devices compatibles (comme tes radiateurs) pour un broadcast global.
+                // Phase 1: Émission longue porteuse non modulée pour trigger EMS2
+                Radio::setCarrier(Radio::Carrier::Deviation, 0); // Deviation 0 pour unmodulated carrier
+                Radio::setStandby(); // Assure mode idle
+                Radio::writeByte(REG_OPMODE, 0x03);  // RegOpMode: FSK TX mode (0x03 pour TX en FSK)
+                Radio::writeByte(REG_PACKETCONFIG2, 0x00); // Reg
+                Serial.println("Émission porteuse non modulée pour EMS2...");
+                delay(10000);  // Durée de la porteuse (ajuste à 5-10s pour building-wide init)
+
+                // Arrêt porteuse et reset params
+                Radio::setStandby(); // Back to idle
+                Radio::setCarrier(Radio::Carrier::Deviation, 19200);// Reset deviation pour FSK normal
+                Radio::writeByte(REG_PACKETCONFIG2, RF_PACKETCONFIG2_DATAMODE_PACKET | RF_PACKETCONFIG2_IOHOME_ON | RF_PACKETCONFIG2_IOHOME_POWERFRAME);
+                // Set Sync word to 0xff33 both for rx and tx
+                Radio::writeByte(REG_SYNCVALUE1, 0x2D);
+                Radio::writeByte(REG_SYNCVALUE2, 0xD4);
+                // Phase 2: Envoi frame EMS2 (header + ID immeuble + commande reset + CRC)
+                // byte packet[] = {
+                    // 0xE5, 0x02,               // Header EMS2
+                    // 0x12, 0x34, 0x56, 0x78,   // ID immeuble
+                    // 0xFF,                     // Commande full init/reset
+                    // 0xCD                      // CRC (calcule sum % 256 si needed)
+                  // };
+                // packets2send.push_back(new iohcPacket);
+                std::vector<uint8_t> toSend = {0xE5, 0X02, 0x12, 0x34, 0x56, 0x78, 0xFF}; //, 0xCD};
+                Radio::setTx();
+                // unsigned long start = millis();
+                // while (millis() - start < 30000) {
+                    Radio::writeBurst(REG_FIFO, toSend.data(), toSend.size());
+                // }
+                Radio::writeByte(REG_SYNCVALUE1, SYNC_BYTE_1);
+                Radio::writeByte(REG_SYNCVALUE2, SYNC_BYTE_2);
+                Serial.println("Done");
+
+                // forgeAnyWPacket(packets2send.back(), toSend, 0);
+                // packets2send.back()->payload.packet.header.cmd = 0xFF;
+                // address gateway_ = {0x08, 0x42, 0xe3};
+                // address broadcast = {0xff, 0xFF, 0xff};
+                // memcpy(packets2send.back()->payload.packet.header.source, gateway_, 3);
+                // memcpy(packets2send.back()->payload.packet.header.target, broadcast, 3);
+                // int state = radio.transmit(packet, sizeof(packet));
+                // _radioInstance->send(packets2send);
+                // if (state == RADIOLIB_ERR_NONE) {
+                    Serial.println("Frame EMS2 envoyée après porteuse – initialisation en cours !");
+                // } else {
+                //    Serial.print("Erreur envoi: "); Serial.println(state);
+                // }
+
+                // delay(600000);  // Attends 10 min avant retry (duty cycle légal ~1%)
+
+                break;
+            }
             case Other2WButton::discovery: {
                 int bec = 0;
 

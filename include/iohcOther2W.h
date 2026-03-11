@@ -49,6 +49,7 @@ namespace IOHC {
         scanMode,
         pair31,
         pair38,
+        ems,
     };
 
     class iohcOther2W : public iohcDevice {

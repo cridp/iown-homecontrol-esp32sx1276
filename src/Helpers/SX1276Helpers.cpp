@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -100,8 +100,9 @@ namespace Radio {
         ets_delay_us(BOARD_READY_AFTER_POR);
 
         // Initialize SPI bus
-        SPI.setHwCs(true); // Enable hardware CS Before SPI.begin() !!
-        SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
+        // SPI.setHwCs(true); // Enable hardware CS Before SPI.begin() !!
+        // SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI, RADIO_NSS);
+        SPI.begin(RADIO_SCLK, RADIO_MISO, RADIO_MOSI);
 
         // SPI.setFrequency(SPI_CLK_FRQ);
         // SPI.setDataMode(SPI_MODE0);
@@ -113,7 +114,7 @@ namespace Radio {
         pinMode(RADIO_RESET, OUTPUT);
         digitalWrite(RADIO_RESET, HIGH);
         digitalWrite(RADIO_NSS, HIGH);
-        delayMicroseconds(BOARD_READY_AFTER_POR);
+        ets_delay_us(BOARD_READY_AFTER_POR);
 
         // SPI.beginTransaction(Radio::SpiSettings);
         // SPI.endTransaction();

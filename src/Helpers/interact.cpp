@@ -126,6 +126,9 @@ namespace Cmd {
             IOHC::iohcRemote1W::getInstance()->cmd(IOHC::RemoteButton::Mode4, cmd);
         });
         // Other 2W
+        Cmd::addHandler("ems", "Send ems2 Frame on air", [](Tokens *cmd)-> void {
+            IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::ems, nullptr);
+        });
         Cmd::addHandler("discovery", "Send discovery on air", [](Tokens *cmd)-> void {
             IOHC::iohcOther2W::getInstance()->cmd(IOHC::Other2WButton::discovery, nullptr);
         });
