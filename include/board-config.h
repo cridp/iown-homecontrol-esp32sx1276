@@ -1,5 +1,5 @@
 /*
-   Copyright (c) 2024. CRIDP https://github.com/cridp
+   Copyright (c) 2024-2026. CRIDP https://github.com/cridp
 
    Licensed under the Apache License, Version 2.0 (the "License");
    you may not use this file except in compliance with the License.
@@ -32,12 +32,13 @@
 #define RADIO_MOSI_PIN      27
 #define RADIO_CS_PIN        18
 #define RADIO_DIO0_PIN      26
-#define RADIO_RST_PIN       14
 #define BOARD_LED_PIN       25
 #ifdef LILYGO
+#define RADIO_RST_PIN       23
 #define RADIO_DIO1_PIN      33 //LILYGO
 #define RADIO_DIO2_PIN      32 //LILYGO
 #elif defined(HELTEC)
+#define RADIO_RST_PIN       14 //HELTEC
 #define RADIO_DIO1_PIN      35 //HELTEC
 #define RADIO_DIO2_PIN      34 //HELTEC
 #define RADIO_BUSY_PIN      32
@@ -76,8 +77,8 @@
 //#define RADIO_DIO_2                             2   // NodeMCU D4 // Not used - No wire
 //#define RADIO_DIO_4                             2   // NodeMCU D4
 #define RADIO_DIO_0                             RADIO_DIO0_PIN //                 35
-//#define RADIO_DIO_1                             34      // Not used - No wire
-//#define RADIO_DIO_2                             34      // Not used - No wire
+#define RADIO_DIO_1                             RADIO_DIO1_PIN //                 33      // Not used - No wire
+#define RADIO_DIO_2                             RADIO_DIO2_PIN //                 // Not used - No wire
 #define RADIO_DIO_4                             RADIO_DIO2_PIN //                 34
 #endif
 #if defined(RADIO_SX127X)

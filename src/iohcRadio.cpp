@@ -93,6 +93,22 @@ namespace IOHC {
     * No semaphore here.
     * esp_timer_get_time() is ISR-safe
     */
+    void IRAM_ATTR handle_interrupt_fromDIO1(void* arg) {
+        // Only GPIOS short ops, non blocking
+        RadioIrqEvent ev;
+        ev.source = 1; // DIO1 - PayloadReady / PacketSent
+        ev.edge = gpio_get_level(static_cast<gpio_num_t>(RADIO_PACKET_AVAIL));
+        ev.timestamp_us = esp_timer_get_time();
+
+        // Send it to queue (FromISR)
+        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+        xQueueSendFromISR(radioIrqQueue, &ev, &xHigherPriorityTaskWoken);
+        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+    }
+    /**
+    * No semaphore here.
+    * esp_timer_get_time() is ISR-safe
+    */
 
     void IRAM_ATTR handle_interrupt_fromDIO2(void* arg) {
         // Only GPIOS short ops, non blocking
@@ -203,11 +219,13 @@ timestamp_packet_sent = evt.timestamp_us;
         io_conf.pull_down_en = GPIO_PULLDOWN_DISABLE;
         io_conf.pull_up_en = GPIO_PULLUP_DISABLE;
         gpio_config(&io_conf);
-        gpio_isr_handler_add(GPIO_NUM_26 , handle_interrupt_fromDIO0, nullptr);
+        gpio_isr_handler_add(static_cast<gpio_num_t>(RADIO_DIO0_PIN), handle_interrupt_fromDIO0, nullptr);
+
         io_conf.pin_bit_mask = (1ULL<<RADIO_DIO2_PIN);
         io_conf.intr_type = GPIO_INTR_ANYEDGE;
         gpio_config(&io_conf);
-        gpio_isr_handler_add(GPIO_NUM_34 , handle_interrupt_fromDIO2, nullptr);
+        gpio_isr_handler_add(static_cast<gpio_num_t>(RADIO_DIO2_PIN), handle_interrupt_fromDIO2, nullptr);
+
 
         // Create all mutex
         tx_mutex = xSemaphoreCreateMutex(); xSemaphoreGive(tx_mutex);
